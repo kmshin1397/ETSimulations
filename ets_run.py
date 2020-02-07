@@ -5,6 +5,7 @@ import multiprocessing
 from shutil import rmtree, copyfile
 import argparse
 import json
+import requests
 
 # External modules
 import mrcfile
@@ -14,8 +15,7 @@ import numpy as np
 from notify import send_email
 from Simulation import Simulation
 from T4SSAssembler import T4SSAssembler
-
-metadata_queue = multiprocessing.Queue()
+from ChimeraServer import ChimeraServer
 
 
 def parse_inputs():
@@ -29,9 +29,10 @@ def parse_inputs():
                         help='the TEM-Simulator configuration file to use for each tilt stack')
     parser.add_argument('-c', '--coord', required=True,
                         help='the particle coordinates file for the TEM-Simulator')
-    parser.add_argument('-n', '--num_stacks', required=True,
+    parser.add_argument('-n', '--num_stacks', required=True, type=int,
                         help='the number of tilt stacks to generate')
-    parser.add_argument('--num_cores', help='the number of CPU cores to use (default: all)')
+    parser.add_argument('--num_cores', type=int,
+                        help='the number of CPU cores to use (default: all)')
     parser.add_argument('--name',
                         help='project base name to use when naming files (default taken from root '
                              'directory name)')
@@ -44,13 +45,11 @@ def parse_inputs():
                         help='enable to insert a membrane segment above each particle model within'
                              'the simulation - can be used with simulation of membrane-bound '
                              'complexes, for example')
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def sort_on_id(simulation):
-    return simulation.global_stack_no
+    return simulation["global_stack_no"]
 
 
 def scale_and_invert_mrc(filename):
@@ -63,8 +62,8 @@ def scale_and_invert_mrc(filename):
         min_val = mrc.header.dmin
         data = np.copy(mrc.data)
 
-    new_file = "%s/%s/_inverted.mrc" % (os.path.dirname(filename),
-                                        os.path.splitext(os.path.basename(filename))[0])
+    new_file = "%s/%s_inverted.mrc" % (os.path.dirname(filename),
+                                       os.path.splitext(os.path.basename(filename))[0])
 
     with mrcfile.new(new_file, overwrite=True) as mrc:
         data *= -1
@@ -73,7 +72,7 @@ def scale_and_invert_mrc(filename):
         mrc.voxel_size = 2.83
 
 
-def run_process(args, pid):
+def run_process(args, pid, chimera_commands_queue, chimera_acks):
     keep_temps = args.keep_tmp
 
     root = args.root
@@ -84,6 +83,9 @@ def run_process(args, pid):
         project_name = os.path.basename(root)
 
     process_temp_dir = root + "/temp_%d" % pid
+    os.mkdir(process_temp_dir)
+
+    print("Making process temp dir: %s" % process_temp_dir)
 
     # Copy over TEM-Simulator input files so it doesn't interfere with
     # any other potentially running simulations
@@ -95,30 +97,26 @@ def run_process(args, pid):
     sim_input_file = new_input_file
     coord_file = new_coord_file
 
-    # One overall log file for the simulation
-    # log_file = simulated_data_dir + "/sim_%s_%d.log" % (sim_type, run_number)
-    metadata_file = process_temp_dir + "/metadata_%d.log" % pid
+    num_stacks_per_cores = args.num_stacks // args.num_cores
 
-    # Set up array of metadata for each set of particles
-    # log(metadata_file, "[")
-
-    num_stacks = args.num_stacks / args.num_cores
     # If last core, tack on the remainder stacks as well
     if pid == args.num_cores - 1:
-        num_stacks += args.num_stacks % args.num_cores
+        num_stacks_per_cores += args.num_stacks % args.num_cores
 
-    assembler = T4SSAssembler(args.model, process_temp_dir)
+    assembler = T4SSAssembler(args.model, process_temp_dir, chimera_commands_queue, chimera_acks)
 
-    for i in range(num_stacks):
+    for i in range(num_stacks_per_cores):
         log_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
-            i + 1, num_stacks, pid)
+            i + 1, num_stacks_per_cores, pid)
         print(log_msg)
         # log(log_file, log_msg)
 
-        assembler.reset_temp_dir()
+        if i > 0:
+            assembler.reset_temp_dir()
 
-        global_id = pid * num_stacks + i
+        global_id = pid * num_stacks_per_cores + i
         stack_dir = raw_data_dir + "/%s_%d" % (project_name, global_id)
+        os.mkdir(stack_dir)
 
         tiltseries_file = stack_dir + "/%s_%d.mrc" % (project_name, global_id)
         nonoise_tilts_file = stack_dir + "/%s_%d_nonoise.mrc" % (project_name, global_id)
@@ -128,11 +126,12 @@ def run_process(args, pid):
 
         # Pass along the simulation object to the assembler to set up a simulation run
         sim = assembler.set_up_tiltseries(sim)
+        sim.edit_output_files()
 
         sim.run_tem_simulator()
         scale_and_invert_mrc(tiltseries_file)
 
-        metadata_queue.put(sim.to_json())
+        metadata_queue.put(sim.get_metadata())
 
     # Clean up temp files if desired
     if not keep_temps:
@@ -140,8 +139,6 @@ def run_process(args, pid):
 
 
 def main():
-    args = parse_inputs()
-
     send_notification = False
     if args.email != '':
         send_notification = True
@@ -154,19 +151,30 @@ def main():
     raw_data_dir = args.root + "/raw_data"
     os.mkdir(raw_data_dir)
 
+    # Wait until Chimera listener is ready
+    chimera_acknowledge.get()
+
     # Set up parallel processes
     num_cores = args.num_cores
     if num_cores is None:
         num_cores = multiprocessing.cpu_count()
+        args.num_cores = num_cores
+
+    print("Using %d cores" % num_cores)
 
     processes = []
+
     for i in range(num_cores):
-        process = multiprocessing.Process(target=run_process, args=(args, i))
+        process = multiprocessing.Process(target=run_process, args=(args, i, chimera_commands,
+                                                                    chimera_acknowledge))
         processes.append(process)
+        print("Starting process %d" % i)
         process.start()
 
     for process in processes:
         process.join()
+
+    chimera_commands.put(["done"])
 
     time_taken = (time.time() - start_time) / 60.
     # log(sim.log_file, 'Total time taken: %0.3f minutes' % time_taken)
@@ -177,11 +185,67 @@ def main():
     while not metadata_queue.empty():
         metadata.append(metadata_queue.get())
 
-    metadata.sort(key=sort_on_id())
+    metadata.sort(key=sort_on_id)
     metadata_file = args.root + "/sim_metadata.log"
     with open(metadata_file, 'w') as f:
         f.write(json.dumps(metadata, indent=4))
 
+    print('Total time taken: %0.3f minutes' % time_taken)
     if send_notification:
         send_email("kshin@umbriel.jensen.caltech.edu", args.email,
                    "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
+
+
+def run_chimera_server(commands_queue, ack_queue):
+    # ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
+    # particle models, shared by all multiprocessing child processes. Each child process whose
+    # Assembler wishes to use the Chimera server must first acquire the server's lock, and upon
+    # model assembly completion relinquish the lock as well as clearing the Chimera session.
+    chimera = ChimeraServer()
+    chimera.start_chimera_server()
+
+    # Let main process know that the Chimera server worker is up and ready
+    ack_queue.put(200)
+    while True:
+        print("Starting server reader")
+        new_commands = commands_queue.get()
+        base_request = "http://localhost:%d/run" % chimera.port
+
+        for c in new_commands:
+            # If this is a close session command, it is coming after a save command so give a little
+            # more time to let the save complete
+            if c.startswith("close"):
+                time.sleep(0.5)
+
+            print("Making request: " + c)
+            requests.get(base_request, params={'command': c})
+
+        # Clean up
+        r = requests.get(base_request, params={'command': 'close session'})
+
+        # Pass along an ack
+        ack_queue.put(r.status_code)
+
+        if new_commands[0] == "done":
+            break
+
+    chimera.quit()
+
+if __name__ == '__main__':
+    args = parse_inputs()
+
+    metadata_queue = multiprocessing.Queue()
+
+    # Shared Queue to pass along sets of Chimera commands to pass along to the server
+    chimera_commands = multiprocessing.Queue()
+
+    # Shared Queue to pass along acknowledgements of Chimera command request completion
+    chimera_acknowledge = multiprocessing.Queue()
+
+    # chimera_server_lock = multiprocessing.Lock()
+    chimera_process = multiprocessing.Process(target=run_chimera_server, args=(chimera_commands,
+                                                                               chimera_acknowledge))
+    chimera_process.start()
+    main()
+
+    chimera_process.join()

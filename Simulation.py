@@ -35,6 +35,9 @@ class Simulation:
         # Where to use for temporary input files
         self.temp_dir = temp_dir
 
+        # Place to put temporary TEM-Simulator log file
+        self.sim_log_file = temp_dir + "/simulator.log"
+
         # Field to store Assembler-specific metadata.
         self.custom_data = None
 
@@ -50,8 +53,8 @@ class Simulation:
     def extend_orientations(self, orientations):
         self.orientations.extend(orientations)
 
-    def to_json(self):
-        return json.dumps(self.__dict__, indent=4)
+    def get_metadata(self):
+        return self.__dict__
 
     # Replace line in file with a new line
     @staticmethod
@@ -98,6 +101,10 @@ class Simulation:
         replacement_line = "image_file_out = %s\n" % self.nonoise_tilts_file
         self.__replace_nonoise(self.config_file, image_file_out_pattern, replacement_line)
 
+        log_pattern = "^log_file = .*\n"
+        replacement_line = "log_file = %s\n" % self.sim_log_file
+        self.__replace(self.config_file, log_pattern, replacement_line)
+
     def get_num_particles(self):
         with open(self.base_coord_file, 'r') as f:
             for line in f.readlines():
@@ -135,7 +142,7 @@ class Simulation:
                 f.write(new_line)
 
     def __write_particle_section(self, particle_name, source, voxel_size=0.1):
-        with open(self.config_file, "w+") as f:
+        with open(self.config_file, "a") as f:
             f.write("=== particle %s ===\n" % particle_name)
 
             if source.endswith(".mrc"):
@@ -150,7 +157,7 @@ class Simulation:
                 f.write("voxel_size = %0.2f\n\n" % voxel_size)
 
     def __write_particle_set_section(self, particle_set, coord_file):
-        with open(self.config_file, "w+") as f:
+        with open(self.config_file, "a") as f:
             f.write("=== particleset ===\n")
             f.write("particle_type = %s\n" % particle_set.name)
             f.write("num_particles = %d\n" % particle_set.num_particles)
@@ -173,13 +180,16 @@ class Simulation:
                                     particle_set.orientations)
 
             # Add Particle and ParticleSet segments to config file
-            self.__write_particle_section(particle_set, new_coord_file)
+            self.__write_particle_section(particle, particle_set.source)
             self.__write_particle_set_section(particle_set, new_coord_file)
 
     def run_tem_simulator(self):
         print("Running TEM Simulator...")
         # log(simulation.log_file, "Running TEM Simulator...")
-        TEM_exec_path = '/home/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator'
-        command = TEM_exec_path + ' ' + self.config_file
+
+        # Need to provide executable path because subprocess does not know about aliases
+        # TEM_exec_path = '/home/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator'
+        TEM_exec_path = "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
+        command = TEM_exec_path + " " + self.config_file
         # log(simulation.log_file, check_output(command.split()).decode(sys.stdout.encoding))
         check_output(command.split()).decode(sys.stdout.encoding)
