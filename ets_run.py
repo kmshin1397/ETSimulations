@@ -15,7 +15,7 @@ import numpy as np
 from notify import send_email
 from Simulation import Simulation
 from T4SSAssembler import T4SSAssembler
-from ChimeraServer import ChimeraServer
+from ChimeraServer import ChimeraServer, ChimeraCommandSet
 
 
 def parse_inputs():
@@ -72,7 +72,7 @@ def scale_and_invert_mrc(filename):
         mrc.voxel_size = 2.83
 
 
-def run_process(args, pid, chimera_commands_queue, chimera_acks):
+def run_process(args, pid, chimera_commands_queue):
     keep_temps = args.keep_tmp
 
     root = args.root
@@ -103,7 +103,7 @@ def run_process(args, pid, chimera_commands_queue, chimera_acks):
     if pid == args.num_cores - 1:
         num_stacks_per_cores += args.num_stacks % args.num_cores
 
-    assembler = T4SSAssembler(args.model, process_temp_dir, chimera_commands_queue, chimera_acks)
+    assembler = T4SSAssembler(args.model, process_temp_dir, chimera_commands_queue)
 
     for i in range(num_stacks_per_cores):
         log_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
@@ -151,9 +151,6 @@ def main():
     raw_data_dir = args.root + "/raw_data"
     os.mkdir(raw_data_dir)
 
-    # Wait until Chimera listener is ready
-    chimera_acknowledge.get()
-
     # Set up parallel processes
     num_cores = args.num_cores
     if num_cores is None:
@@ -165,8 +162,7 @@ def main():
     processes = []
 
     for i in range(num_cores):
-        process = multiprocessing.Process(target=run_process, args=(args, i, chimera_commands,
-                                                                    chimera_acknowledge))
+        process = multiprocessing.Process(target=run_process, args=(args, i, chimera_commands))
         processes.append(process)
         print("Starting process %d" % i)
         process.start()
@@ -196,7 +192,7 @@ def main():
                    "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
 
 
-def run_chimera_server(commands_queue, ack_queue):
+def run_chimera_server(commands_queue):
     # ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
     # particle models, shared by all multiprocessing child processes. Each child process whose
     # Assembler wishes to use the Chimera server must first acquire the server's lock, and upon
@@ -204,12 +200,14 @@ def run_chimera_server(commands_queue, ack_queue):
     chimera = ChimeraServer()
     chimera.start_chimera_server()
 
-    # Let main process know that the Chimera server worker is up and ready
-    ack_queue.put(200)
     while True:
         print("Starting server reader")
-        new_commands = commands_queue.get()
+        new_command_set = commands_queue.get()
+        new_commands = new_command_set.commands
         base_request = "http://localhost:%d/run" % chimera.port
+
+        if new_commands[0] == "done":
+            break
 
         for c in new_commands:
             # If this is a close session command, it is coming after a save command so give a little
@@ -221,15 +219,13 @@ def run_chimera_server(commands_queue, ack_queue):
             requests.get(base_request, params={'command': c})
 
         # Clean up
-        r = requests.get(base_request, params={'command': 'close session'})
+        requests.get(base_request, params={'command': 'close session'})
 
         # Pass along an ack
-        ack_queue.put(r.status_code)
-
-        if new_commands[0] == "done":
-            break
+        new_command_set.ack_event.set()
 
     chimera.quit()
+
 
 if __name__ == '__main__':
     args = parse_inputs()
@@ -239,12 +235,8 @@ if __name__ == '__main__':
     # Shared Queue to pass along sets of Chimera commands to pass along to the server
     chimera_commands = multiprocessing.Queue()
 
-    # Shared Queue to pass along acknowledgements of Chimera command request completion
-    chimera_acknowledge = multiprocessing.Queue()
-
     # chimera_server_lock = multiprocessing.Lock()
-    chimera_process = multiprocessing.Process(target=run_chimera_server, args=(chimera_commands,
-                                                                               chimera_acknowledge))
+    chimera_process = multiprocessing.Process(target=run_chimera_server, args=(chimera_commands, ))
     chimera_process.start()
     main()
 

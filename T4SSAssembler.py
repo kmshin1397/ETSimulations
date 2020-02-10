@@ -8,16 +8,15 @@ import numpy as np
 
 # Custom modules
 from ParticleSet import ParticleSet
-import ChimeraServer as chimera
+import ChimeraServer as Chimera
 
 
 class T4SSAssembler:
-    def __init__(self, model, temp_dir, chimera_queue, chimera_ack):
+    def __init__(self, model, temp_dir, chimera_queue):
         self.model = model
         self.temp_dir = temp_dir
         self.commands = []
         self.chimera_queue = chimera_queue
-        self.chimera_ack = chimera_ack
 
         # Load in orientations distribution from file
         # orientation_table = "/data/kshin/T4SS_sim/manual_full.tbl"
@@ -70,7 +69,7 @@ class T4SSAssembler:
         random_position = self.__get_random_position()
         self.chosen_positions.append(random_position)
 
-        model = chimera.load_model_from_source(self.model, model_id, self.commands)
+        model = Chimera.load_model_from_source(self.model, model_id, self.commands)
 
         # Apply random position
         self.commands.append("move %.2f,%.2f,0 models #%d" % (random_position[0],
@@ -101,11 +100,8 @@ class T4SSAssembler:
         # Now that we've built up the sequence of commands to generate the model, send to Chimera
         # Make sure to wait until the server is available by sending over the lock
         print("Putting into chimera queue")
-        self.chimera_queue.put(self.commands)
-        response_status = self.chimera_ack.get()
-        if response_status != 200:
-            print("Error %d returned by Chimera server!" % response_status)
-            exit()
+        command_set = Chimera.ChimeraCommandSet(self.commands)
+        command_set.send_and_wait(self.chimera_queue)
 
     def set_up_tiltseries(self, simulation):
         """

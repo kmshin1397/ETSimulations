@@ -3,6 +3,7 @@ import subprocess
 import time
 import threading
 import requests
+import multiprocessing
 
 
 def load_model_from_source(model_file, volume_id, commands):
@@ -21,6 +22,18 @@ def run_commands(commands, port, server_lock):
     # Clean up
     requests.get(base_request, params={'command': 'close session'})
     server_lock.release()
+
+
+class ChimeraCommandSet:
+    def __init__(self, commands):
+        self.commands = commands
+
+        # Event to let child thread know that the commands have been completed
+        self.ack_event = multiprocessing.Event()
+
+    def send_and_wait(self, commands_queue):
+        commands_queue.put(self)
+        self.ack_event.wait()
 
 
 class ChimeraServer:
