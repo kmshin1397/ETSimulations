@@ -25,15 +25,21 @@ def run_commands(commands, port, server_lock):
 
 
 class ChimeraCommandSet:
-    def __init__(self, commands):
+    def __init__(self, commands, pid, ack_event):
         self.commands = commands
 
-        # Event to let child thread know that the commands have been completed
-        self.ack_event = multiprocessing.Event()
+        # The process ID of the subprocess requesting the Chimera commands so that the server can
+        # notify the proper subprocess upon completion
+        self.pid = pid
+
+        # The event which will be set by the Chimera server upon completion of command requests
+        self.ack_event = ack_event
 
     def send_and_wait(self, commands_queue):
-        commands_queue.put(self)
+        print("Queueing up Chimera requests from process %d" % self.pid)
+        commands_queue.put((self.pid, self.commands))
         self.ack_event.wait()
+        print("Received server acknowledgement for process %d" % self.pid)
 
 
 class ChimeraServer:

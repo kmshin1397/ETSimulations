@@ -72,7 +72,7 @@ def scale_and_invert_mrc(filename):
         mrc.voxel_size = 2.83
 
 
-def run_process(args, pid, chimera_commands_queue):
+def run_process(args, pid, chimera_commands_queue, ack_event):
     keep_temps = args.keep_tmp
 
     root = args.root
@@ -103,7 +103,8 @@ def run_process(args, pid, chimera_commands_queue):
     if pid == args.num_cores - 1:
         num_stacks_per_cores += args.num_stacks % args.num_cores
 
-    assembler = T4SSAssembler(args.model, process_temp_dir, chimera_commands_queue)
+    assembler = T4SSAssembler(args.model, process_temp_dir, chimera_commands_queue,
+                              ack_event, pid)
 
     for i in range(num_stacks_per_cores):
         log_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
@@ -128,6 +129,9 @@ def run_process(args, pid, chimera_commands_queue):
         sim = assembler.set_up_tiltseries(sim)
         sim.edit_output_files()
 
+        # If this is the last stack for this process, clean up the Assembler
+        assembler.close()
+
         sim.run_tem_simulator()
         scale_and_invert_mrc(tiltseries_file)
 
@@ -136,6 +140,47 @@ def run_process(args, pid, chimera_commands_queue):
     # Clean up temp files if desired
     if not keep_temps:
         rmtree(process_temp_dir)
+
+
+def run_chimera_server(commands_queue, process_events):
+    # ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
+    # particle models, shared by all multiprocessing child processes. Each child process whose
+    # Assembler wishes to use the Chimera server will send the entire set of commands to generate
+    # a model so that Chimera sessions remain separate.
+    chimera = ChimeraServer()
+    chimera.start_chimera_server()
+
+    finished_processes = []
+
+    while True:
+        requester_pid, new_commands = commands_queue.get()
+        base_request = "http://localhost:%d/run" % chimera.port
+
+        if new_commands[0] == "END":
+            print("Received notice that process %d is finished with the server" % requester_pid)
+            finished_processes.append(requester_pid)
+            # If that was the last process, quit the server
+            if len(finished_processes) == len(process_events.keys()):
+                break
+            else:
+                continue
+
+        for c in new_commands:
+            # If this is a close session command, it is coming after a save command so give a little
+            # more time to let the save complete
+            if c.startswith("close"):
+                time.sleep(0.5)
+
+            print("Making request: " + c)
+            requests.get(base_request, params={'command': c})
+
+        # Clean up
+        requests.get(base_request, params={'command': 'close session'})
+
+        # Pass along an ack
+        process_events[requester_pid].set()
+
+    chimera.quit()
 
 
 def main():
@@ -154,23 +199,45 @@ def main():
     # Set up parallel processes
     num_cores = args.num_cores
     if num_cores is None:
-        num_cores = multiprocessing.cpu_count()
+        num_cores = min(multiprocessing.cpu_count(), args.num_stacks)
         args.num_cores = num_cores
 
     print("Using %d cores" % num_cores)
 
-    processes = []
+    # Shared Queue to pass along sets of Chimera commands to pass along to the server
+    chimera_commands = multiprocessing.Queue()
 
-    for i in range(num_cores):
-        process = multiprocessing.Process(target=run_process, args=(args, i, chimera_commands))
+    # Create a set of subprocess-specific events to signal command completions to them
+    chimera_process_events = {}
+
+    # Set up the child processes to run the model assembly/simulations.
+    # We wait until all processes are set up before starting them, so that the Chimera sever process
+    # can be made aware of all processes (and be passes all their acknowledge events).
+    processes = []
+    for pid in range(num_cores):
+
+        # Event unique to each child process used to subscribe to a Chimera server command set
+        # and listen for completion of commands request.
+        ack_event = multiprocessing.Event()
+        chimera_process_events[pid] = ack_event
+
+        process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands,
+                                                                    ack_event))
         processes.append(process)
+
+    # Start the Chimera server first, so it can be ready for the model assemblers
+    chimera_process = multiprocessing.Process(target=run_chimera_server,
+                                              args=(chimera_commands, chimera_process_events))
+    print("Starting Chimera server process")
+    chimera_process.start()
+
+    # Now start all the processes
+    for i, process in enumerate(processes):
         print("Starting process %d" % i)
         process.start()
 
     for process in processes:
         process.join()
-
-    chimera_commands.put(["done"])
 
     time_taken = (time.time() - start_time) / 60.
     # log(sim.log_file, 'Total time taken: %0.3f minutes' % time_taken)
@@ -192,52 +259,8 @@ def main():
                    "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
 
 
-def run_chimera_server(commands_queue):
-    # ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
-    # particle models, shared by all multiprocessing child processes. Each child process whose
-    # Assembler wishes to use the Chimera server must first acquire the server's lock, and upon
-    # model assembly completion relinquish the lock as well as clearing the Chimera session.
-    chimera = ChimeraServer()
-    chimera.start_chimera_server()
-
-    while True:
-        print("Starting server reader")
-        new_command_set = commands_queue.get()
-        new_commands = new_command_set.commands
-        base_request = "http://localhost:%d/run" % chimera.port
-
-        if new_commands[0] == "done":
-            break
-
-        for c in new_commands:
-            # If this is a close session command, it is coming after a save command so give a little
-            # more time to let the save complete
-            if c.startswith("close"):
-                time.sleep(0.5)
-
-            print("Making request: " + c)
-            requests.get(base_request, params={'command': c})
-
-        # Clean up
-        requests.get(base_request, params={'command': 'close session'})
-
-        # Pass along an ack
-        new_command_set.ack_event.set()
-
-    chimera.quit()
-
-
 if __name__ == '__main__':
     args = parse_inputs()
 
     metadata_queue = multiprocessing.Queue()
-
-    # Shared Queue to pass along sets of Chimera commands to pass along to the server
-    chimera_commands = multiprocessing.Queue()
-
-    # chimera_server_lock = multiprocessing.Lock()
-    chimera_process = multiprocessing.Process(target=run_chimera_server, args=(chimera_commands, ))
-    chimera_process.start()
     main()
-
-    chimera_process.join()

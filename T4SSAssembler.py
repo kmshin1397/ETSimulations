@@ -12,11 +12,15 @@ import ChimeraServer as Chimera
 
 
 class T4SSAssembler:
-    def __init__(self, model, temp_dir, chimera_queue):
+    def __init__(self, model, temp_dir, chimera_queue, ack_event, pid):
         self.model = model
         self.temp_dir = temp_dir
         self.commands = []
         self.chimera_queue = chimera_queue
+
+        # Event unique to each child process used to subscribe to a Chimera server command set
+        # and listen for completion of commands request.
+        self.ack_event = ack_event
 
         # Load in orientations distribution from file
         # orientation_table = "/data/kshin/T4SS_sim/manual_full.tbl"
@@ -31,6 +35,9 @@ class T4SSAssembler:
 
         # An instance of the Simulation class that holds current iteration TEM-Simulator parameters
         self.simulation = None
+
+        # The subprocess ID of the worker using this Assembler
+        self.pid = pid
 
     @staticmethod
     def __get_random_position():
@@ -48,7 +55,7 @@ class T4SSAssembler:
 
     def __open_membrane(self, model_id, particle_height_offset):
         # path = "/data/kshin/T4SS_sim/mem_large.mrc"
-        path = "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_darker.mrc"
+        path = "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large.mrc"
         self.commands.append('open #%d %s' % (model_id, path))
         self.commands.append('move 0,0,%d models #%d' % (particle_height_offset + 25, model_id))
         return model_id
@@ -99,8 +106,7 @@ class T4SSAssembler:
     def __send_commands_to_chimera(self):
         # Now that we've built up the sequence of commands to generate the model, send to Chimera
         # Make sure to wait until the server is available by sending over the lock
-        print("Putting into chimera queue")
-        command_set = Chimera.ChimeraCommandSet(self.commands)
+        command_set = Chimera.ChimeraCommandSet(self.commands, self.pid, self.ack_event)
         command_set.send_and_wait(self.chimera_queue)
 
     def set_up_tiltseries(self, simulation):
@@ -158,3 +164,8 @@ class T4SSAssembler:
 
     def reset_temp_dir(self):
         rmtree(self.temp_dir + "/truth_vols")
+
+    def close(self):
+        # Let the Chimera server know that this Assembler is done using the server
+        self.commands = ["END"]
+        self.__send_commands_to_chimera()
