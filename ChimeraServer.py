@@ -50,6 +50,7 @@ class ChimeraServer:
         self.process = None
 
     def quit(self):
+        logger.info("Shutting down Chimera server")
         # If the server has been started, terminate it
         if self.process is not None:
             self.process.terminate()

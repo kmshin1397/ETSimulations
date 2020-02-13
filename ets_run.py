@@ -51,11 +51,7 @@ def parse_inputs():
                         help='email address to send completion notification to')
     parser.add_argument('--keep_tmp', action='store_true', default=False,
                         help='enable to store all temporary files generated (currently just the '
-                             'truth volume of the simulated tilt stacks')
-    parser.add_argument('--add_membrane', action='store_true', default=False,
-                        help='enable to insert a membrane segment above each particle model within'
-                             'the simulation - can be used with simulation of membrane-bound '
-                             'complexes, for example')
+                             'truth volume of the simulated tilt stacks. (NOT IMPLEMENTED)')
     return parser.parse_args()
 
 
@@ -118,10 +114,10 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
                               ack_event, pid)
 
     for i in range(num_stacks_per_cores):
-        log_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
+        progress_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
             i + 1, num_stacks_per_cores, pid)
-        logger.info(log_msg)
-        # log(log_file, log_msg)
+        logger.info(progress_msg)
+        print(progress_msg)
 
         if i > 0:
             assembler.reset_temp_dir()
@@ -143,7 +139,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         # If this is the last stack for this process, clean up the Assembler
         assembler.close()
 
-        sim.run_tem_simulator(pid)
+        sim.run_tem_simulator()
         scale_and_invert_mrc(tiltseries_file)
 
         metadata_queue.put(sim.get_metadata())
@@ -168,7 +164,8 @@ def run_chimera_server(commands_queue, process_events):
         base_request = "http://localhost:%d/run" % chimera.port
 
         if new_commands[0] == "END":
-            logger.info("Received notice that process %d is finished with the server" % requester_pid)
+            logger.info("Received notice that process %d is finished with the server" %
+                        requester_pid)
             finished_processes.append(requester_pid)
             # If that was the last process, quit the server
             if len(finished_processes) == len(process_events.keys()):
@@ -195,6 +192,8 @@ def run_chimera_server(commands_queue, process_events):
 
 
 def main():
+    print("For detailed messages, logs can be found at:\n"
+          + logfile)
     send_notification = False
     if args.email != '':
         send_notification = True
@@ -286,3 +285,5 @@ if __name__ == '__main__':
     configure_root_logger(logs_queue)
 
     main()
+    logs_queue.put("END")
+    log_listener.join()

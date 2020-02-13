@@ -34,5 +34,9 @@ def log_listener_process(queue, logfile, start_time):
     while True:
         while not queue.empty():
             record = queue.get()
+
+            if record == "END":
+                return
+
             logger = logging.getLogger(record.name)
             logger.handle(record)
