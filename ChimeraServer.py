@@ -3,7 +3,9 @@ import subprocess
 import time
 import threading
 import requests
-import multiprocessing
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def load_model_from_source(model_file, volume_id, commands):
@@ -16,7 +18,7 @@ def run_commands(commands, port, server_lock):
     base_request = "http://localhost:%d/run" % port
 
     for c in commands:
-        print("Making request: " + c)
+        logger.info("Making request: " + c)
         requests.get(base_request, params={'command': c})
 
     # Clean up
@@ -36,10 +38,10 @@ class ChimeraCommandSet:
         self.ack_event = ack_event
 
     def send_and_wait(self, commands_queue):
-        print("Queueing up Chimera requests from process %d" % self.pid)
+        logger.info("Queueing up Chimera requests")
         commands_queue.put((self.pid, self.commands))
         self.ack_event.wait()
-        print("Received server acknowledgement for process %d" % self.pid)
+        logger.info("Received server acknowledgement")
 
 
 class ChimeraServer:
@@ -79,11 +81,10 @@ class ChimeraServer:
                 port = int(line.split("REST server on host 127.0.0.1 port ")[1])
                 break
             except queue.Empty:
-                # print("Sleeping")
                 time.sleep(0.5)
                 continue
         t.join()
 
         self.process = proc
         self.port = port
-        print("REST Server started on port %d" % self.port)
+        logger.info("REST Server started on port %d" % self.port)

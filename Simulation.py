@@ -1,10 +1,12 @@
-import json
 import sys
 import os
 from shutil import move
 from tempfile import mkstemp
 import re
 from subprocess import check_output
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Simulation:
@@ -184,12 +186,10 @@ class Simulation:
             self.__write_particle_set_section(particle_set, new_coord_file)
 
     def run_tem_simulator(self):
-        print("Running TEM Simulator...")
-        # log(simulation.log_file, "Running TEM Simulator...")
+        logger.info("Running TEM Simulator")
 
         # Need to provide executable path because subprocess does not know about aliases
         # TEM_exec_path = '/home/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator'
         TEM_exec_path = "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
         command = TEM_exec_path + " " + self.config_file
-        # log(simulation.log_file, check_output(command.split()).decode(sys.stdout.encoding))
-        check_output(command.split()).decode(sys.stdout.encoding)
+        logger.info(check_output(command.split()).decode(sys.stdout.encoding))

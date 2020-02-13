@@ -6,6 +6,8 @@ from shutil import rmtree, copyfile
 import argparse
 import json
 import requests
+import logging
+from logging import handlers
 
 # External modules
 import mrcfile
@@ -15,7 +17,16 @@ import numpy as np
 from notify import send_email
 from Simulation import Simulation
 from T4SSAssembler import T4SSAssembler
-from ChimeraServer import ChimeraServer, ChimeraCommandSet
+from ChimeraServer import ChimeraServer
+from logger import log_listener_process
+
+
+# Root logger configuration
+def configure_root_logger(queue):
+    h = handlers.QueueHandler(queue)
+    root = logging.getLogger()
+    root.addHandler(h)
+    root.setLevel(logging.INFO)
 
 
 def parse_inputs():
@@ -85,7 +96,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     process_temp_dir = root + "/temp_%d" % pid
     os.mkdir(process_temp_dir)
 
-    print("Making process temp dir: %s" % process_temp_dir)
+    logger.info("Making process temp dir: %s" % process_temp_dir)
 
     # Copy over TEM-Simulator input files so it doesn't interfere with
     # any other potentially running simulations
@@ -109,7 +120,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     for i in range(num_stacks_per_cores):
         log_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
             i + 1, num_stacks_per_cores, pid)
-        print(log_msg)
+        logger.info(log_msg)
         # log(log_file, log_msg)
 
         if i > 0:
@@ -132,7 +143,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         # If this is the last stack for this process, clean up the Assembler
         assembler.close()
 
-        sim.run_tem_simulator()
+        sim.run_tem_simulator(pid)
         scale_and_invert_mrc(tiltseries_file)
 
         metadata_queue.put(sim.get_metadata())
@@ -157,7 +168,7 @@ def run_chimera_server(commands_queue, process_events):
         base_request = "http://localhost:%d/run" % chimera.port
 
         if new_commands[0] == "END":
-            print("Received notice that process %d is finished with the server" % requester_pid)
+            logger.info("Received notice that process %d is finished with the server" % requester_pid)
             finished_processes.append(requester_pid)
             # If that was the last process, quit the server
             if len(finished_processes) == len(process_events.keys()):
@@ -171,7 +182,7 @@ def run_chimera_server(commands_queue, process_events):
             if c.startswith("close"):
                 time.sleep(0.5)
 
-            print("Making request: " + c)
+            logger.info("Making request: " + c)
             requests.get(base_request, params={'command': c})
 
         # Clean up
@@ -188,8 +199,6 @@ def main():
     if args.email != '':
         send_notification = True
 
-    start_time = time.time()
-
     # Set up simulation file directories
     # Trailing slash not expected by rest of program
     args.root = args.root.rstrip("/")
@@ -202,7 +211,7 @@ def main():
         num_cores = min(multiprocessing.cpu_count(), args.num_stacks)
         args.num_cores = num_cores
 
-    print("Using %d cores" % num_cores)
+    logger.info("Using %d cores" % num_cores)
 
     # Shared Queue to pass along sets of Chimera commands to pass along to the server
     chimera_commands = multiprocessing.Queue()
@@ -228,39 +237,52 @@ def main():
     # Start the Chimera server first, so it can be ready for the model assemblers
     chimera_process = multiprocessing.Process(target=run_chimera_server,
                                               args=(chimera_commands, chimera_process_events))
-    print("Starting Chimera server process")
+    logger.info("Starting Chimera server process")
     chimera_process.start()
 
     # Now start all the processes
     for i, process in enumerate(processes):
-        print("Starting process %d" % i)
         process.start()
 
     for process in processes:
         process.join()
 
     time_taken = (time.time() - start_time) / 60.
-    # log(sim.log_file, 'Total time taken: %0.3f minutes' % time_taken)
-    # log(metadata_file, "]")
 
     # Metadata objects for each stack
     metadata = []
     while not metadata_queue.empty():
         metadata.append(metadata_queue.get())
 
+    # Log metadata
     metadata.sort(key=sort_on_id)
-    metadata_file = args.root + "/sim_metadata.log"
+    metadata_file = args.root + "/sim_metadata.json"
     with open(metadata_file, 'w') as f:
         f.write(json.dumps(metadata, indent=4))
 
-    print('Total time taken: %0.3f minutes' % time_taken)
+    logger.info('Total time taken: %0.3f minutes' % time_taken)
     if send_notification:
         send_email("kshin@umbriel.jensen.caltech.edu", args.email,
                    "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
 
 
 if __name__ == '__main__':
+    start_time = time.time()
+    logger = logging.getLogger(__name__)
+
     args = parse_inputs()
+    if args.name is None:
+        args.name = os.path.basename(args.root)
 
     metadata_queue = multiprocessing.Queue()
+
+    # Start the logger process
+    logs_queue = multiprocessing.Queue()
+    logfile = "%s/%s.log" % (args.root, args.name)
+    log_listener = multiprocessing.Process(target=log_listener_process, args=(logs_queue, logfile,
+                                                                              start_time))
+    log_listener.start()
+
+    configure_root_logger(logs_queue)
+
     main()

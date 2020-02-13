@@ -2,6 +2,7 @@
 import random
 import os
 from shutil import rmtree
+import logging
 
 # External packages
 import numpy as np
@@ -9,6 +10,9 @@ import numpy as np
 # Custom modules
 from ParticleSet import ParticleSet
 import ChimeraServer as Chimera
+
+
+logger = logging.getLogger(__name__)
 
 
 class T4SSAssembler:
