@@ -16,12 +16,13 @@ import numpy as np
 # Custom modules
 from src.notify import send_email
 from src.simulation import Simulation
-from src.t4ss_assembler import T4SSAssembler
+from src.assemblers.t4ss_assembler import T4SSAssembler
 from src.chimera_server import ChimeraServer
 from src.logger import log_listener_process
 
 
 TEM_exec_path = "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
+
 
 # Root logger configuration
 def configure_root_logger(queue):
@@ -141,7 +142,8 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         sim.edit_output_files()
 
         # If this is the last stack for this process, clean up the Assembler
-        assembler.close()
+        if i == num_stacks_per_cores - 1:
+            assembler.close()
 
         sim.run_tem_simulator(TEM_exec_path)
         scale_and_invert_mrc(tiltseries_file)
