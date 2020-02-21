@@ -1,3 +1,16 @@
+"""This module is the main entry point for generating a set of simulated tilt stacks.
+
+The tilt stacks are generated using the TEM-Simulator software package, taking as input a PDB or
+MRC map file of a particular particle of interest and generating a cryo-EM image stack containing
+the given particle. More complicated particle sources (i.e. randomizing the orientations of the
+particles and adding membrane segments around them) can be used by providing a custom Assembler
+class which interfaces with a Chimera REST Server to assemble these particle sources to feed in to
+each run of the TEM-Simulator.
+
+Kyung Min Shin, 2020
+
+"""
+
 # Built-in modules
 import time
 import os
@@ -24,8 +37,16 @@ from src.logger import log_listener_process
 TEM_exec_path = "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
 
 
-# Root logger configuration
 def configure_root_logger(queue):
+    """ Helper function to initialize and configure the main logger instance to handle log messages.
+
+    Args:
+        queue: An instance of the  multiprocessing.queue class which provides thread-safe handling
+            of log messages coming from many child processes.
+
+    Returns: None
+
+    """
     h = handlers.QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
@@ -33,6 +54,11 @@ def configure_root_logger(queue):
 
 
 def parse_inputs():
+    """ Instantiate and set up the command line arguments parser for the ets_run module
+
+    Returns: None
+
+    """
     parser = argparse.ArgumentParser(
         description='Generate simulated tilt stacks and process them.')
     parser.add_argument('-m', '--model', required=True,
@@ -61,10 +87,29 @@ def parse_inputs():
 
 
 def sort_on_id(simulation):
+    """ Helper function used to sort the queue of metadata logs from a series of simulations by
+    their stack numbers.
+
+    Args:
+        simulation: the src.simulation.Simulation class instance which represents one run of the
+            TEM-Simulator
+
+    Returns: the stack number within the set of simulations
+
+    """
     return simulation["global_stack_no"]
 
 
 def scale_and_invert_mrc(filename):
+    """ Given an outputted raw tilt stack from the TEM-Simulator, invert the images so that greater
+    densities are darker and add voxel sizing information to the header.
+
+    Args:
+        filename: the path to the raw tiltseries MRC that should be processed
+
+    Returns: None
+
+    """
     mrcfile.validate(filename)
     data = np.array([])
     val_range = 0
@@ -85,6 +130,24 @@ def scale_and_invert_mrc(filename):
 
 
 def run_process(args, pid, chimera_commands_queue, ack_event):
+    """ Drives a single child process of the simulation pipeline.
+
+    A temporary data directory is first created for use only by the child process. An Assembler
+    instance is created, and for each tiltseries simulation assigned to the child process, the
+    appropriate number of particles are assembled and passed along to the TEM-Simulator to simulate
+    tilt stacks with.
+
+    Args:
+        args: the command line arguments passed to the main ets_run process
+        pid: the process ID of this child process
+        chimera_commands_queue: the multiprocessing queue where commands for the Chimera REST Server
+            can be sent by the particle Assembler
+        ack_event: a child process-specific multiprocessing Event to subscribe to in order to know
+            when the Chimera commands we send off to the server have been completed
+
+    Returns: None
+
+    """
     keep_temps = args.keep_tmp
 
     root = args.root
@@ -156,10 +219,24 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
 
 
 def run_chimera_server(commands_queue, process_events):
-    # ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
-    # particle models, shared by all multiprocessing child processes. Each child process whose
-    # Assembler wishes to use the Chimera server will send the entire set of commands to generate
-    # a model so that Chimera sessions remain separate.
+    """ Run the Chimera REST Server in a child process.
+
+    ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
+    particle models, shared by all multiprocessing child processes. Each child process whose
+    Assembler wishes to use the Chimera server will send the entire set of commands to generate
+    a model so that Chimera sessions remain separate.
+
+    Args:
+        commands_queue: the multiprocessing queue which maintains thread-safe piping of Chimera
+            commands to make HTTP GET requests with, filled by particle Assemblers in other
+            processes
+        process_events: a dictionary linking each child process ID to its process-specific
+            multiprocessing acknowledgement event which signals to Assemblers when the commands
+            sent by that Assembler have been completed
+
+    Returns: None
+
+    """
     chimera = ChimeraServer()
     chimera.start_chimera_server()
 
@@ -198,6 +275,12 @@ def run_chimera_server(commands_queue, process_events):
 
 
 def main():
+    """ The main driver process, which sets up top-level run directories and spawns necessary
+    child processes.
+
+    Returns: None
+
+    """
     print("For detailed messages, logs can be found at:\n"
           + logfile)
     send_notification = False
