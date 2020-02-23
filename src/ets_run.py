@@ -1,4 +1,4 @@
-"""This module is the main entry point for generating a set of simulated tilt stacks.
+""" This module is the main entry point for generating a set of simulated tilt stacks.
 
 The tilt stacks are generated using the TEM-Simulator software package, taking as input a PDB or
 MRC map file of a particular particle of interest and generating a cryo-EM image stack containing
@@ -91,7 +91,7 @@ def sort_on_id(simulation):
     their stack numbers.
 
     Args:
-        simulation: the src.simulation.Simulation class instance which represents one run of the
+        simulation: The src.simulation.Simulation class instance which represents one run of the
             TEM-Simulator
 
     Returns: the stack number within the set of simulations
@@ -105,7 +105,7 @@ def scale_and_invert_mrc(filename):
     densities are darker and add voxel sizing information to the header.
 
     Args:
-        filename: the path to the raw tiltseries MRC that should be processed
+        filename: The path to the raw tiltseries MRC that should be processed
 
     Returns: None
 
@@ -138,11 +138,11 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     tilt stacks with.
 
     Args:
-        args: the command line arguments passed to the main ets_run process
-        pid: the process ID of this child process
-        chimera_commands_queue: the multiprocessing queue where commands for the Chimera REST Server
+        args: The command line arguments passed to the main ets_run process
+        pid: The process ID of this child process
+        chimera_commands_queue: The multiprocessing queue where commands for the Chimera REST Server
             can be sent by the particle Assembler
-        ack_event: a child process-specific multiprocessing Event to subscribe to in order to know
+        ack_event: A child process-specific multiprocessing Event to subscribe to in order to know
             when the Chimera commands we send off to the server have been completed
 
     Returns: None
@@ -227,10 +227,10 @@ def run_chimera_server(commands_queue, process_events):
     a model so that Chimera sessions remain separate.
 
     Args:
-        commands_queue: the multiprocessing queue which maintains thread-safe piping of Chimera
+        commands_queue: The multiprocessing queue which maintains thread-safe piping of Chimera
             commands to make HTTP GET requests with, filled by particle Assemblers in other
             processes
-        process_events: a dictionary linking each child process ID to its process-specific
+        process_events: A dictionary linking each child process ID to its process-specific
             multiprocessing acknowledgement event which signals to Assemblers when the commands
             sent by that Assembler have been completed
 

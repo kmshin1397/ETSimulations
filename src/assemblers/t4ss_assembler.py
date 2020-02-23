@@ -1,3 +1,6 @@
+""" This module assembles fake membranous particles built to emulate the Type IV Secretion System
+
+"""
 # Built-in modules
 import random
 import os
@@ -15,7 +18,61 @@ logger = logging.getLogger(__name__)
 
 
 class T4SSAssembler:
+    """ A custom particle Assembler class used to build up fake Type IV Secretion System particles
+
+    Attributes:
+        ### Attributes passed in on initialization ###
+        model: The filepath to the particle source MRC which represents the T4SS
+        temp_dir: The directory into which temporary truth volumes should be placed
+        chimera_queue: The multiprocessing queue that the server process is listening to
+        ack_event: The child process-specific acknowledgement event to subscribe to for
+            completion notifications from the Chimera server
+        pid: The ID of the child process running this assembler
+
+        ### Other attributes ###
+        commands: The list of Chimera commands accrued by the Assembler during processing, to be
+            sent to the Chimera REST server once ready
+        loaded_orientations: The entire distribution of potential orientations loaded in from a
+            Dynamo tbl file
+        chosen_orientations: The list of randomly selected particle orientations from the above
+            distribution
+        chosen_positions: The list of randomly selected displacements from the center of the
+            membrane segment for each particle
+        chosen_angles: The list of randomly selected angles off of the perpendicular to the
+            membrane segment for each particle
+        simulation: The src.simulation.Simulation object responsible for feeding particles assembled
+            here to a TEM-Simulator run
+
+    Methods:
+        ### Private methods ###
+        __get_random_position: Get a random shift from the center of the membrane segment to apply
+            to a new particle
+        __get_random_angle: Get a random article away from the perpendicular to the membrane segment
+            to apply to a new particle
+        __get_random_tbl_orientation: Get a random particle orientation from the distribution
+            loaded in from the .tbl file
+        __open_membrane: Enqueues the command to open the previously saved membrane segment MRC to
+            the Chimera session
+        __assemble_particle: Assemble a new particle by putting together a membrane segment and a
+            particle map at randomized angle/position
+        __send_commands_to_chimera: Send the accumulated Chimera commands to the Chimera server for
+            completion, waiting until the commands have been carried out
+
+        ### Public methods ###
+        set_up_tiltseries: Assembles a set of new particles to be placed in a single simulated tilt
+            stack, and updates the TEM-Simulator configurations accordingly
+        reset_temp_dir: Cleans up the temporary files directory used by the Assembler (can be used
+            to set up for a new TEM-Simulator run without having to re-instantiate the Assembler)
+        close: Sends a notification to the Chimera REST server that this particular Assembler (and
+            thus the child process using the Assembler, as currently set up) is done using the
+            Chimera server
+
+    """
     def __init__(self, model, temp_dir, chimera_queue, ack_event, pid):
+        """
+        Initialize a new Assembler object
+
+        """
         self.model = model
         self.temp_dir = temp_dir
         self.commands = []
@@ -44,19 +101,52 @@ class T4SSAssembler:
 
     @staticmethod
     def __get_random_position():
+        """
+        Get a random shift from the center of the membrane segment to apply to a new particle
+
+        Returns: A tuple (x, y) of the x-axis and y-axis shifts
+
+        """
         x = random.randrange(-125, 125, 1)
         y = random.randrange(-125, 125, 1)
         return x, y
 
     @staticmethod
     def __get_random_angle():
+        """
+        Get a random article away from the perpendicular to the membrane segment to apply to a new
+        particle
+
+        Returns: A random angle from a Gaussian distribution of center 0 and standard deviation 5
+
+        """
         return random.gauss(0, 5)
 
     def __get_random_tbl_orientation(self):
+        """
+        Get a random particle orientation from the distribution loaded in from the .tbl file
+
+        Returns: A tuple (Z, X, Z) of Euler angles randomly taken from the loaded distribution,
+            inverted so that we have particle-to-reference angles
+
+        TODO: Check that the tbl actually has reference-to-particle rotations
+        """
         choice = random.choice(self.loaded_orientations).tolist()
         return [-choice[2], -choice[1], -choice[0]]
 
     def __open_membrane(self, model_id, particle_height_offset):
+        """
+        Enqueues the command to open the previously saved membrane segment MRC to the Chimera
+        session
+
+        Args:
+            model_id: The Chimera session model ID to assign to the opened membrane segment
+            particle_height_offset: The z-axis offset to move up the membrane so that it sits above
+                the particle
+
+        Returns: The model ID of the membrane volume within the Chimera segment
+
+        """
         # path = "/data/kshin/T4SS_sim/mem_large.mrc"
         path = "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large.mrc"
         self.commands.append('open #%d %s' % (model_id, path))
@@ -65,7 +155,12 @@ class T4SSAssembler:
 
     def __assemble_particle(self, output_filename):
         """
-            Get one random orientation and angle and save one model file
+        Assemble a new particle by putting together a membrane segment and a particle map at
+        randomized angle/position/orientation
+
+        Args:
+            output_filename: The filepath where the assembled particle map is saved
+
         """
 
         # Clear state variables
@@ -107,17 +202,28 @@ class T4SSAssembler:
         return random_orientation, random_position, random_angle
 
     def __send_commands_to_chimera(self):
-        # Now that we've built up the sequence of commands to generate the model, send to Chimera
-        # Make sure to wait until the server is available by sending over the lock
+        """
+        Send the accumulated Chimera commands to the Chimera server for completion, waiting until
+        the commands have been carried out
+
+        """
         command_set = Chimera.ChimeraCommandSet(self.commands, self.pid, self.ack_event)
         command_set.send_and_wait(self.chimera_queue)
 
     def set_up_tiltseries(self, simulation):
         """
+        Assembles a set of new particles to be placed in a single simulated tilt stack, and updates
+        the TEM-Simulator configurations accordingly
+
         For number of particles (i.e 4)
             Make a temp truth volume
             Assemble particle and save truth
             Set up sim configs and update TEM input files
+
+        Args:
+            simulation: The src.simulation.Simulation object which holds the relevant TEM-Simulator
+                run parameters
+
         """
         self.simulation = simulation
 
@@ -166,9 +272,17 @@ class T4SSAssembler:
         return self.simulation
 
     def reset_temp_dir(self):
+        """
+        Cleans up the temporary files directory used by the Assembler (can be used to set up for a
+        new TEM-Simulator run without having to re-instantiate the Assembler)
+
+        """
         rmtree(self.temp_dir + "/truth_vols")
 
     def close(self):
-        # Let the Chimera server know that this Assembler is done using the server
+        """
+        Let the Chimera server know that this Assembler is done using the server
+
+        """
         self.commands = ["END"]
         self.__send_commands_to_chimera()
