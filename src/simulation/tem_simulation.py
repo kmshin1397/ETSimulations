@@ -194,17 +194,20 @@ class Simulation:
         # Create temp file
         fh, abs_path = mkstemp()
         found_first = False
+        replaced = False
         with os.fdopen(fh, 'w') as new_file:
             with open(file_path) as old_file:
                 for line in old_file:
-                    if found_first:
+                    if replaced:
+                        new_file.write(line)
+                    elif found_first and re.match(pattern, line) is not None:
                         new_line = re.sub(pattern, subst, line)
                         new_file.write(new_line)
+                        replaced = True
                     else:
                         if re.match(pattern, line) is not None:
                             found_first = True
                         new_file.write(line)
-                        break
 
         # Remove original file
         os.remove(file_path)

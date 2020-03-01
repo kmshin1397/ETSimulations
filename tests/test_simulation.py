@@ -1,5 +1,5 @@
 import pytest
-import src.simulation as simulation
+import src.simulation.tem_simulation as simulation
 
 
 @pytest.fixture(scope="session")

@@ -11,8 +11,8 @@ import logging
 import numpy as np
 
 # Custom modules
-from src.particle_set import ParticleSet
-from src import chimera_server as Chimera
+from simulation.particle_set import ParticleSet
+from simulation import chimera_server as Chimera
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +176,10 @@ class T4SSAssembler:
 
         model = Chimera.load_model_from_source(self.model, model_id, self.commands)
 
+        # Tack on membrane
+        particle_height_offset = 75
+        membrane_model = self.__open_membrane(100, particle_height_offset)
+
         # Apply random position
         self.commands.append("move %.2f,%.2f,0 models #%d" % (random_position[0],
                                                               random_position[1], model))
@@ -184,10 +188,6 @@ class T4SSAssembler:
         random_angle = self.__get_random_angle()
         self.chosen_angles.append(random_angle)
         self.commands.append("turn y %.2f models #%d" % (random_angle, model))
-
-        # Tack on membrane
-        particle_height_offset = 75
-        membrane_model = self.__open_membrane(100, particle_height_offset)
 
         # Commands to combine membrane and particle into one mrc
         final_model = 99

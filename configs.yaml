@@ -1,0 +1,41 @@
+---
+#  parser.add_argument('-m', '--model', required=True,
+#                        help='the particle model (pdb or mrc) to insert into tilt stacks')
+#    parser.add_argument('-r', '--root', required=True,
+#                        help='the project root directory in which to store generated files')
+#    parser.add_argument('-cfg', '--config', required=True,
+#                        help='the TEM-Simulator configuration file to use for each tilt stack')
+#    parser.add_argument('-c', '--coord', required=True,
+#                        help='the particle coordinates file for the TEM-Simulator')
+#    parser.add_argument('-n', '--num_stacks', required=True, type=int,
+#                        help='the number of tilt stacks to generate')
+#    parser.add_argument('--num_cores', type=int,
+#                        help='the number of CPU cores to use (default: all)')
+#    parser.add_argument('--name',
+#                        help='project base name to use when naming files (default taken from root '
+#                             'directory name)')
+#    parser.add_argument('--email', default='',
+#                        help='email address to send completion notification to')
+#    parser.add_argument('--keep_tmp', action='store_true', default=False,
+#                        help='enable to store all temporary files generated (currently just the '
+#                             'truth volume of the simulated tilt stacks. (NOT IMPLEMENTED)')
+#    parser.add_argument('--apix', type=float,
+#                        help="required if providing a pdb file as the model source")
+#    return parser.parse_args()
+
+# Persistent configs
+tem-simulator-executable: "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
+
+# Run-specific configs
+model: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/c4_particle.mrc"
+root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data"
+config: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/sim.txt"
+coord: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/T4SS_coord.txt"
+num_stacks: 4
+name: "T4SS"
+num_cores: 4
+
+# Custom configs
+t4ss-configs:
+  membrane_path: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large.mrc"
+  orientations_tbl: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/manual_full.tbl"

@@ -25,14 +25,14 @@ from logging import handlers
 # External modules
 import mrcfile
 import numpy as np
+import yaml
 
 # Custom modules
-from src.notify import send_email
-from src.simulation import Simulation
-from src.assemblers.t4ss_assembler import T4SSAssembler
-from src.chimera_server import ChimeraServer
-from src.logger import log_listener_process
-
+from simulation.notify import send_email
+from simulation.tem_simulation import Simulation
+from assemblers.t4ss_assembler import T4SSAssembler
+from simulation.chimera_server import ChimeraServer
+from simulation.logger import log_listener_process
 
 TEM_exec_path = "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
 
@@ -61,29 +61,12 @@ def parse_inputs():
     """
     parser = argparse.ArgumentParser(
         description='Generate simulated tilt stacks and process them.')
-    parser.add_argument('-m', '--model', required=True,
-                        help='the particle model (pdb or mrc) to insert into tilt stacks')
-    parser.add_argument('-r', '--root', required=True,
-                        help='the project root directory in which to store generated files')
-    parser.add_argument('-cfg', '--config', required=True,
-                        help='the TEM-Simulator configuration file to use for each tilt stack')
-    parser.add_argument('-c', '--coord', required=True,
-                        help='the particle coordinates file for the TEM-Simulator')
-    parser.add_argument('-n', '--num_stacks', required=True, type=int,
-                        help='the number of tilt stacks to generate')
-    parser.add_argument('--num_cores', type=int,
-                        help='the number of CPU cores to use (default: all)')
-    parser.add_argument('--name',
-                        help='project base name to use when naming files (default taken from root '
-                             'directory name)')
-    parser.add_argument('--email', default='',
-                        help='email address to send completion notification to')
-    parser.add_argument('--keep_tmp', action='store_true', default=False,
-                        help='enable to store all temporary files generated (currently just the '
-                             'truth volume of the simulated tilt stacks. (NOT IMPLEMENTED)')
-    parser.add_argument('--apix', type=float,
-                        help="required if providing a pdb file as the model source")
-    return parser.parse_args()
+    parser.add_argument('-i', '--input', required=True,
+                        help='the input configurations YAML file')
+    arguments = parser.parse_args()
+    input_file = arguments.input
+    stream = open(input_file, 'r')
+    return yaml.load(stream)
 
 
 def sort_on_id(simulation):
@@ -148,12 +131,11 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     Returns: None
 
     """
-    keep_temps = args.keep_tmp
 
-    root = args.root
+    root = args["root"]
     raw_data_dir = root + "/raw_data"
 
-    project_name = args.name
+    project_name = args["name"]
     if project_name is None:
         project_name = os.path.basename(root)
 
@@ -166,20 +148,24 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     # any other potentially running simulations
     new_coord_file = process_temp_dir + "/T4SS_coord.txt"
     new_input_file = process_temp_dir + "/sim.txt"
-    copyfile(args.coord, new_coord_file)
-    copyfile(args.config, new_input_file)
+    copyfile(args["coord"], new_coord_file)
+    copyfile(args["config"], new_input_file)
 
     sim_input_file = new_input_file
     coord_file = new_coord_file
 
-    num_stacks_per_cores = args.num_stacks // args.num_cores
+    num_stacks_per_cores = args["num_stacks"] // args["num_cores"]
 
     # If last core, tack on the remainder stacks as well
-    if pid == args.num_cores - 1:
-        num_stacks_per_cores += args.num_stacks % args.num_cores
+    if pid == args["num_cores"] - 1:
+        num_stacks_per_cores += args["num_stacks"] % args["num_cores"]
 
-    assembler = T4SSAssembler(args.model, process_temp_dir, chimera_commands_queue,
+    assembler = T4SSAssembler(args["model"], process_temp_dir, chimera_commands_queue,
                               ack_event, pid)
+
+    apix = None
+    if "apix" in args:
+        apix = args["apix"]
 
     for i in range(num_stacks_per_cores):
         progress_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
@@ -198,7 +184,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         nonoise_tilts_file = stack_dir + "/%s_%d_nonoise.mrc" % (project_name, global_id)
 
         sim = Simulation(sim_input_file, coord_file, tiltseries_file, nonoise_tilts_file,
-                         global_id, process_temp_dir, apix=args.apix)
+                         global_id, process_temp_dir, apix=apix)
 
         # Pass along the simulation object to the assembler to set up a simulation run
         sim = assembler.set_up_tiltseries(sim)
@@ -213,9 +199,8 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
 
         metadata_queue.put(sim.get_metadata())
 
-    # Clean up temp files if desired
-    if not keep_temps:
-        rmtree(process_temp_dir)
+    # Clean up temp files
+    rmtree(process_temp_dir)
 
 
 def run_chimera_server(commands_queue, process_events):
@@ -284,20 +269,23 @@ def main():
     print("For detailed messages, logs can be found at:\n"
           + logfile)
     send_notification = False
-    if args.email != '':
+    if "email" in args:
         send_notification = True
 
     # Set up simulation file directories
     # Trailing slash not expected by rest of program
-    args.root = args.root.rstrip("/")
-    raw_data_dir = args.root + "/raw_data"
+    args["root"] = args["root"].rstrip("/")
+    raw_data_dir = args["root"] + "/raw_data"
     os.mkdir(raw_data_dir)
 
     # Set up parallel processes
-    num_cores = args.num_cores
-    if num_cores is None:
-        num_cores = min(multiprocessing.cpu_count(), args.num_stacks)
-        args.num_cores = num_cores
+    if "num_cores" not in args:
+        num_cores = min(multiprocessing.cpu_count(), args["num_stacks"])
+        args["num_cores"] = num_cores
+    else:
+        num_cores = min(args["num_cores"], args["num_stacks"])
+        args["num_cores"] = num_cores
+    num_cores = args["num_cores"]
 
     logger.info("Using %d cores" % num_cores)
 
@@ -312,7 +300,6 @@ def main():
     # can be made aware of all processes (and be passes all their acknowledge events).
     processes = []
     for pid in range(num_cores):
-
         # Event unique to each child process used to subscribe to a Chimera server command set
         # and listen for completion of commands request.
         ack_event = multiprocessing.Event()
@@ -344,13 +331,13 @@ def main():
 
     # Log metadata
     metadata.sort(key=sort_on_id)
-    metadata_file = args.root + "/sim_metadata.json"
+    metadata_file = args["root"] + "/sim_metadata.json"
     with open(metadata_file, 'w') as f:
         f.write(json.dumps(metadata, indent=4))
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
     if send_notification:
-        send_email("kshin@umbriel.jensen.caltech.edu", args.email,
+        send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
                    "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
 
 
@@ -359,10 +346,10 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
 
     args = parse_inputs()
-    if args.name is None:
-        args.name = os.path.basename(args.root)
+    if "name" not in args:
+        args["name"] = os.path.basename(args["root"])
 
-    if args.model.endswith(".pdb") and args.apix is None:
+    if args["model"].endswith(".pdb") and "apix" not in args:
         print("An apix value must be provided with a PDB model!")
         exit(1)
 
@@ -370,7 +357,7 @@ if __name__ == '__main__':
 
     # Start the logger process
     logs_queue = multiprocessing.Queue()
-    logfile = "%s/%s.log" % (args.root, args.name)
+    logfile = "%s/%s.log" % (args["root"], args["name"])
     log_listener = multiprocessing.Process(target=log_listener_process, args=(logs_queue, logfile,
                                                                               start_time))
     log_listener.start()

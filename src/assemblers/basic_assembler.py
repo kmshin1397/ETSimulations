@@ -1,15 +1,13 @@
 # Built-in modules
-import random
 import os
 from shutil import rmtree
 import logging
 
 # External packages
-import numpy as np
 
 # Custom modules
-from src.particle_set import ParticleSet
-from src import chimera_server as chimera
+from src.simulation.particle_set import ParticleSet
+from src.simulation import chimera_server as chimera
 
 logger = logging.getLogger(__name__)
 
