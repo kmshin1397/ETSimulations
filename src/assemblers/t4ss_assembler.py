@@ -4,8 +4,9 @@
 # Built-in modules
 import random
 import os
-from shutil import rmtree
+from shutil import rmtree, copyfile
 import logging
+import math
 
 # External packages
 import numpy as np
@@ -15,6 +16,73 @@ from simulation.particle_set import ParticleSet
 from simulation import chimera_server as Chimera
 
 logger = logging.getLogger(__name__)
+
+"""
+    The classes below provide basic wrapper classes and functions for interfacing with the 
+    'shape' command in Chimera, for the purpose of creating model structures for
+    Type IV Secretion System simulations.
+"""
+
+
+# When assigning Volume ID, note that intermediate processes will use up to
+# volume_id + 3 as well and thus assumes this Id value is still available,
+# at least until volume creation of the barrel is complete
+class Barrel:
+    resolution = 10
+
+    def __init__(self, volume_id, angle):
+        self.volume_id = volume_id * 3
+        self.dotb = "/Users/kshin/Documents/data/T4SS/simulations/real_pdbs/dotb.pdb"
+        self.trwb = "/Users/kshin/Documents/data/T4SS/simulations/real_pdbs/trwb.pdb"
+        self.angle = angle
+
+    def set_resolution(self, resolution):
+        self.resolution = resolution
+
+    def get_commands(self):
+        commands = ["open #%d %s" % (self.volume_id + 1, self.dotb),
+                    "open #%d %s" % (self.volume_id + 2, self.dotb),
+                    "open #%d %s" % (self.volume_id + 3, self.trwb),
+                    "move z %.3f models #%d" % (50, self.volume_id + 1),
+                    "move z %.3f models #%d" % (-30, self.volume_id + 3),
+                    "combine #%d,#%d,#%d modelId #%d close true" % (self.volume_id + 1,
+                                                                    self.volume_id + 2,
+                                                                    self.volume_id + 3,
+                                                                    self.volume_id)]
+
+        return commands
+
+
+# When assigning Volume ID, note that intermediate processes will use
+# volume_id + 1 as well and thus assumes this Id value is still available,
+# at least until volume creation of the rod is complete
+class Rod:
+    resolution = 10
+
+    def __init__(self, volume_id, center, degrees, angle):
+        self.volume_id = volume_id
+        self.source = "/Users/kshin/Documents/data/T4SS/simulations/real_pdbs/rod.pdb"
+        self.center = center
+        self.degrees = degrees
+        self.angle = angle
+
+    def set_resolution(self, resolution):
+        self.resolution = resolution
+
+    def get_commands(self):
+        commands = ["open #%d %s" % (self.volume_id, self.source),
+                    "turn z %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.degrees,
+                                                                                   self.volume_id,
+                                                                                   self.volume_id),
+                    "move %.3f,%.3f,%.3f models #%d" % (self.center[0], self.center[1],
+                                                        self.center[2], self.volume_id),
+                    "turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.angle[0],
+                                                                                  self.volume_id,
+                                                                                  self.volume_id),
+                    "turn y %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.angle[1],
+                                                                                  self.volume_id,
+                                                                                  self.volume_id)]
+        return commands
 
 
 class T4SSAssembler:
@@ -68,6 +136,7 @@ class T4SSAssembler:
             Chimera server
 
     """
+
     def __init__(self, model, temp_dir, chimera_queue, ack_event, pid):
         """
         Initialize a new Assembler object
@@ -107,20 +176,21 @@ class T4SSAssembler:
         Returns: A tuple (x, y) of the x-axis and y-axis shifts
 
         """
-        x = random.randrange(-125, 125, 1)
-        y = random.randrange(-125, 125, 1)
+        x = random.randrange(-20, 20, 1)
+        y = random.randrange(-20, 20, 1)
         return x, y
 
     @staticmethod
     def __get_random_angle():
         """
-        Get a random article away from the perpendicular to the membrane segment to apply to a new
+        Get a random angle away from the perpendicular to the membrane segment to apply to a new
         particle
 
-        Returns: A random angle from a Gaussian distribution of center 0 and standard deviation 5
+        Returns: A random angle pair x,y from a Gaussian distribution of center 0 and standard
+            deviation 5
 
         """
-        return random.gauss(0, 5)
+        return random.gauss(0, 5), random.gauss(0, 5)
 
     def __get_random_tbl_orientation(self):
         """
@@ -148,7 +218,8 @@ class T4SSAssembler:
 
         """
         # path = "/data/kshin/T4SS_sim/mem_large.mrc"
-        path = "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large.mrc"
+        # path = "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large_light.mrc"
+        path = "/Users/kshin/Documents/data/T4SS/simulations/real_pdbs/largest_membrane.pdb"
         self.commands.append('open #%d %s' % (model_id, path))
         self.commands.append('move 0,0,%d models #%d' % (particle_height_offset + 25, model_id))
         return model_id
@@ -165,6 +236,7 @@ class T4SSAssembler:
 
         # Clear state variables
         model_id = 0
+        random_angles = []
 
         # Draw random orientation and position
         random_orientation = self.__get_random_tbl_orientation()
@@ -174,32 +246,82 @@ class T4SSAssembler:
         random_position = self.__get_random_position()
         self.chosen_positions.append(random_position)
 
-        model = Chimera.load_model_from_source(self.model, model_id, self.commands)
+        # model = Chimera.load_model_from_source(self.model, model_id, self.commands)
+
+        resolution = 5
+
+        # Random angle with respect to the membrane (different from overall orientation angles)
+        random_angle = self.__get_random_angle()
+        random_angles.append(random_angle)
+        b = Barrel(model_id, random_angle)
+        self.commands.extend(b.get_commands())
+
+        # Rods
+        rods_id = model_id + 1
+        num_rods = 0
+        rod_ids = []
+        for i in range(num_rods):
+            deg_increment = 360. / num_rods
+            degrees = deg_increment * i
+
+            # Compute positions
+            x = math.cos(math.radians(degrees)) * 125
+            y = math.sin(math.radians(degrees)) * 125
+
+            # Random angle with respect to the membrane (different from overall orientation angles)
+            random_angle = self.__get_random_angle()
+
+            rod = Rod(rods_id + i, (x, y, 0), degrees, random_angle)
+            rod_ids.append(rods_id + i)
+            random_angles.append(random_angle)
+
+            self.commands.extend(rod.get_commands())
+
+        self.chosen_angles.append(random_angles)
+
+        # Have to rotate the central barrel last so the frame of reference doesn't get messed up
+        # self.commands.append("turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" %
+        #                      (b.angle[0], b.volume_id, b.volume_id))
+        # self.commands.append("turn y %.3f models #%d center 0,0,0 coordinateSystem #%d" %
+        #                      (b.angle[1], b.volume_id, b.volume_id))
+
+        combine_command = "combine #%d," % model_id
+        for i, rod_id in enumerate(rod_ids):
+            combine_command += "#%d" % rod_id
+            if i != len(rod_ids) - 1:
+                combine_command += ","
+
+        combine_command += " modelId #%d close true" % 98
+        self.commands.append(combine_command)
 
         # Tack on membrane
-        particle_height_offset = 75
-        membrane_model = self.__open_membrane(100, particle_height_offset)
+        particle_height_offset = 20
+        # membrane_model = self.__open_membrane(100, particle_height_offset)
+
+        # self.commands.append("combine #98,#%d modelId #%d close true" % (membrane_model, model_id))
+
+        model = model_id + 1
+        self.commands.append("molmap #%d %d modelId #%d" % (model_id, resolution, model))
+        # self.commands.append("close #%d" % model_id)
 
         # Apply random position
-        self.commands.append("move %.2f,%.2f,0 models #%d" % (random_position[0],
-                                                              random_position[1], model))
-
-        # Apply random angle with respect to the membrane
-        random_angle = self.__get_random_angle()
-        self.chosen_angles.append(random_angle)
-        self.commands.append("turn y %.2f models #%d" % (random_angle, model))
-
-        # Commands to combine membrane and particle into one mrc
-        final_model = 99
-        self.commands.append("vop add #%d,#%d modelId #%d" % (membrane_model, model, final_model))
-
-        # Save truth particle map
-        self.commands.append("volume #%d save %s" % (final_model, output_filename))
-
-        # Clear for the next particle
-        self.commands.append("close session")
-
-        return random_orientation, random_position, random_angle
+        # self.commands.append("move %.2f,%.2f,0 models #%d" % (random_position[0],
+        #                                                       random_position[1], model))
+        #
+        # # Commands to combine membrane and particle into one mrc
+        # final_model = 0
+        # self.commands.append("vop add #%d,#%d modelId #%d" % (membrane_model, model, final_model))
+        #
+        # # Save truth particle map
+        # self.commands.append("volume #%d save %s" % (final_model, output_filename))
+        #
+        # self.commands.append("write #%d %s" % (final_model, output_filename))
+        #
+        # # Clear for the next particle
+        # self.commands.append("close session")
+        #
+        # copyfile("/Users/kshin/Documents/data/T4SS/simulations/real_pdbs/0.pdb", output_filename)
+        return random_orientation, random_position, random_angles
 
     def __send_commands_to_chimera(self):
         """
@@ -238,16 +360,17 @@ class T4SSAssembler:
                            "angles_from_membrane_perpendicular": []}
 
         particle_sets = []
-        for i in range(num_particles):
+        for i in range(1):
             # We use a new particle "set" per particle, since each will come from a slightly
             # different source map (based on randomized angles/position with respect to the
             # membrane)
             particle_set = ParticleSet("T4SS%d" % (i + 1), key=True)
 
-            new_particle = truth_vols_dir + "/%d.mrc" % i
+            # new_particle = truth_vols_dir + "/%d.mrc" % i
+            new_particle = truth_vols_dir + "/%d.pdb" % i
 
             # Assemble a new particle
-            orientation, position, angle = self.__assemble_particle(new_particle)
+            orientation, position, angles = self.__assemble_particle(new_particle)
 
             # Update the simulation parameters with the new particle
             particle_set.add_orientation(orientation)
@@ -256,14 +379,15 @@ class T4SSAssembler:
             particle_set.num_particles += 1
 
             custom_metadata["shifts_from_membrane_center"].append(position)
-            custom_metadata["angles_from_membrane_perpendicular"].append(angle)
+            custom_metadata["angles_from_membrane_perpendicular"].append(angles)
 
             particle_sets.append(particle_set)
 
         # Make all four particles atomically, so that other threads can make their own while we move
         # on to the TEM-Simulator step
         self.__send_commands_to_chimera()
-
+        while True:
+            continue
         # Apply completed particle set to TEM-Simulator configs
         self.simulation.create_particle_lists(particle_sets)
 

@@ -288,7 +288,7 @@ class Simulation:
                                                     orientation[0], orientation[1], orientation[2])
                 f.write(new_line)
 
-    def __write_particle_section(self, particle_name, source, voxel_size=0.1):
+    def __write_particle_section(self, particle_name, source, voxel_size=0.283):
         """
         For a given particle set, write out the particle parameters segment for the TEM-Simulator
             configuration file
@@ -311,7 +311,7 @@ class Simulation:
             elif source.endswith(".pdb"):
                 f.write("source = pdb\n")
                 f.write("pdb_file_in = %s\n" % source)
-                f.write("voxel_size = %0.2f\n\n" % voxel_size)
+                f.write("voxel_size = %0.3f\n\n" % voxel_size)
 
     def __write_particle_set_section(self, particle_set, coord_file):
         """

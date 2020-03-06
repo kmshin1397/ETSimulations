@@ -200,7 +200,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         metadata_queue.put(sim.get_metadata())
 
     # Clean up temp files
-    rmtree(process_temp_dir)
+    # rmtree(process_temp_dir)
 
 
 def run_chimera_server(commands_queue, process_events):
@@ -249,9 +249,10 @@ def run_chimera_server(commands_queue, process_events):
 
             logger.info("Making request: " + c)
             requests.get(base_request, params={'command': c})
+            # time.sleep(1)
 
         # Clean up
-        requests.get(base_request, params={'command': 'close session'})
+        # requests.get(base_request, params={'command': 'close session'})
 
         # Pass along an ack
         process_events[requester_pid].set()

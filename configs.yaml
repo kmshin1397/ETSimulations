@@ -28,12 +28,13 @@ tem-simulator-executable: "/Users/kshin/Documents/software/TEM-simulator_1.3/src
 
 # Run-specific configs
 model: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/c4_particle.mrc"
-root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data"
+root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data/temp"
 config: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/sim.txt"
 coord: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/T4SS_coord.txt"
-num_stacks: 4
+num_stacks: 1
 name: "T4SS"
-num_cores: 4
+num_cores: 1
+apix: 0.283
 
 # Custom configs
 t4ss-configs:
