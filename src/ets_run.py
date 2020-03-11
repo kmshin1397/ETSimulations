@@ -22,9 +22,9 @@ import requests
 import logging
 from logging import handlers
 import signal
+import warnings
 
 # External modules
-import mrcfile
 import numpy as np
 import yaml
 
@@ -40,10 +40,12 @@ def on_kill_signal(sig_num, frame):
     metadata_file = args["root"] + "/sim_metadata.json"
     write_out_metadata_records(metadata_file)
 
-    logger.info('An interrupt signal was received: ', sig_num)
+    logger.info('An interrupt signal was received: ' +  str(sig_num))
     if send_notification:
         send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
                    "ETSimulations Status", 'Interrupt signal received')
+
+    exit(1)
 
 
 def configure_root_logger(queue):
@@ -115,23 +117,29 @@ def scale_and_invert_mrc(filename):
     Returns: None
 
     """
-    mrcfile.validate(filename)
     data = np.array([])
     val_range = 0
     min_val = 0
-    with mrcfile.open(filename, mode='r', permissive=True) as mrc:
-        val_range = mrc.header.dmax - mrc.header.dmin
-        min_val = mrc.header.dmin
-        data = np.copy(mrc.data)
 
-    new_file = "%s/%s_inverted.mrc" % (os.path.dirname(filename),
-                                       os.path.splitext(os.path.basename(filename))[0])
+    # We expect some MRC format warnings from the TEM-Simulator output
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import mrcfile
+        # mrcfile.validate(filename)
+        
+        with mrcfile.open(filename, mode='r', permissive=True) as mrc:
+            val_range = mrc.header.dmax - mrc.header.dmin
+            min_val = mrc.header.dmin
+            data = np.copy(mrc.data)
 
-    with mrcfile.new(new_file, overwrite=True) as mrc:
-        data *= -1
-        data += val_range + min_val
-        mrc.set_data(data)
-        mrc.voxel_size = 2.83
+        new_file = "%s/%s_inverted.mrc" % (os.path.dirname(filename),
+                                           os.path.splitext(os.path.basename(filename))[0])
+
+        with mrcfile.new(new_file, overwrite=True) as mrc:
+            data *= -1
+            data += val_range + min_val
+            mrc.set_data(data)
+            mrc.voxel_size = 2.83
 
 
 def run_process(args, pid, chimera_commands_queue, ack_event):
@@ -229,6 +237,8 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     # Clean up temp files
     rmtree(process_temp_dir)
 
+    logger.info("Closing sub-process %d" % pid)
+
 
 def run_chimera_server(chimera_path, commands_queue, process_events):
     """ Run the Chimera REST Server in a child process.
@@ -275,7 +285,7 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
             if c.startswith("close"):
                 time.sleep(0.5)
 
-            logger.info("Making request: " + c)
+            logger.debug("Making request: " + c)
             requests.get(base_request, params={'command': c})
 
         # Clean up
@@ -314,11 +324,18 @@ def main():
 
     logger.info("Using %d cores" % num_cores)
 
+    # TODO: More formal multiple server
     # Shared Queue to pass along sets of Chimera commands to pass along to the server
-    chimera_commands = multiprocessing.Queue()
+    chimera_commands_1 = multiprocessing.Queue()
 
     # Create a set of subprocess-specific events to signal command completions to them
-    chimera_process_events = {}
+    chimera_process_events_1 = {}
+
+    # Shared Queue to pass along sets of Chimera commands to pass along to the server
+    chimera_commands_2 = multiprocessing.Queue()
+
+    # Create a set of subprocess-specific events to signal command completions to them
+    chimera_process_events_2 = {}
 
     # Set up the child processes to run the model assembly/simulations.
     # We wait until all processes are set up before starting them, so that the Chimera sever process
@@ -328,25 +345,60 @@ def main():
         # Event unique to each child process used to subscribe to a Chimera server command set
         # and listen for completion of commands request.
         ack_event = multiprocessing.Event()
-        chimera_process_events[pid] = ack_event
 
-        process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands,
-                                                                    ack_event))
+        if pid % 2 == 0:
+            chimera_process_events_1[pid] = ack_event
+
+            process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands_1,
+                                                                        ack_event))
+        else:
+            chimera_process_events_2[pid] = ack_event
+
+            process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands_2,
+                                                                        ack_event))
+
         processes.append(process)
 
     # Start the Chimera server first, so it can be ready for the model assemblers
-    chimera_process = multiprocessing.Process(target=run_chimera_server,
-                                              args=(args["chimera_exec_path"], chimera_commands, 
-                                                    chimera_process_events))
+    chimera_process_1 = multiprocessing.Process(target=run_chimera_server,
+                                              args=(args["chimera_exec_path"], chimera_commands_1, 
+                                                    chimera_process_events_1))
     logger.info("Starting Chimera server process")
-    chimera_process.start()
+    chimera_process_1.start()
+
+
+    # Start the Chimera server first, so it can be ready for the model assemblers
+    chimera_process_2 = multiprocessing.Process(target=run_chimera_server,
+                                              args=(args["chimera_exec_path"], chimera_commands_2, 
+                                                    chimera_process_events_2))
+    logger.info("Starting Chimera server process")
+    chimera_process_2.start()
+
 
     # Now start all the processes
     for i, process in enumerate(processes):
         process.start()
 
-    for process in processes:
+    # register the signals to be caught
+    signal.signal(signal.SIGHUP, on_kill_signal)
+    signal.signal(signal.SIGINT, on_kill_signal)
+    signal.signal(signal.SIGQUIT, on_kill_signal)
+    signal.signal(signal.SIGILL, on_kill_signal)
+    signal.signal(signal.SIGABRT, on_kill_signal)
+    signal.signal(signal.SIGBUS, on_kill_signal)
+    signal.signal(signal.SIGFPE, on_kill_signal)
+    signal.signal(signal.SIGSEGV, on_kill_signal)
+    signal.signal(signal.SIGPIPE, on_kill_signal)
+    signal.signal(signal.SIGALRM, on_kill_signal)
+    signal.signal(signal.SIGTERM, on_kill_signal)
+
+    for i, process in enumerate(processes):
         process.join()
+        logger.info("Joined in process %d" % i)
+
+    chimera_process_1.join()
+    chimera_process_2.join()
+    logger.info("Joined Chimera server processes")
 
     time_taken = (time.time() - start_time) / 60.
 
@@ -385,19 +437,6 @@ if __name__ == '__main__':
     log_listener.start()
 
     configure_root_logger(logs_queue)
-
-    # register the signals to be caught
-    signal.signal(signal.SIGHUP, on_kill_signal)
-    signal.signal(signal.SIGINT, on_kill_signal)
-    signal.signal(signal.SIGQUIT, on_kill_signal)
-    signal.signal(signal.SIGILL, on_kill_signal)
-    signal.signal(signal.SIGABRT, on_kill_signal)
-    signal.signal(signal.SIGBUS, on_kill_signal)
-    signal.signal(signal.SIGFPE, on_kill_signal)
-    signal.signal(signal.SIGSEGV, on_kill_signal)
-    signal.signal(signal.SIGPIPE, on_kill_signal)
-    signal.signal(signal.SIGALRM, on_kill_signal)
-    signal.signal(signal.SIGTERM, on_kill_signal)
 
     main()
     logs_queue.put("END")
