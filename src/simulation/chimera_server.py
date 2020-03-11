@@ -45,9 +45,10 @@ class ChimeraCommandSet:
 
 
 class ChimeraServer:
-    def __init__(self):
+    def __init__(self, chimera_exec_path):
         self.port = None
         self.process = None
+        self.chimera_exec_path = chimera_exec_path
 
     def quit(self):
         logger.info("Shutting down Chimera server")
@@ -64,9 +65,7 @@ class ChimeraServer:
     def start_chimera_server(self):
         port = -1
         # Need to provide executable path because subprocess does not know about aliases
-        # chimera_exec_path = '/usr/sbin/chimera'
-        chimera_exec_path = "/Applications/Chimera.app/Contents/MacOS/chimera"
-        command = chimera_exec_path + ' --start RESTServer'
+        command = self.chimera_exec_path + ' --start RESTServer'
         proc = subprocess.Popen(command.split(),
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)

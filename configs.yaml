@@ -24,19 +24,24 @@
 #    return parser.parse_args()
 
 # Persistent configs
-tem-simulator-executable: "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
+tem_simulator_executable: "/home/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
+chimera_exec_path: "/usr/sbin/chimera"
 
 # Run-specific configs
-model: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/c4_particle.mrc"
-root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data/temp"
-config: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/sim.txt"
-coord: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/T4SS_coord.txt"
-num_stacks: 1
+model: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"
+root: "/data/kshin/T4SS_sim/PDB/c4"
+config: "/data/kshin/T4SS_sim/PDB/c4/template_files/sim.txt"
+coord: "/data/kshin/T4SS_sim/PDB/c4/template_files/T4SS_coord.txt"
+num_stacks: 100
 name: "T4SS"
-num_cores: 1
+num_cores: 12
 apix: 0.283
+email: "kshin@caltech.edu"
 
 # Custom configs
-t4ss-configs:
-  membrane_path: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large.mrc"
-  orientations_tbl: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/manual_full.tbl"
+custom_configs:
+  membrane_path: "/data/kshin/T4SS_sim/PDB/pdb_maps/mem_chimera.mrc"
+  orientations_tbl: "/data/kshin/T4SS_sim/manual_full.tbl"
+  bead: "/data/kshin/T4SS_sim/bead.mrc"
+  rod: "/data/kshin/T4SS_sim/PDB/pdb_maps/rod_chimera.mrc"
+  barrel: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"

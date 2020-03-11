@@ -21,6 +21,7 @@ import json
 import requests
 import logging
 from logging import handlers
+import signal
 
 # External modules
 import mrcfile
@@ -34,7 +35,15 @@ from assemblers.t4ss_assembler import T4SSAssembler
 from simulation.chimera_server import ChimeraServer
 from simulation.logger import log_listener_process
 
-TEM_exec_path = "/Users/kshin/Documents/software/TEM-simulator_1.3/src/TEM-simulator"
+
+def on_kill_signal(sig_num, frame):
+    metadata_file = args["root"] + "/sim_metadata.json"
+    write_out_metadata_records(metadata_file)
+
+    logger.info('An interrupt signal was received: ', sig_num)
+    if send_notification:
+        send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
+                   "ETSimulations Status", 'Interrupt signal received')
 
 
 def configure_root_logger(queue):
@@ -51,6 +60,19 @@ def configure_root_logger(queue):
     root = logging.getLogger()
     root.addHandler(h)
     root.setLevel(logging.INFO)
+
+
+def write_out_metadata_records(filename):
+    # Metadata objects for each stack
+    metadata = []
+    while not metadata_queue.empty():
+        metadata.append(metadata_queue.get())
+
+    # Log metadata
+    metadata.sort(key=sort_on_id)
+    metadata_file = filename
+    with open(metadata_file, 'w') as f:
+        f.write(json.dumps(metadata, indent=4))
 
 
 def parse_inputs():
@@ -161,7 +183,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         num_stacks_per_cores += args["num_stacks"] % args["num_cores"]
 
     assembler = T4SSAssembler(args["model"], process_temp_dir, chimera_commands_queue,
-                              ack_event, pid)
+                              ack_event, pid, args["custom_configs"])
 
     apix = None
     if "apix" in args:
@@ -176,7 +198,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         if i > 0:
             assembler.reset_temp_dir()
 
-        global_id = pid * num_stacks_per_cores + i
+        global_id = pid * (args["num_stacks"] // args["num_cores"]) + i
         stack_dir = raw_data_dir + "/%s_%d" % (project_name, global_id)
         os.mkdir(stack_dir)
 
@@ -190,20 +212,25 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         sim = assembler.set_up_tiltseries(sim)
         sim.edit_output_files()
 
-        # If this is the last stack for this process, clean up the Assembler
-        if i == num_stacks_per_cores - 1:
-            assembler.close()
-
+        TEM_exec_path = args["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)
         scale_and_invert_mrc(tiltseries_file)
 
         metadata_queue.put(sim.get_metadata())
 
+        # Reset temporary copies of template files
+        copyfile(args["coord"], coord_file)
+        copyfile(args["config"], sim_input_file)
+
+        # If this is the last stack for this process, clean up the Assembler 
+        if i == num_stacks_per_cores - 1:
+            assembler.close()
+
     # Clean up temp files
-    # rmtree(process_temp_dir)
+    rmtree(process_temp_dir)
 
 
-def run_chimera_server(commands_queue, process_events):
+def run_chimera_server(chimera_path, commands_queue, process_events):
     """ Run the Chimera REST Server in a child process.
 
     ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
@@ -222,7 +249,7 @@ def run_chimera_server(commands_queue, process_events):
     Returns: None
 
     """
-    chimera = ChimeraServer()
+    chimera = ChimeraServer(chimera_path)
     chimera.start_chimera_server()
 
     finished_processes = []
@@ -235,6 +262,7 @@ def run_chimera_server(commands_queue, process_events):
             logger.info("Received notice that process %d is finished with the server" %
                         requester_pid)
             finished_processes.append(requester_pid)
+            process_events[requester_pid].set()
             # If that was the last process, quit the server
             if len(finished_processes) == len(process_events.keys()):
                 break
@@ -249,7 +277,6 @@ def run_chimera_server(commands_queue, process_events):
 
             logger.info("Making request: " + c)
             requests.get(base_request, params={'command': c})
-            # time.sleep(1)
 
         # Clean up
         # requests.get(base_request, params={'command': 'close session'})
@@ -269,9 +296,6 @@ def main():
     """
     print("For detailed messages, logs can be found at:\n"
           + logfile)
-    send_notification = False
-    if "email" in args:
-        send_notification = True
 
     # Set up simulation file directories
     # Trailing slash not expected by rest of program
@@ -312,7 +336,8 @@ def main():
 
     # Start the Chimera server first, so it can be ready for the model assemblers
     chimera_process = multiprocessing.Process(target=run_chimera_server,
-                                              args=(chimera_commands, chimera_process_events))
+                                              args=(args["chimera_exec_path"], chimera_commands, 
+                                                    chimera_process_events))
     logger.info("Starting Chimera server process")
     chimera_process.start()
 
@@ -325,16 +350,8 @@ def main():
 
     time_taken = (time.time() - start_time) / 60.
 
-    # Metadata objects for each stack
-    metadata = []
-    while not metadata_queue.empty():
-        metadata.append(metadata_queue.get())
-
-    # Log metadata
-    metadata.sort(key=sort_on_id)
     metadata_file = args["root"] + "/sim_metadata.json"
-    with open(metadata_file, 'w') as f:
-        f.write(json.dumps(metadata, indent=4))
+    write_out_metadata_records(metadata_file)
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
     if send_notification:
@@ -354,6 +371,10 @@ if __name__ == '__main__':
         print("An apix value must be provided with a PDB model!")
         exit(1)
 
+    send_notification = False
+    if "email" in args:
+        send_notification = True
+
     metadata_queue = multiprocessing.Queue()
 
     # Start the logger process
@@ -364,6 +385,19 @@ if __name__ == '__main__':
     log_listener.start()
 
     configure_root_logger(logs_queue)
+
+    # register the signals to be caught
+    signal.signal(signal.SIGHUP, on_kill_signal)
+    signal.signal(signal.SIGINT, on_kill_signal)
+    signal.signal(signal.SIGQUIT, on_kill_signal)
+    signal.signal(signal.SIGILL, on_kill_signal)
+    signal.signal(signal.SIGABRT, on_kill_signal)
+    signal.signal(signal.SIGBUS, on_kill_signal)
+    signal.signal(signal.SIGFPE, on_kill_signal)
+    signal.signal(signal.SIGSEGV, on_kill_signal)
+    signal.signal(signal.SIGPIPE, on_kill_signal)
+    signal.signal(signal.SIGALRM, on_kill_signal)
+    signal.signal(signal.SIGTERM, on_kill_signal)
 
     main()
     logs_queue.put("END")
