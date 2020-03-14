@@ -26,7 +26,7 @@ def configure_listener(logfile, start_time):
     console_handler.setFormatter(fmt)
     root.addHandler(file_handler)
     # root.addHandler(console_handler)
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.DEBUG)
 
 
 def log_listener_process(queue, logfile, start_time):

@@ -55,6 +55,7 @@ class ChimeraServer:
         # If the server has been started, terminate it
         if self.process is not None:
             self.process.terminate()
+            logger.info("Chimera server shut down successfully")
 
     @staticmethod
     def __output_reader(proc, outq):

@@ -36,18 +36,6 @@ from simulation.chimera_server import ChimeraServer
 from simulation.logger import log_listener_process
 
 
-def on_kill_signal(sig_num, frame):
-    metadata_file = args["root"] + "/sim_metadata.json"
-    write_out_metadata_records(metadata_file)
-
-    logger.info('An interrupt signal was received: ' +  str(sig_num))
-    if send_notification:
-        send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
-                   "ETSimulations Status", 'Interrupt signal received')
-
-    exit(1)
-
-
 def configure_root_logger(queue):
     """ Helper function to initialize and configure the main logger instance to handle log messages.
 
@@ -61,10 +49,10 @@ def configure_root_logger(queue):
     h = handlers.QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.DEBUG)
 
 
-def write_out_metadata_records(filename):
+def write_out_metadata_records(metadata_queue, filename):
     # Metadata objects for each stack
     metadata = []
     while not metadata_queue.empty():
@@ -126,7 +114,7 @@ def scale_and_invert_mrc(filename):
         warnings.simplefilter("ignore")
         import mrcfile
         # mrcfile.validate(filename)
-        
+
         with mrcfile.open(filename, mode='r', permissive=True) as mrc:
             val_range = mrc.header.dmax - mrc.header.dmin
             min_val = mrc.header.dmin
@@ -142,7 +130,7 @@ def scale_and_invert_mrc(filename):
             mrc.voxel_size = 2.83
 
 
-def run_process(args, pid, chimera_commands_queue, ack_event):
+def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event):
     """ Drives a single child process of the simulation pipeline.
 
     A temporary data directory is first created for use only by the child process. An Assembler
@@ -224,6 +212,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         sim.run_tem_simulator(TEM_exec_path)
         scale_and_invert_mrc(tiltseries_file)
 
+        logger.info("Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores))
         metadata_queue.put(sim.get_metadata())
 
         # Reset temporary copies of template files
@@ -232,12 +221,17 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
 
         # If this is the last stack for this process, clean up the Assembler 
         if i == num_stacks_per_cores - 1:
+            logger.debug("Closing Assembler")
             assembler.close()
 
     # Clean up temp files
+    logger.debug("Removing temp dir")
     rmtree(process_temp_dir)
 
-    logger.info("Closing sub-process %d" % pid)
+    logger.debug("Closing sub-process %d" % pid)
+
+    print("Returning from subprocess %d" % pid)
+    return
 
 
 def run_chimera_server(chimera_path, commands_queue, process_events):
@@ -337,6 +331,9 @@ def main():
     # Create a set of subprocess-specific events to signal command completions to them
     chimera_process_events_2 = {}
 
+
+    metadata_queue = multiprocessing.Queue()
+
     # Set up the child processes to run the model assembly/simulations.
     # We wait until all processes are set up before starting them, so that the Chimera sever process
     # can be made aware of all processes (and be passes all their acknowledge events).
@@ -349,12 +346,14 @@ def main():
         if pid % 2 == 0:
             chimera_process_events_1[pid] = ack_event
 
-            process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands_1,
+            process = multiprocessing.Process(target=run_process, args=(args, pid, metadata_queue, 
+                                                                        chimera_commands_1,
                                                                         ack_event))
         else:
             chimera_process_events_2[pid] = ack_event
 
-            process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands_2,
+            process = multiprocessing.Process(target=run_process, args=(args, pid, metadata_queue,
+                                                                        chimera_commands_2,
                                                                         ack_event))
 
         processes.append(process)
@@ -380,6 +379,22 @@ def main():
         process.start()
 
     # register the signals to be caught
+    def on_kill_signal(sig_num, frame):
+
+        for i, process in enumerate(processes):
+            process.terminate()
+            logger.info("Terminated process %d" % i)
+
+        metadata_file = args["root"] + "/sim_metadata.json"
+        write_out_metadata_records(metadata_queue, metadata_file)
+
+        logger.info('An interrupt signal was received: ' +  str(sig_num))
+        if send_notification:
+            send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
+                       "ETSimulations Status", 'Interrupt signal received')
+
+        exit(1)
+
     signal.signal(signal.SIGHUP, on_kill_signal)
     signal.signal(signal.SIGINT, on_kill_signal)
     signal.signal(signal.SIGQUIT, on_kill_signal)
@@ -403,7 +418,7 @@ def main():
     time_taken = (time.time() - start_time) / 60.
 
     metadata_file = args["root"] + "/sim_metadata.json"
-    write_out_metadata_records(metadata_file)
+    write_out_metadata_records(metadata_queue, metadata_file)
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
     if send_notification:
@@ -426,8 +441,6 @@ if __name__ == '__main__':
     send_notification = False
     if "email" in args:
         send_notification = True
-
-    metadata_queue = multiprocessing.Queue()
 
     # Start the logger process
     logs_queue = multiprocessing.Queue()
