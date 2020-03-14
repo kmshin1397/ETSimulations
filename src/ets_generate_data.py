@@ -29,11 +29,11 @@ import numpy as np
 import yaml
 
 # Custom modules
-from simulation.notify import send_email
-from simulation.tem_simulation import Simulation
-from assemblers.t4ss_assembler import T4SSAssembler
-from simulation.chimera_server import ChimeraServer
-from simulation.logger import log_listener_process
+from .simulation.notify import send_email
+from .simulation.tem_simulation import Simulation
+from .assemblers.t4ss_assembler import T4SSAssembler
+from .simulation.chimera_server import ChimeraServer
+from .simulation.logger import log_listener_process
 
 
 def on_kill_signal(sig_num, frame):
@@ -78,13 +78,13 @@ def write_out_metadata_records(filename):
 
 
 def parse_inputs():
-    """ Instantiate and set up the command line arguments parser for the ets_run module
+    """ Instantiate and set up the command line arguments parser for the ets_generate_data module
 
     Returns: None
 
     """
     parser = argparse.ArgumentParser(
-        description='Generate simulated tilt stacks and process them.')
+        description='Generate simulated tilt stacks')
     parser.add_argument('-i', '--input', required=True,
                         help='the input configurations YAML file')
     arguments = parser.parse_args()
@@ -151,7 +151,7 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
     tilt stacks with.
 
     Args:
-        args: The command line arguments passed to the main ets_run process
+        args: The command line arguments passed to the main ets_generate_data process
         pid: The process ID of this child process
         chimera_commands_queue: The multiprocessing queue where commands for the Chimera REST Server
             can be sent by the particle Assembler
