@@ -32,7 +32,7 @@ model: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"
 root: "/data/kshin/T4SS_sim/PDB/c4"
 config: "/data/kshin/T4SS_sim/PDB/c4/template_files/sim.txt"
 coord: "/data/kshin/T4SS_sim/PDB/c4/template_files/T4SS_coord.txt"
-num_stacks: 100
+num_stacks: 50
 name: "T4SS"
 num_cores: 12
 apix: 0.283
