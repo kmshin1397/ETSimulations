@@ -9,6 +9,7 @@ from tempfile import mkstemp
 import re
 from subprocess import check_output
 import logging
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class Simulation:
             logging
 
         """
-        return self.__dict__
+        return copy.deepcopy(self.__dict__)
 
     # Replace line in file with a new line
     @staticmethod
@@ -376,3 +377,6 @@ class Simulation:
         command = tem_exec_path + " " + self.config_file
         check_output(command.split())
         logger.info("TEM-Simulator finished running")
+
+    def close(self):
+        logger.debug("Closing Simulator instance")

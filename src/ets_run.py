@@ -130,9 +130,11 @@ def scale_and_invert_mrc(filename):
             mrc.voxel_size = 2.83
 
 
-def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event):
+def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
     run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_event)
     logger.debug("Returned from inner process!")
+
+    complete_event.set()
 
 
 def run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_event):
@@ -223,6 +225,8 @@ def run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_eve
         # Reset temporary copies of template files
         copyfile(args["coord"], coord_file)
         copyfile(args["config"], sim_input_file)
+
+        sim.close()
 
         # If this is the last stack for this process, clean up the Assembler 
         if i == num_stacks_per_cores - 1:
@@ -342,25 +346,29 @@ def main():
     # We wait until all processes are set up before starting them, so that the Chimera sever process
     # can be made aware of all processes (and be passes all their acknowledge events).
     processes = []
+    complete_processes = []
     for pid in range(num_cores):
         # Event unique to each child process used to subscribe to a Chimera server command set
         # and listen for completion of commands request.
         ack_event = multiprocessing.Event()
+
+        complete_event = multiprocessing.Event()
 
         if pid % 2 == 0:
             chimera_process_events_1[pid] = ack_event
 
             process = multiprocessing.Process(target=run_process, args=(args, pid, metadata_queue,
                                                                         chimera_commands_1,
-                                                                        ack_event))
+                                                                        ack_event, complete_event))
         else:
             chimera_process_events_2[pid] = ack_event
 
             process = multiprocessing.Process(target=run_process, args=(args, pid, metadata_queue,
                                                                         chimera_commands_2,
-                                                                        ack_event))
+                                                                        ack_event, complete_event))
 
         processes.append(process)
+        complete_processes.append(complete_event)
 
     # Start the Chimera server first, so it can be ready for the model assemblers
     chimera_process_1 = multiprocessing.Process(target=run_chimera_server,
@@ -409,9 +417,17 @@ def main():
     signal.signal(signal.SIGALRM, on_kill_signal)
     signal.signal(signal.SIGTERM, on_kill_signal)
 
-    for i, process in enumerate(processes):
-        process.join()
-        logger.info("Joined in process %d" % i)
+    for i, event in enumerate(complete_processes):
+        logger.info("Waiting for process %d" % i)
+        event.wait()
+
+        logger.info("Got completion signal from process %d" % i)
+        processes[i].close()
+        logger.info("Closed process %d" % i)
+
+    # for i, process in enumerate(processes):
+    #     process.join()
+    #     logger.info("Joined in process %d" % i)
 
     chimera_process_1.join()
     chimera_process_2.join()
