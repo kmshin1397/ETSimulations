@@ -422,8 +422,10 @@ def main():
         event.wait()
 
         logger.info("Got completion signal from process %d" % i)
-        processes[i].close()
-        logger.info("Closed process %d" % i)
+        if processes[i].is_alive():
+            logger.info("Process %d is alive" % i)
+            processes[i].terminate()
+            logger.info("Closed process %d" % i)
 
     # for i, process in enumerate(processes):
     #     process.join()
