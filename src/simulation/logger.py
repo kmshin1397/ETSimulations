@@ -40,3 +40,19 @@ def log_listener_process(queue, logfile, start_time):
 
             logger = logging.getLogger(record.name)
             logger.handle(record)
+
+
+def metadata_log_listener_process(queue, logfile):
+    with open(logfile, "w") as f:
+        f.write("[")
+
+    while True:
+        while not queue.empty():
+            record = queue.get()
+
+            with open(logfile, "a") as f:
+                if record == "END":
+                    f.write("]")
+                    return
+                else:
+                    f.write(record)
