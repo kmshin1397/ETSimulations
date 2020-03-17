@@ -130,14 +130,14 @@ def scale_and_invert_mrc(filename):
             mrc.voxel_size = 2.83
 
 
+# def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
+#     run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_event)
+#     logger.debug("Returned from inner process!")
+#
+#     complete_event.set()
+
+
 def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
-    run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_event)
-    logger.debug("Returned from inner process!")
-
-    complete_event.set()
-
-
-def run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_event):
     """ Drives a single child process of the simulation pipeline.
 
     A temporary data directory is first created for use only by the child process. An Assembler
@@ -240,6 +240,7 @@ def run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_eve
     logger.debug("Closing sub-process %d" % pid)
 
     print("Returning from subprocess %d" % pid)
+    complete_event.set()
     return
 
 
@@ -252,6 +253,7 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
     a model so that Chimera sessions remain separate.
 
     Args:
+        chimera_path:
         commands_queue: The multiprocessing queue which maintains thread-safe piping of Chimera
             commands to make HTTP GET requests with, filled by particle Assemblers in other
             processes
@@ -395,8 +397,8 @@ def main():
             p.terminate()
             logger.info("Terminated process %d" % i)
 
-        metadata_file = args["root"] + "/sim_metadata.json"
-        write_out_metadata_records(metadata_queue, metadata_file)
+        # metadata_file = args["root"] + "/sim_metadata.json"
+        # write_out_metadata_records(metadata_queue, metadata_file)
 
         logger.info('An interrupt signal was received: ' + str(sig_num))
         if send_notification:
