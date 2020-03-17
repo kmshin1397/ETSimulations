@@ -29,11 +29,11 @@ import numpy as np
 import yaml
 
 # Custom modules
-from .simulation.notify import send_email
-from .simulation.tem_simulation import Simulation
-from .assemblers.t4ss_assembler import T4SSAssembler
-from .simulation.chimera_server import ChimeraServer
-from .simulation.logger import log_listener_process, metadata_log_listener_process
+from simulation.notify import send_email
+from simulation.tem_simulation import Simulation
+from assemblers.t4ss_assembler import T4SSAssembler
+from simulation.chimera_server import ChimeraServer
+from simulation.logger import log_listener_process, metadata_log_listener_process
 
 
 def configure_root_logger(queue):

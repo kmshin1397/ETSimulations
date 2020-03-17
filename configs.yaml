@@ -36,6 +36,7 @@ num_stacks: 50
 name: "T4SS"
 num_cores: 12
 apix: 0.283
+num_chimera_windows: 3
 email: "kshin@caltech.edu"
 
 # Custom configs
