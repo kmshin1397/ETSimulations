@@ -349,7 +349,7 @@ def main():
 
         chimera_objects.append((chimera_commands, chimera_process_events))
 
-    metadata_queue = multiprocessing.Queue()
+    # metadata_queue = multiprocessing.Queue()
 
     # Set up the child processes to run the model assembly/simulations #
     # We wait until all processes are set up before starting them, so that the Chimera sever process
