@@ -51,8 +51,10 @@ def metadata_log_listener_process(queue, logfile):
             record = queue.get()
 
             with open(logfile, "a") as f:
-                if record == "END":
-                    f.write("]")
+                if record.startswith("LAST-"):
+                    # Remove the LAST line tag
+                    record = record.split("LAST-")[1]
+                    f.write(record + "]")
                     return
                 else:
-                    f.write(record)
+                    f.write(record + ",\n")
