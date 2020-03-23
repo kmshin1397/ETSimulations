@@ -220,9 +220,7 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
         scale_and_invert_mrc(tiltseries_file)
 
         logger.info("Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores))
-        metadata_message = json.dumps(sim.get_metadata())
-        if global_id == args["num_stacks"] - 1:
-            metadata_message = "LAST-" + metadata_message
+        metadata_message = json.dumps(sim.get_metadata(), indent=2)
         metadata_queue.put(metadata_message)
 
         # Reset temporary copies of template files
@@ -351,8 +349,6 @@ def main():
         chimera_process_events = {}
 
         chimera_objects.append((chimera_commands, chimera_process_events))
-
-    # metadata_queue = multiprocessing.Queue()
 
     # Set up the child processes to run the model assembly/simulations #
     # We wait until all processes are set up before starting them, so that the Chimera sever process
