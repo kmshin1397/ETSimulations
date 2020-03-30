@@ -38,7 +38,7 @@ Detailed set-up with regards to the characteristics of the particles simulated a
 To actually run a set of simulations, run (assuming you've activated the virtual environment as indicated above - the "source ..." command):
 
 ```
-python src/ets_run.py -i configs.yaml}
+python src/ets_run.py -i configs.yaml
 ```
 
 More details on the parameters available through the configurations can be found in the full user manual.
