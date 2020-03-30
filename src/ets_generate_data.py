@@ -40,7 +40,7 @@ def on_kill_signal(sig_num, frame):
     metadata_file = args["root"] + "/sim_metadata.json"
     write_out_metadata_records(metadata_file)
 
-    logger.info('An interrupt signal was received: ' +  str(sig_num))
+    logger.info('An interrupt signal was received: ' + str(sig_num))
     if send_notification:
         send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
                    "ETSimulations Status", 'Interrupt signal received')
@@ -126,7 +126,7 @@ def scale_and_invert_mrc(filename):
         warnings.simplefilter("ignore")
         import mrcfile
         # mrcfile.validate(filename)
-        
+
         with mrcfile.open(filename, mode='r', permissive=True) as mrc:
             val_range = mrc.header.dmax - mrc.header.dmin
             min_val = mrc.header.dmin
@@ -311,7 +311,12 @@ def main():
     # Trailing slash not expected by rest of program
     args["root"] = args["root"].rstrip("/")
     raw_data_dir = args["root"] + "/raw_data"
-    os.mkdir(raw_data_dir)
+    if not os.path.exists(raw_data_dir):
+        os.mkdir(raw_data_dir)
+    else:
+        print("A raw_data directory already exists in this root folder!\n"
+              "Please remove/rename the existing folder.")
+        exit(1)
 
     # Set up parallel processes
     if "num_cores" not in args:
@@ -349,31 +354,31 @@ def main():
         if pid % 2 == 0:
             chimera_process_events_1[pid] = ack_event
 
-            process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands_1,
-                                                                        ack_event))
+            process = multiprocessing.Process(target=run_process,
+                                              args=(args, pid, chimera_commands_1,
+                                                    ack_event))
         else:
             chimera_process_events_2[pid] = ack_event
 
-            process = multiprocessing.Process(target=run_process, args=(args, pid, chimera_commands_2,
-                                                                        ack_event))
+            process = multiprocessing.Process(target=run_process,
+                                              args=(args, pid, chimera_commands_2,
+                                                    ack_event))
 
         processes.append(process)
 
     # Start the Chimera server first, so it can be ready for the model assemblers
     chimera_process_1 = multiprocessing.Process(target=run_chimera_server,
-                                              args=(args["chimera_exec_path"], chimera_commands_1, 
-                                                    chimera_process_events_1))
+                                                args=(args["chimera_exec_path"], chimera_commands_1,
+                                                      chimera_process_events_1))
     logger.info("Starting Chimera server process")
     chimera_process_1.start()
 
-
     # Start the Chimera server first, so it can be ready for the model assemblers
     chimera_process_2 = multiprocessing.Process(target=run_chimera_server,
-                                              args=(args["chimera_exec_path"], chimera_commands_2, 
-                                                    chimera_process_events_2))
+                                                args=(args["chimera_exec_path"], chimera_commands_2,
+                                                      chimera_process_events_2))
     logger.info("Starting Chimera server process")
     chimera_process_2.start()
-
 
     # Now start all the processes
     for i, process in enumerate(processes):

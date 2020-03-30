@@ -18,6 +18,10 @@ import yaml
 # Custom modules
 from .simulation.notify import send_email
 from .simulation.logger import log_listener_process
+from .processors.eman2_processor import eman2_main
+
+# Set up processor handlers table
+processor_handlers = { "eman2": eman2_main }
 
 
 def parse_inputs():
@@ -52,7 +56,24 @@ def configure_root_logger(queue):
     root.setLevel(logging.INFO)
 
 
-def main():
+def main(args):
+    print("For detailed messages, logs can be found at:\n"
+          + logfile)
+
+    # Set up processed data directories
+    # Trailing slash not expected by rest of program
+    args["root"] = args["root"].rstrip("/")
+    processed_data_dir = args["root"] + "/processed_data"
+    if not os.path.exists(processed_data_dir):
+        os.mkdir(processed_data_dir)
+
+    # Read processor requests
+    for processor in args["processors"]:
+        print("Working on processor %s" % processor.name)
+        logger.info("Working on processor %s" % processor.name)
+        processor_handler = processor_handlers[processor.name]
+        processor_handler(args, processor.args)
+
     pass
 
 
@@ -83,6 +104,6 @@ if __name__ == '__main__':
 
     configure_root_logger(logs_queue)
 
-    main()
+    main(args)
     logs_queue.put("END")
     log_listener.join()
