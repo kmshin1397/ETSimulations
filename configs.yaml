@@ -11,14 +11,15 @@ coord: "/data/kshin/T4SS_sim/PDB/c4/template_files/T4SS_coord.txt"
 num_stacks: 50
 name: "T4SS"
 num_cores: 12
+# apix in nm
 apix: 0.283
 num_chimera_windows: 3
+bead_map: "/data/kshin/T4SS_sim/bead.mrc"
 email: "kshin@caltech.edu"
 
 # Custom configs
 custom_configs:
   membrane_path: "/data/kshin/T4SS_sim/PDB/pdb_maps/mem_chimera.mrc"
   orientations_tbl: "/data/kshin/T4SS_sim/manual_full.tbl"
-  bead: "/data/kshin/T4SS_sim/bead.mrc"
   rod: "/data/kshin/T4SS_sim/PDB/pdb_maps/rod_chimera.mrc"
   barrel: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"

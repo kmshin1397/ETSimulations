@@ -95,7 +95,7 @@ def sort_on_id(simulation):
     return simulation["global_stack_no"]
 
 
-def scale_and_invert_mrc(filename):
+def scale_and_invert_mrc(filename, apix=1.0):
     """ Given an outputted raw tilt stack from the TEM-Simulator, invert the images so that greater
     densities are darker and add voxel sizing information to the header.
 
@@ -127,14 +127,7 @@ def scale_and_invert_mrc(filename):
             data *= -1
             data += val_range + min_val
             mrc.set_data(data)
-            mrc.voxel_size = 2.83
-
-
-# def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
-#     run_process_inner(args, pid, metadata_queue, chimera_commands_queue, ack_event)
-#     logger.debug("Returned from inner process!")
-#
-#     complete_event.set()
+            mrc.voxel_size = apix
 
 
 def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
@@ -215,9 +208,12 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
         sim = assembler.set_up_tiltseries(sim)
         sim.edit_output_files()
 
+        # Set up beads
+        sim.create_fiducials(args["bead_map"])
+
         TEM_exec_path = args["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)
-        scale_and_invert_mrc(tiltseries_file)
+        scale_and_invert_mrc(tiltseries_file, args["apix"] * 10)
 
         logger.info("Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores))
         metadata_message = json.dumps(sim.get_metadata(), indent=2)
