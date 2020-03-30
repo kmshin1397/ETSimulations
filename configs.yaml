@@ -5,10 +5,10 @@ chimera_exec_path: "/usr/sbin/chimera"
 
 # Run-specific configs
 model: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"
-root: "/data/kshin/T4SS_sim/PDB/c4"
-config: "/data/kshin/T4SS_sim/PDB/c4/template_files/sim.txt"
-coord: "/data/kshin/T4SS_sim/PDB/c4/template_files/T4SS_coord.txt"
-num_stacks: 50
+root: "/data/kshin/T4SS_sim/PDB/test"
+config: "/data/kshin/T4SS_sim/PDB/test/template_files/sim.txt"
+coord: "/data/kshin/T4SS_sim/PDB/test/template_files/T4SS_coord.txt"
+num_stacks: 10
 name: "T4SS"
 num_cores: 12
 # apix in nm

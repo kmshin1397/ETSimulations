@@ -419,10 +419,7 @@ def main():
         event.wait()
 
         logger.info("Got completion signal from process %d" % i)
-        if processes[i].is_alive():
-            logger.info("Process %d is alive" % i)
-            processes[i].terminate()
-            logger.info("Closed process %d" % i)
+        processes[i].join()
 
     for i, chimera_process in enumerate(chimera_processes):
         chimera_process.join()
