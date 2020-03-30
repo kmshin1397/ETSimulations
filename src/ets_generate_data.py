@@ -29,23 +29,11 @@ import numpy as np
 import yaml
 
 # Custom modules
-from .simulation.notify import send_email
-from .simulation.tem_simulation import Simulation
-from .assemblers.t4ss_assembler import T4SSAssembler
-from .simulation.chimera_server import ChimeraServer
-from .simulation.logger import log_listener_process
-
-
-def on_kill_signal(sig_num, frame):
-    metadata_file = args["root"] + "/sim_metadata.json"
-    write_out_metadata_records(metadata_file)
-
-    logger.info('An interrupt signal was received: ' + str(sig_num))
-    if send_notification:
-        send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
-                   "ETSimulations Status", 'Interrupt signal received')
-
-    exit(1)
+from simulation.notify import send_email
+from simulation.tem_simulation import Simulation
+from assemblers.t4ss_assembler import T4SSAssembler
+from simulation.chimera_server import ChimeraServer
+from simulation.logger import log_listener_process, metadata_log_listener_process
 
 
 def configure_root_logger(queue):
@@ -61,10 +49,10 @@ def configure_root_logger(queue):
     h = handlers.QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.DEBUG)
 
 
-def write_out_metadata_records(filename):
+def write_out_metadata_records(metadata_queue, filename):
     # Metadata objects for each stack
     metadata = []
     while not metadata_queue.empty():
@@ -107,7 +95,7 @@ def sort_on_id(simulation):
     return simulation["global_stack_no"]
 
 
-def scale_and_invert_mrc(filename):
+def scale_and_invert_mrc(filename, apix=1.0):
     """ Given an outputted raw tilt stack from the TEM-Simulator, invert the images so that greater
     densities are darker and add voxel sizing information to the header.
 
@@ -139,10 +127,10 @@ def scale_and_invert_mrc(filename):
             data *= -1
             data += val_range + min_val
             mrc.set_data(data)
-            mrc.voxel_size = 2.83
+            mrc.voxel_size = apix
 
 
-def run_process(args, pid, chimera_commands_queue, ack_event):
+def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
     """ Drives a single child process of the simulation pipeline.
 
     A temporary data directory is first created for use only by the child process. An Assembler
@@ -220,24 +208,37 @@ def run_process(args, pid, chimera_commands_queue, ack_event):
         sim = assembler.set_up_tiltseries(sim)
         sim.edit_output_files()
 
+        # Set up beads
+        sim.create_fiducials(args["bead_map"])
+
         TEM_exec_path = args["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)
-        scale_and_invert_mrc(tiltseries_file)
+        scale_and_invert_mrc(tiltseries_file, args["apix"] * 10)
 
-        metadata_queue.put(sim.get_metadata())
+        logger.info("Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores))
+        metadata_message = json.dumps(sim.get_metadata(), indent=2)
+        metadata_queue.put(metadata_message)
 
         # Reset temporary copies of template files
         copyfile(args["coord"], coord_file)
         copyfile(args["config"], sim_input_file)
 
+        sim.close()
+
         # If this is the last stack for this process, clean up the Assembler 
         if i == num_stacks_per_cores - 1:
+            logger.debug("Closing Assembler")
             assembler.close()
 
     # Clean up temp files
+    logger.debug("Removing temp dir")
     rmtree(process_temp_dir)
 
-    logger.info("Closing sub-process %d" % pid)
+    logger.debug("Closing sub-process %d" % pid)
+
+    print("Returning from subprocess %d" % pid)
+    complete_event.set()
+    return
 
 
 def run_chimera_server(chimera_path, commands_queue, process_events):
@@ -249,6 +250,7 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
     a model so that Chimera sessions remain separate.
 
     Args:
+        chimera_path:
         commands_queue: The multiprocessing queue which maintains thread-safe piping of Chimera
             commands to make HTTP GET requests with, filled by particle Assemblers in other
             processes
@@ -329,62 +331,81 @@ def main():
 
     logger.info("Using %d cores" % num_cores)
 
-    # TODO: More formal multiple server
-    # Shared Queue to pass along sets of Chimera commands to pass along to the server
-    chimera_commands_1 = multiprocessing.Queue()
+    # Set up metadata log listener process #
+    metadata_queue = multiprocessing.Queue()
+    metadata_log = args["root"] + "/sim_metadata.json"
+    metadata_process = multiprocessing.Process(target=metadata_log_listener_process,
+                                               args=(metadata_queue, metadata_log))
+    metadata_process.start()
 
-    # Create a set of subprocess-specific events to signal command completions to them
-    chimera_process_events_1 = {}
+    # Set up Chimera server processes #
+    num_chimeras = args["num_chimera_windows"]
+    chimera_objects = []
+    chimera_processes = []
+    for i in range(num_chimeras):
+        # Shared Queue to pass along sets of Chimera commands to pass along to the server
+        chimera_commands = multiprocessing.Queue()
 
-    # Shared Queue to pass along sets of Chimera commands to pass along to the server
-    chimera_commands_2 = multiprocessing.Queue()
+        # Create a set of subprocess-specific events to signal command completions to them
+        chimera_process_events = {}
 
-    # Create a set of subprocess-specific events to signal command completions to them
-    chimera_process_events_2 = {}
+        chimera_objects.append((chimera_commands, chimera_process_events))
 
-    # Set up the child processes to run the model assembly/simulations.
+    # Set up the child processes to run the model assembly/simulations #
     # We wait until all processes are set up before starting them, so that the Chimera sever process
     # can be made aware of all processes (and be passes all their acknowledge events).
     processes = []
+    complete_processes = []
     for pid in range(num_cores):
         # Event unique to each child process used to subscribe to a Chimera server command set
         # and listen for completion of commands request.
         ack_event = multiprocessing.Event()
+        complete_event = multiprocessing.Event()
 
-        if pid % 2 == 0:
-            chimera_process_events_1[pid] = ack_event
+        chimera_index = pid % num_chimeras
+        chimera_commands, chimera_process_events = chimera_objects[chimera_index]
 
-            process = multiprocessing.Process(target=run_process,
-                                              args=(args, pid, chimera_commands_1,
-                                                    ack_event))
-        else:
-            chimera_process_events_2[pid] = ack_event
-
-            process = multiprocessing.Process(target=run_process,
-                                              args=(args, pid, chimera_commands_2,
-                                                    ack_event))
-
+        chimera_process_events[pid] = ack_event
+        process = multiprocessing.Process(target=run_process, args=(args, pid, metadata_queue,
+                                                                    chimera_commands,
+                                                                    ack_event, complete_event))
         processes.append(process)
+        complete_processes.append(complete_event)
 
-    # Start the Chimera server first, so it can be ready for the model assemblers
-    chimera_process_1 = multiprocessing.Process(target=run_chimera_server,
-                                                args=(args["chimera_exec_path"], chimera_commands_1,
-                                                      chimera_process_events_1))
-    logger.info("Starting Chimera server process")
-    chimera_process_1.start()
+    for i in range(num_chimeras):
+        chimera_commands, chimera_process_events = chimera_objects[i]
 
-    # Start the Chimera server first, so it can be ready for the model assemblers
-    chimera_process_2 = multiprocessing.Process(target=run_chimera_server,
-                                                args=(args["chimera_exec_path"], chimera_commands_2,
-                                                      chimera_process_events_2))
-    logger.info("Starting Chimera server process")
-    chimera_process_2.start()
+        # Start the Chimera server first, so it can be ready for the model assemblers
+        chimera_process = multiprocessing.Process(target=run_chimera_server,
+                                                  args=(args["chimera_exec_path"],
+                                                        chimera_commands,
+                                                        chimera_process_events))
+        logger.info("Starting Chimera server process")
+        chimera_process.start()
+
+        chimera_processes.append(chimera_process)
 
     # Now start all the processes
     for i, process in enumerate(processes):
         process.start()
 
     # register the signals to be caught
+    def on_kill_signal(sig_num, frame):
+
+        for i, p in enumerate(multiprocessing.active_children()):
+            p.terminate()
+            logger.info("Terminated process %d" % i)
+
+        # metadata_file = args["root"] + "/sim_metadata.json"
+        # write_out_metadata_records(metadata_queue, metadata_file)
+
+        logger.info('An interrupt signal was received: ' + str(sig_num))
+        if send_notification:
+            send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
+                       "ETSimulations Status", 'Interrupt signal received')
+
+        exit(1)
+
     signal.signal(signal.SIGHUP, on_kill_signal)
     signal.signal(signal.SIGINT, on_kill_signal)
     signal.signal(signal.SIGQUIT, on_kill_signal)
@@ -397,18 +418,23 @@ def main():
     signal.signal(signal.SIGALRM, on_kill_signal)
     signal.signal(signal.SIGTERM, on_kill_signal)
 
-    for i, process in enumerate(processes):
-        process.join()
-        logger.info("Joined in process %d" % i)
+    for i, event in enumerate(complete_processes):
+        logger.info("Waiting for process %d" % i)
+        event.wait()
 
-    chimera_process_1.join()
-    chimera_process_2.join()
+        logger.info("Got completion signal from process %d" % i)
+        processes[i].join()
+
+    for i, chimera_process in enumerate(chimera_processes):
+        chimera_process.join()
+        logger.info("Joined in Chimera process %d" % i)
+
     logger.info("Joined Chimera server processes")
 
     time_taken = (time.time() - start_time) / 60.
 
-    metadata_file = args["root"] + "/sim_metadata.json"
-    write_out_metadata_records(metadata_file)
+    metadata_queue.put("END")
+    metadata_process.join()
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
     if send_notification:
@@ -431,8 +457,6 @@ if __name__ == '__main__':
     send_notification = False
     if "email" in args:
         send_notification = True
-
-    metadata_queue = multiprocessing.Queue()
 
     # Start the logger process
     logs_queue = multiprocessing.Queue()

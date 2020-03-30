@@ -9,6 +9,7 @@ from tempfile import mkstemp
 import re
 from subprocess import check_output
 import logging
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class Simulation:
             logging
 
         """
-        return self.__dict__
+        return copy.deepcopy(self.__dict__)
 
     # Replace line in file with a new line
     @staticmethod
@@ -333,6 +334,20 @@ class Simulation:
             f.write("particle_coords = file\n")
             f.write("coord_file_in = %s\n\n" % coord_file)
 
+    def __write_fiducials_particle_set_section(self):
+        """
+        Write out the "particleset" section for the gold fiducials, which uses the random
+            coordinates from the occupancy option for the TEM-simulator instead of the standard
+            coordinates text files.
+
+        """
+        with open(self.config_file, "a") as f:
+            f.write("=== particleset ===\n")
+            f.write("particle_type = Fiducial\n")
+            f.write("occupancy = 0.00025\n")
+            f.write("particle_coords = random\n")
+            f.write("where = volume\n\n")
+
     def create_particle_lists(self, particle_sets):
         """
         Read the particle coordinates in self.base_coord_file and return them as an array
@@ -360,6 +375,19 @@ class Simulation:
             self.__write_particle_section(particle, particle_set.source, self.apix)
             self.__write_particle_set_section(particle_set, new_coord_file)
 
+    def create_fiducials(self, fiducials_source):
+        """
+        Set up the TEM-simulator configurations to generate randomly distributed gold fiducials
+
+        Args:
+            fiducials_source: The MRC file designed to simulate gold fiducials
+
+        """
+
+        # Add Particle and ParticleSet segments to config file
+        self.__write_particle_section("Fiducial", fiducials_source, self.apix)
+        self.__write_fiducials_particle_set_section()
+
     def run_tem_simulator(self, tem_exec_path):
         """
         Given the executable path to the TEM-Simulator, run the simulation with the set-up
@@ -376,3 +404,6 @@ class Simulation:
         command = tem_exec_path + " " + self.config_file
         check_output(command.split())
         logger.info("TEM-Simulator finished running")
+
+    def close(self):
+        logger.debug("Closing Simulator instance")
