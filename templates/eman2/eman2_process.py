@@ -8,80 +8,33 @@ the user.
 import os
 import subprocess
 import shlex
+import numpy as np
+import json
 
 # ==================== Input parameters ====================
 # General parameters
 eman2_root = ""
 raw_data_dir = ""
-project_name = ""
-steps_to_run = ["import", "reconstruct", "extract", "initial_model", "average"]
+name = ""
+particle_coordinates_file = ""
+steps_to_run = []
 
 # Importation parameters
-e2import_parameters = {
-    "import_tiltseries": "enable",
-    "importation": "copy",
-    "apix": 1,
-    "boxsize": 32
-}
+e2import_parameters = {}
 
 # Reconstruction parameters
-e2tomogram_parameters = {
-    "tltstep": 2,
-    "tltax": -90,
-    "npk": 10,
-    "tltkeep": 0.9,
-    "outsize": "1k",
-    "niter": "2,1,1,1",
-    "pkkeep": 0.9,
-    "bxsz": 64,
-    "pk_mindist": 0.125,
-    "filterto": 0.45,
-    "rmbeadthr": 10.0,
-    "threads": 48,
-    "clipz": 350
-}
+e2tomogram_parameters = {}
 
-e2spt_extract_parameters = {
-    "alltomograms": "enable",
-    "boxsz_unbin": 64,
-    "threads": 12,
-    "maxtilt": 100,
-    "padtwod": 2.0,
-    "shrink": 1,
-    "tltkeep": 1.0,
-    "rmbeadthr": -1.0,
-    "alioffset": "0,0,0"
-}
+e2spt_extract_parameters = {}
 
-e2spt_buildsets_parameters = {
-    "allparticles": "enable"
-}
+e2spt_buildsets_parameters = {}
 
-e2spt_sgd_parameters = {
-    "sym": "c1",
-    "gaussz": -1.0,
-    "filterto": 0.02,
-    "fourier": "enable",
-    "batchsize": 12,
-    "learnrate": 0.1,
-    "niter": 5,
-    "nbatch": 10,
-    "shrink": 1
-}
+e2spt_sgd_parameters = {}
 
-e2spt_refine_parameters = {
-    "niter": 5,
-    "sym": "c1",
-    "mass": 500,
-    "goldstandard": 70,
-    "pkeep": 1.0,
-    "maxtilt": 90,
-    "threads": 12
-}
+e2spt_refine_parameters = {}
 
 
 # ==========================================================
-
 
 def run_process_with_params(base_command, params_dict):
     for arg, value in params_dict.items():
@@ -89,7 +42,20 @@ def run_process_with_params(base_command, params_dict):
             base_command += " --%s" % arg
         else:
             base_command += " --%s=%s" % (arg, str(value))
-        subprocess.run(shlex.split(base_command), check=True)
+
+        print("=============================================")
+        print("Running command: ")
+        print(base_command)
+
+        process = subprocess.Popen(shlex.split(base_command), stdout=subprocess.PIPE)
+        while True:
+            output = os.fsdecode(process.stdout.readline())
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+        rc = process.poll()
+        return rc
 
 
 # ==================== Processing steps ====================
@@ -98,7 +64,7 @@ def import_tiltseries():
     for dir_entry in os.scandir(raw_data_dir):
         # For every directory found which begins with the proper project name, i.e. assumed to
         # contain a raw stack
-        if dir_entry.is_dir() and dir_entry.name.startswith(project_name):
+        if dir_entry.is_dir() and dir_entry.name.startswith(name):
             stack_basename = dir_entry.name
             stack_to_import = dir_entry.path + "/%s_inverted.mrc" % stack_basename
             base_command = "e2import.py %s" % stack_to_import
@@ -108,26 +74,83 @@ def import_tiltseries():
 def reconstruct_tomograms():
     # Iterate through each tiltseries
     for tiltseries in os.scandir(os.path.join(eman2_root, "tiltseries")):
-        command = "e2tomogram.py %s" % tiltseries
+        command = "e2tomogram.py %s" % ("tiltseries/" + tiltseries.name)
         run_process_with_params(command, e2tomogram_parameters)
 
 
+def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
+    """Writeout the particle coordinates to EMAN2 tomogram info file
+
+    Parameters
+    ----------
+    particles_file : str
+        The text file containing the converted particle coordinates
+
+    info_file : str
+        The JSON file in the info directory of the EMAN2 project folder
+        corresponding to the tomogram in question
+
+    particle_name : str
+        The name to assign to the particle within the EMAN2 project
+
+    boxsize : int
+        The EMAN2 box size (as seen in the EMAN2 box picker) to use for the
+        particles.
+    """
+    particles = np.loadtxt(particles_file)
+
+    # If there was only one model point
+    if particles.ndim == 1:
+        # Wrap in a new list to make it two-dimensional so next for loop will work
+        particles = [particles]
+
+    with open(info_file, 'r') as f:
+        tomogram_info = json.load(f)
+
+        # Build up boxes
+        boxes = []
+        for particle in particles:
+            x, y, z = particle[0], particle[1], particle[2]
+
+            box = [x, y, z]
+
+            box.extend(["manual", 0.0, 0])
+            boxes.append(box)
+
+        tomogram_info["boxes_3d"] = boxes
+
+        tomogram_info["class_list"] = {"0": {"boxsize": boxsize, "name": particle_name}}
+
+    with open(info_file, 'w') as f:
+        json.dump(tomogram_info, f, indent=4)
+
+
 def make_particle_set():
+    # Record particles
+    info_files = eman2_root + "/info"
+    for f in os.listdir(info_files):
+        info_file = os.fsdecode(f)
+        if info_file.startswith(name):
+            record_eman2_particle(particle_coordinates_file, info_files + "/" + info_file, name,
+                                  128)
+
     # Extract particles
-    base_command = "e2spt_extract.py"
+    base_command = "e2spt_extract.py --label=%s" % name
     run_process_with_params(base_command, e2spt_extract_parameters)
 
     # Build set
-    base_command = "e2spt_buildsets.py"
+    base_command = "e2spt_buildsets.py --label=%s" % name
     run_process_with_params(base_command, e2spt_buildsets_parameters)
 
 
-def make_initial_model(particle_set_file):
-    base_command = "e2spt_sgd %s" % particle_set_file
+def make_initial_model():
+    base_command = "e2spt_sgd sets/%s.lst" % name
     run_process_with_params(base_command, e2spt_sgd_parameters)
 
 
-def run_sta(particle_set_file, reference_file):
+def run_sta():
+    particle_set_file = "sets/%s.lst" % name
+    reference_file = "sptsgd_00/output.hdf"
     base_command = "e2spt_refine.py %s --reference=%s" % (particle_set_file, reference_file)
     run_process_with_params(base_command, e2spt_refine_parameters)
 
@@ -151,6 +174,7 @@ def main():
     os.chdir(eman2_root)
 
     for step in steps_to_run:
+        print("Running step: %s" % step)
         function = functions_table[step]
         function()
 
