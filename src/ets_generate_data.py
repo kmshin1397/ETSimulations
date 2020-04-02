@@ -423,7 +423,13 @@ def main():
         event.wait()
 
         logger.info("Got completion signal from process %d" % i)
-        processes[i].join()
+        # processes[i].join()
+        ''' NOTE: We use terminate to force kill the child processes instead of joining them in 
+        because for reasons I have yet to figure out the children hang upon finishing their 
+        processing. We know everything should be done since we wait for a signal at the very end of 
+        the processing function, so I think it's okay to just terminate the children for now - to be
+        investigated more in the future'''
+        processes[i].terminate()
 
     for i, chimera_process in enumerate(chimera_processes):
         chimera_process.join()
