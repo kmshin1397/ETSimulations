@@ -1,31 +1,24 @@
+""" This module implements the processing function for the EMAN2 software package.
+
+The module will create an EMAN2 project directory and set up a new Python script to process the
+raw data from ets_generate_data.py through the EMAN2 tomography pipeline.
+"""
+
 import os
 import re
 import json
 import sys
-import subprocess
-import shlex
 
 
-def run_command(command):
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    return rc
+def eman2_main(root, name, eman2_args):
+    """ The method to set-up tiltseries processing using EMAN2
 
-
-def eman2_main(root, name, eman2_args, run_automatically=False):
-    """
-
+    The steps taken are:
     1. Make EMAN2 dir
-    2. Copy over template scripts
-    3. If run automatically, run scripts up to end point
+    2. Copy over template script
+    3. Fill in the specific parameters for the scripts based on the passed in arguments
 
-    Returns:
+    Returns: None
 
     """
 
@@ -92,8 +85,3 @@ def eman2_main(root, name, eman2_args, run_automatically=False):
                     break
                 else:
                     new_file.write(line)
-
-    # Run automatically if desired
-    if run_automatically:
-        command = "python3 %s" % new_script
-        run_command(command)

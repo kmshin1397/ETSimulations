@@ -37,6 +37,18 @@ e2spt_refine_parameters = {}
 # ==========================================================
 
 def run_process_with_params(base_command, params_dict):
+    """ Helper function to run a given command line command, used to invoke various EMAN2 programs.
+    Command line arguments to the base command can be passed in as a dictionary of key, value pairs.
+    Arguments that do not have a value (i.e --help for many programs) should instead be passed in
+    with the special value of 'enabled' for that key.
+
+    Args:
+        base_command: The base command to run, i.e. e2tomogram.py
+        params_dict: A dictionary of input arguments to the command
+
+    Returns: The return code of the process
+
+    """
     for arg, value in params_dict.items():
         if value == "enable":
             base_command += " --%s" % arg
@@ -60,6 +72,7 @@ def run_process_with_params(base_command, params_dict):
 
 # ==================== Processing steps ====================
 def import_tiltseries():
+    """ Run the e2import.py program to import tilt stacks """
     # Scan everything in the raw data folder
     for dir_entry in os.scandir(raw_data_dir):
         # For every directory found which begins with the proper project name, i.e. assumed to
@@ -72,6 +85,7 @@ def import_tiltseries():
 
 
 def reconstruct_tomograms():
+    """ Run the e2tomogram.py program to reconstruct tomograms """
     # Iterate through each tiltseries
     for tiltseries in os.scandir(os.path.join(eman2_root, "tiltseries")):
         command = "e2tomogram.py %s" % ("tiltseries/" + tiltseries.name)
@@ -79,23 +93,17 @@ def reconstruct_tomograms():
 
 
 def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
-    """Writeout the particle coordinates to EMAN2 tomogram info file
+    """ Write out particle coordinates to a EMAN2 tomogram info JSON file
 
-    Parameters
-    ----------
-    particles_file : str
-        The text file containing the converted particle coordinates
+    Args:
+        particles_file: The text file containing the converted particle coordinates
+        info_file: The JSON file in the info directory of the EMAN2 project folder
+            corresponding to the tomogram in question
+        particle_name: The name to assign to the particle within the EMAN2 project
+        boxsize: The EMAN2 box size (as seen in the EMAN2 box picker) to use for the particles.
 
-    info_file : str
-        The JSON file in the info directory of the EMAN2 project folder
-        corresponding to the tomogram in question
+    Returns: None
 
-    particle_name : str
-        The name to assign to the particle within the EMAN2 project
-
-    boxsize : int
-        The EMAN2 box size (as seen in the EMAN2 box picker) to use for the
-        particles.
     """
     particles = np.loadtxt(particles_file)
 
@@ -126,6 +134,9 @@ def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
 
 
 def make_particle_set():
+    """ Run the e2spt_extract.py and e2spt_buildsets.py programs to extract subvolumes and create a
+        list of them for averaging.
+    """
     # Record particles
     info_files = eman2_root + "/info"
     for f in os.listdir(info_files):
@@ -144,11 +155,13 @@ def make_particle_set():
 
 
 def make_initial_model():
+    """ Run the e2spt_sgd program to automatically generate an initial reference for averaging """
     base_command = "e2spt_sgd sets/%s.lst" % name
     run_process_with_params(base_command, e2spt_sgd_parameters)
 
 
 def run_sta():
+    """ Run the e2spt_refine.py program to do sub-tomogram averaging """
     particle_set_file = "sets/%s.lst" % name
     reference_file = "sptsgd_00/output.hdf"
     base_command = "e2spt_refine.py %s --reference=%s" % (particle_set_file, reference_file)
@@ -160,6 +173,8 @@ def run_sta():
 
 # ==================== Main process ====================
 
+# This table maps the keyword for each processing step to the functions that implement the actions
+# for them.
 functions_table = {
     "import": import_tiltseries,
     "reconstruct": reconstruct_tomograms,
