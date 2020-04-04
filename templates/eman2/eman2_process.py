@@ -47,9 +47,6 @@ def run_process_with_params(base_command, params_dict):
     Args:
         base_command: The base command to run, i.e. e2tomogram.py
         params_dict: A dictionary of input arguments to the command
-
-    Returns: The return code of the process
-
     """
     for arg, value in params_dict.items():
         if value == "enable":
@@ -68,7 +65,8 @@ def run_process_with_params(base_command, params_dict):
         if output:
             print(output.strip())
     rc = process.poll()
-    return rc
+    if rc != 0:
+        exit(1)
 
 
 # ==================== Processing steps ====================
