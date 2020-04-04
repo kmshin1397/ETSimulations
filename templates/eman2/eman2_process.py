@@ -4,6 +4,8 @@ variable. The steps_to_run and other parameters for various steps will be filled
 the eman2_processor.py module based on the configurations file provided to ets_process_data.py by
 the user.
 
+Note: Python3 is required to run this script.
+
 """
 import os
 import subprocess
@@ -55,19 +57,18 @@ def run_process_with_params(base_command, params_dict):
         else:
             base_command += " --%s=%s" % (arg, str(value))
 
-        print("=============================================")
-        print("Running command: ")
-        print(base_command)
+    print("Running command: ")
+    print(base_command)
 
-        process = subprocess.Popen(shlex.split(base_command), stdout=subprocess.PIPE)
-        while True:
-            output = os.fsdecode(process.stdout.readline())
-            if output == '' and process.poll() is not None:
-                break
-            if output:
-                print(output.strip())
-        rc = process.poll()
-        return rc
+    process = subprocess.Popen(shlex.split(base_command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    return rc
 
 
 # ==================== Processing steps ====================
@@ -79,7 +80,7 @@ def import_tiltseries():
         # contain a raw stack
         if dir_entry.is_dir() and dir_entry.name.startswith(name):
             stack_basename = dir_entry.name
-            stack_to_import = dir_entry.path + "/%s_inverted.mrc" % stack_basename
+            stack_to_import = dir_entry.path + "/%s.mrc" % stack_basename
             base_command = "e2import.py %s" % stack_to_import
             run_process_with_params(base_command, e2import_parameters)
 
@@ -189,6 +190,7 @@ def main():
     os.chdir(eman2_root)
 
     for step in steps_to_run:
+        print("=============================================")
         print("Running step: %s" % step)
         function = functions_table[step]
         function()
