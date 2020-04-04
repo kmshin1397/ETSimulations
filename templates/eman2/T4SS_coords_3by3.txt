@@ -1,3 +1,4 @@
+# These coordinates are in pixels in the unbinned tomogram, with the origin in the center
 -706.7	706.7	0
 0	706.7	0
 706.7	706.7	0

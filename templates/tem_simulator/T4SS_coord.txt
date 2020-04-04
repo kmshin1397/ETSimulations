@@ -1,4 +1,5 @@
-# The file has 1 line of data and each line contains 6 records:
+# Each line contains 6 records: the first 3 columns are the XYZ coordinates, and the last three are
+# Euler angles for the orientation in ZXZ reference-to-particle extrinsic format. Units are nm.
 #
 9 6
 -200 200 0 0 0 0

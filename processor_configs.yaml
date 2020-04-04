@@ -1,0 +1,67 @@
+---
+root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data"
+name: "T4SS"
+processors: [
+  {name: "eman2",
+   args:
+  {
+     particle_coordinates_file: "/Users/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
+     steps_to_run: ["import", "reconstruct", "extract"],
+     e2import_parameters : {
+      "import_tiltseries": "enable",
+      "importation": "copy",
+      "apix": 2.83,
+      "boxsize": 64
+    },
+    e2tomogram_parameters : {
+      "tltstep": 3,
+      "tltax": -90,
+      "npk": 10,
+      "tltkeep": 0.9,
+      "outsize": "1k",
+      "niter": "2,1,1,1",
+      "pkkeep": 0.9,
+      "bxsz": 64,
+      "pk_mindist": 0.125,
+      "filterto": 0.45,
+      "rmbeadthr": 10.0,
+      "threads": 48,
+      "clipz": 350,
+      "notmp": "enable"
+    },
+    e2spt_extract_parameters : {
+      "alltomograms": "enable",
+      "boxsz_unbin": 128,
+      "threads": 12,
+      "maxtilt": 100,
+      "padtwod": 2.0,
+      "shrink": 1,
+      "tltkeep": 1.0,
+      "rmbeadthr": -1.0,
+      "alioffset": "0,0,0"
+    },
+    e2spt_buildsets_parameters : {
+      "allparticles": "enable"
+    },
+      e2spt_sgd_parameters : {
+      "sym": "c1",
+      "gaussz": -1.0,
+      "filterto": 0.02,
+      "fourier": "enable",
+      "batchsize": 12,
+      "learnrate": 0.1,
+      "niter": 5,
+      "nbatch": 10,
+      "shrink": 1
+    },
+    e2spt_refine_parameters : {
+      "niter": 5,
+      "sym": "c1",
+      "mass": 500,
+      "goldstandard": 70,
+      "pkeep": 1.0,
+      "maxtilt": 90,
+      "threads": 12
+    }
+  }
+}]

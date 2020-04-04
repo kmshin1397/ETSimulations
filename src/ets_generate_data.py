@@ -95,37 +95,31 @@ def sort_on_id(simulation):
     return simulation["global_stack_no"]
 
 
-def scale_and_invert_mrc(filename, apix=1.0):
-    """ Given an outputted raw tilt stack from the TEM-Simulator, invert the images so that greater
-    densities are darker and add voxel sizing information to the header.
+def scale_mrc(filename, apix=1.0):
+    """ Given an outputted raw tilt stack from the TEM-Simulator, add voxel sizing information to
+    the header.
 
     Args:
         filename: The path to the raw tiltseries MRC that should be processed
+        apix: The voxel size
 
     Returns: None
 
     """
-    data = np.array([])
-    val_range = 0
-    min_val = 0
 
     # We expect some MRC format warnings from the TEM-Simulator output
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         import mrcfile
-        # mrcfile.validate(filename)
 
+        data = np.array([])
         with mrcfile.open(filename, mode='r', permissive=True) as mrc:
-            val_range = mrc.header.dmax - mrc.header.dmin
-            min_val = mrc.header.dmin
             data = np.copy(mrc.data)
 
-        new_file = "%s/%s_inverted.mrc" % (os.path.dirname(filename),
-                                           os.path.splitext(os.path.basename(filename))[0])
+        new_file = "%s/%s.mrc" % (os.path.dirname(filename),
+                                  os.path.splitext(os.path.basename(filename))[0])
 
         with mrcfile.new(new_file, overwrite=True) as mrc:
-            data *= -1
-            data += val_range + min_val
             mrc.set_data(data)
             mrc.voxel_size = apix
 
@@ -213,7 +207,7 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
 
         TEM_exec_path = args["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)
-        scale_and_invert_mrc(tiltseries_file, args["apix"] * 10)
+        scale_mrc(tiltseries_file, args["apix"] * 10)
 
         logger.info("Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores))
         metadata_message = json.dumps(sim.get_metadata(), indent=2)
@@ -443,10 +437,10 @@ def main():
     metadata_process.join()
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
-    if send_notification:
-        send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
-                   "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
-
+    # if send_notification:
+    #     send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
+    #                "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
+    #
 
 if __name__ == '__main__':
     start_time = time.time()

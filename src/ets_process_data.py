@@ -60,19 +60,12 @@ def main(args):
     for processor in args["processors"]:
         print("Working on processor %s" % processor["name"])
         processor_handler = processor_handlers[processor["name"]]
-        processor_handler(args["root"], args["name"], processor["args"],
-                          run_automatically=processor["run_automatically"])
+        processor_handler(args["root"], args["name"], processor["args"])
 
 
 if __name__ == '__main__':
-    start_time = time.time()
-
     configs = parse_inputs()
     if "name" not in configs:
         configs["name"] = os.path.basename(configs["root"])
-
-    send_notification = False
-    if "email" in configs:
-        send_notification = True
 
     main(configs)

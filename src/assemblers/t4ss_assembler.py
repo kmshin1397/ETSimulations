@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
     sub-structures for Type IV Secretion System simulations.
 """
 
+
 class Barrel:
     resolution = 10
 
@@ -59,8 +60,8 @@ class Rod:
     def get_commands(self):
         commands = ["open #%d %s" % (self.volume_id, self.source),
                     "turn z %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.degrees,
-                                                                                   self.volume_id,
-                                                                                   self.volume_id),
+                                                                                  self.volume_id,
+                                                                                  self.volume_id),
                     "move %.3f,%.3f,%.3f models #%d" % (self.center[0], self.center[1],
                                                         self.center[2], self.volume_id),
                     "turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.angle[0],
@@ -185,9 +186,8 @@ class T4SSAssembler:
         Get a random particle orientation from the distribution loaded in from the .tbl file
 
         Returns: A tuple (Z, X, Z) of Euler angles randomly taken from the loaded distribution,
-            inverted so that we have particle-to-reference angles
+            inverted so that we have reference-to-particle angles
 
-        TODO: Check that the tbl actually has reference-to-particle rotations
         """
         choice = random.choice(self.loaded_orientations).tolist()
         return [-choice[2], -choice[1], -choice[0]]
@@ -205,12 +205,12 @@ class T4SSAssembler:
         Returns: The model ID of the membrane volume within the Chimera segment
 
         """
-        # path = "/data/kshin/T4SS_sim/mem_large.mrc"
-        # path = "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/mem_large_light.mrc"
         path = self.custom_args["membrane_path"]
         self.commands.append('open #%d %s' % (model_id + 10, path))
-        self.commands.append('move 0,0,%d models #%d' % (particle_height_offset + 25, model_id + 10))
-        self.commands.append("vop scale #%d factor %0.3f modelId #%d" % (model_id + 10, 1.5, model_id))
+        self.commands.append(
+            'move 0,0,%d models #%d' % (particle_height_offset + 25, model_id + 10))
+        self.commands.append(
+            "vop scale #%d factor %0.3f modelId #%d" % (model_id + 10, 1.5, model_id))
         self.commands.append('close #%d' % (model_id + 10))
         return model_id
 
@@ -293,17 +293,20 @@ class T4SSAssembler:
         # Apply random position
         self.commands.append("move %.2f,%.2f,0 models #%d" % (random_position[0],
                                                               random_position[1], full_model))
-        
+
         # Commands to combine membrane and particle into one mrc
         final_model = 100
-        self.commands.append("vop add #%d,#%d modelId #%d" % (membrane_model, full_model, final_model))
-        
-        self.commands.append("vop scale #%d factor %0.3f modelId #%d" % (final_model, 3, final_model + 1))
-        self.commands.append("vop scale #%d shift %0.3f modelId #%d" % (final_model, 4.875, final_model + 2))
+        self.commands.append(
+            "vop add #%d,#%d modelId #%d" % (membrane_model, full_model, final_model))
+
+        self.commands.append(
+            "vop scale #%d factor %0.3f modelId #%d" % (final_model, 3, final_model + 1))
+        self.commands.append(
+            "vop scale #%d shift %0.3f modelId #%d" % (final_model, 4.875, final_model + 2))
 
         # Save truth particle map
         self.commands.append("volume #%d save %s" % (final_model + 2, output_filename))
-        
+
         # Clear for the next particle
         self.commands.append("close session")
 
