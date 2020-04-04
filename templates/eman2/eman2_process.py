@@ -157,7 +157,7 @@ def make_particle_set():
 
 def make_initial_model():
     """ Run the e2spt_sgd program to automatically generate an initial reference for averaging """
-    base_command = "e2spt_sgd sets/%s.lst" % name
+    base_command = "e2spt_sgd.py sets/%s.lst" % name
     run_process_with_params(base_command, e2spt_sgd_parameters)
 
 

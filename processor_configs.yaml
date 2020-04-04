@@ -37,8 +37,7 @@ processors: [
       "padtwod": 2.0,
       "shrink": 1,
       "tltkeep": 1.0,
-      "rmbeadthr": -1.0,
-      "alioffset": "0,0,0"
+      "rmbeadthr": -1.0
     },
     e2spt_buildsets_parameters : {
       "allparticles": "enable"
