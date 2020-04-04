@@ -90,7 +90,7 @@ cond_ap_angle = 0.1
 # given i micrometer, and positive values means underfocus.
 
 gen_defocus = yes
-defocus_nominal = -5
+defocus_nominal = 5
 
 === detector ===
 
