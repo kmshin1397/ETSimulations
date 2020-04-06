@@ -235,7 +235,7 @@ class Simulation:
         self.__replace(self.config_file, log_pattern, replacement_line)
 
         defocus_pattern = "^defocus_nominal = .*\n"
-        replacement_line = "defocus = %.3f\n" % self.defocus
+        replacement_line = "defocus_nominal = %.3f\n" % self.defocus
         self.__replace(self.config_file, defocus_pattern, replacement_line)
 
     def get_num_particles(self):
