@@ -52,19 +52,6 @@ def configure_root_logger(queue):
     root.setLevel(logging.DEBUG)
 
 
-def write_out_metadata_records(metadata_queue, filename):
-    # Metadata objects for each stack
-    metadata = []
-    while not metadata_queue.empty():
-        metadata.append(metadata_queue.get())
-
-    # Log metadata
-    metadata.sort(key=sort_on_id)
-    metadata_file = filename
-    with open(metadata_file, 'w') as f:
-        f.write(json.dumps(metadata, indent=4))
-
-
 def parse_inputs():
     """ Instantiate and set up the command line arguments parser for the ets_generate_data module
 
@@ -79,20 +66,6 @@ def parse_inputs():
     input_file = arguments.input
     stream = open(input_file, 'r')
     return yaml.load(stream)
-
-
-def sort_on_id(simulation):
-    """ Helper function used to sort the queue of metadata logs from a series of simulations by
-    their stack numbers.
-
-    Args:
-        simulation: The src.simulation.Simulation class instance which represents one run of the
-            TEM-Simulator
-
-    Returns: the stack number within the set of simulations
-
-    """
-    return simulation["global_stack_no"]
 
 
 def scale_mrc(filename, apix=1.0):
@@ -124,6 +97,11 @@ def scale_mrc(filename, apix=1.0):
             mrc.voxel_size = apix
 
 
+def get_defocus_value(defocuses, global_stack_no):
+    num_defocuses = len(defocuses)
+    return defocuses[global_stack_no % num_defocuses]
+
+
 def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
     """ Drives a single child process of the simulation pipeline.
 
@@ -135,10 +113,14 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
     Args:
         args: The command line arguments passed to the main ets_generate_data process
         pid: The process ID of this child process
+        metadata_queue: The multiprocessing queue used for sending metadata log messages to the
+            central log listener
         chimera_commands_queue: The multiprocessing queue where commands for the Chimera REST Server
             can be sent by the particle Assembler
         ack_event: A child process-specific multiprocessing Event to subscribe to in order to know
             when the Chimera commands we send off to the server have been completed
+        complete_event: A child process-specific multiprocessing Event used to indicate to the main
+            process that this child has finished processing its jobs
 
     Returns: None
 
@@ -195,8 +177,11 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
         tiltseries_file = stack_dir + "/%s_%d.mrc" % (project_name, global_id)
         nonoise_tilts_file = stack_dir + "/%s_%d_nonoise.mrc" % (project_name, global_id)
 
+        # Grab a defocus value for this simulation
+        defocus = get_defocus_value(args["defocus_values"], global_id)
+
         sim = Simulation(sim_input_file, coord_file, tiltseries_file, nonoise_tilts_file,
-                         global_id, process_temp_dir, apix=apix)
+                         global_id, process_temp_dir, apix=apix, defocus=defocus)
 
         # Pass along the simulation object to the assembler to set up a simulation run
         sim = assembler.set_up_tiltseries(sim)

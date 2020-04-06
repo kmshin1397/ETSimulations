@@ -68,7 +68,7 @@ class Simulation:
 
     """
     def __init__(self, config_file, base_coord_file, tiltseries_file, nonoise_tilts_file,
-                 global_stack_no, temp_dir, apix=None):
+                 global_stack_no, temp_dir, apix=None, defocus=5):
         # TEM-Simulator configuration input file
         self.config_file = config_file
 
@@ -101,6 +101,9 @@ class Simulation:
 
         # If the model being used is a PDB, we must provide an apix value
         self.apix = apix
+
+        # The defocus value to use for the simulation
+        self.defocus = defocus
 
     def add_position(self, position):
         """
@@ -230,6 +233,10 @@ class Simulation:
         log_pattern = "^log_file = .*\n"
         replacement_line = "log_file = %s\n" % self.sim_log_file
         self.__replace(self.config_file, log_pattern, replacement_line)
+
+        defocus_pattern = "^defocus_nominal = .*\n"
+        replacement_line = "defocus = %.3f\n" % self.defocus
+        self.__replace(self.config_file, defocus_pattern, replacement_line)
 
     def get_num_particles(self):
         """
