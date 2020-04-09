@@ -21,11 +21,11 @@ name = ""
 particle_coordinates_file = ""
 steps_to_run = []
 
-# Importation parameters
 e2import_parameters = {}
 
-# Reconstruction parameters
 e2tomogram_parameters = {}
+
+e2spt_tomoctf_parameters = {}
 
 e2spt_extract_parameters = {}
 
@@ -91,6 +91,12 @@ def reconstruct_tomograms():
         run_process_with_params(command, e2tomogram_parameters)
 
 
+def estimate_ctf():
+    """ Run the e2spt_tomoctf.py program to estimate CTF for the tomograms """
+    command = "e2spt_tomoctf.py"
+    run_process_with_params(command, e2spt_tomoctf_parameters)
+
+
 def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
     """ Write out particle coordinates to a EMAN2 tomogram info JSON file
 
@@ -132,10 +138,8 @@ def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
         json.dump(tomogram_info, f, indent=4)
 
 
-def make_particle_set():
-    """ Run the e2spt_extract.py and e2spt_buildsets.py programs to extract subvolumes and create a
-        list of them for averaging.
-    """
+def extract_particles():
+    """ Run the e2spt_extract.py program to extract subvolumes """
     # Record particles
     info_files = eman2_root + "/info"
     for f in os.listdir(info_files):
@@ -143,11 +147,13 @@ def make_particle_set():
         if info_file.startswith(name):
             record_eman2_particle(particle_coordinates_file, info_files + "/" + info_file, name,
                                   128)
-
     # Extract particles
     base_command = "e2spt_extract.py --label=%s" % name
     run_process_with_params(base_command, e2spt_extract_parameters)
 
+
+def make_particle_set():
+    """ Run the e2spt_buildsets.py program tocreate a list of particles for averaging """
     # Build set
     base_command = "e2spt_buildsets.py --label=%s" % name
     run_process_with_params(base_command, e2spt_buildsets_parameters)
@@ -159,8 +165,8 @@ def make_initial_model():
     run_process_with_params(base_command, e2spt_sgd_parameters)
 
 
-def run_sta():
-    """ Run the e2spt_refine.py program to do sub-tomogram averaging """
+def run_refinement():
+    """ Run the e2spt_refine.py program to do sub-tomogram refinement """
     particle_set_file = "sets/%s.lst" % name
     reference_file = "sptsgd_00/output.hdf"
     base_command = "e2spt_refine.py %s --reference=%s" % (particle_set_file, reference_file)
@@ -177,9 +183,11 @@ def run_sta():
 functions_table = {
     "import": import_tiltseries,
     "reconstruct": reconstruct_tomograms,
-    "extract": make_particle_set,
-    "initial_model": make_initial_model,
-    "average": run_sta
+    "estimate_ctf": estimate_ctf,
+    "extract": extract_particles,
+    "build_set": make_particle_set,
+    "generate_initial_model": make_initial_model,
+    "3d_refinement": run_refinement
 }
 
 
@@ -190,8 +198,12 @@ def main():
     for step in steps_to_run:
         print("=============================================")
         print("Running step: %s" % step)
-        function = functions_table[step]
-        function()
+        if step in functions_table:
+            function = functions_table[step]
+            function()
+        else:
+            print("ERROR: %s is not a valid EMAN2 processing step to run" % step)
+            exit(1)
 
 
 if __name__ == '__main__':
