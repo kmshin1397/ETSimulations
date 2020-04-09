@@ -31,8 +31,8 @@ def eman2_main(root, name, eman2_args):
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
     template = current_dir + "../../templates/eman2/eman2_process.py"
     template_path = os.path.realpath(template)
-    print("Creating processing script at: %s" % template_path)
     new_script = "%s/eman2_process.py" % e2_dir
+    print("Creating processing script at: %s" % new_script)
 
     with open(new_script, "w") as new_file:
         with open(template_path, "r") as base_file:
