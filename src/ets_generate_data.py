@@ -150,9 +150,10 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
 
     num_stacks_per_cores = args["num_stacks"] // args["num_cores"]
 
-    # If last core, tack on the remainder stacks as well
-    if pid == args["num_cores"] - 1:
-        num_stacks_per_cores += args["num_stacks"] % args["num_cores"]
+    # If there are extra stacks (not evenly divisible) spread out the remainder
+    remainder = args["num_stacks"] % args["num_cores"]
+    if remainder != 0 and pid < remainder:
+        num_stacks_per_cores += 1
 
     assembler = T4SSAssembler(args["model"], process_temp_dir, chimera_commands_queue,
                               ack_event, pid, args["custom_configs"])
