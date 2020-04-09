@@ -16,10 +16,11 @@ import yaml
 
 # Custom modules
 from processors.eman2_processor import eman2_main
+from processors.imod_processor import imod_main
 
 # This table maps the names of the various processors (cryo-ET softwares) to the functions which
 # implement the set-up logic for that software.
-processor_handlers = {"eman2": eman2_main}
+processor_handlers = {"eman2": eman2_main, "imod": imod_main}
 
 
 def parse_inputs():

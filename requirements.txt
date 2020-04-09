@@ -1,3 +1,4 @@
+scipy
 PyYAML
 pytest
 certifi==2019.11.28

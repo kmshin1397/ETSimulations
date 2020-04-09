@@ -1,0 +1,11 @@
+runtime.Fiducials.any.trackingMethod = 0
+runtime.Fiducials.any.seedingMethod = 3
+setupset.copyarg.gold = 10
+comparam.autofidseed.autofidseed.TargetNumberOfBeads = 10
+runtime.AlignedStack.any.binByFactor = 1
+runtime.Positioning.any.thickness = 350
+setupset.copyarg.pixel = 0.283
+setupset.copyarg.rotation = -90
+setupset.copyarg.userawtlt = 1
+setupset.copyarg.extract = 0
+setupset.scanHeader = 0

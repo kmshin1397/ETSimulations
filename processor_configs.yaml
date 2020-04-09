@@ -2,6 +2,14 @@
 root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data"
 name: "T4SS"
 processors: [
+  {
+    name: "imod",
+    args: {
+      num_fiducials: 10,
+      tilt_axis: -90,
+      apix: 0.283
+    }
+  },
   {name: "eman2",
    args:
   {
