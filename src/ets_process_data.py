@@ -36,7 +36,7 @@ def parse_inputs():
     arguments = parser.parse_args()
     input_file = arguments.input
     stream = open(input_file, 'r')
-    return yaml.load(stream)
+    return yaml.load(stream, Loader=yaml.FullLoader)
 
 
 def main(args):

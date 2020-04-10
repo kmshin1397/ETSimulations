@@ -1,5 +1,5 @@
 ---
-root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data"
+root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data_processors"
 name: "T4SS"
 processors: [
   {
@@ -14,7 +14,9 @@ processors: [
    args:
   {
      particle_coordinates_file: "/Users/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
-     steps_to_run: ["import", "reconstruct", "extract"],
+     unbinned_boxsize: 128,
+     steps_to_run: ["import", "reconstruct", "estimate_ctf", "extract", "build_set",
+                    "generate_initial_model", "3d_refinement"],
      e2import_parameters : {
       "import_tiltseries": "enable",
       "importation": "copy",
@@ -36,6 +38,18 @@ processors: [
       "threads": 48,
       "clipz": 350,
       "notmp": "enable"
+    },
+     e2spt_tomoctf_parameters : {
+      "alltiltseries": "enable",
+      "dfrange": "2.0,7.0,0.02",
+      "psrange": "0,5,5",
+      "tilesize": 256,
+      "voltage": 300,
+      "cs": 2.7,
+      "nref": 15,
+      "stepx": 20,
+      "stepy": 40,
+      "checkhand": "enable"
     },
     e2spt_extract_parameters : {
       "alltomograms": "enable",

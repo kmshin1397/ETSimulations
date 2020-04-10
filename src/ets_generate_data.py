@@ -65,7 +65,7 @@ def parse_inputs():
     arguments = parser.parse_args()
     input_file = arguments.input
     stream = open(input_file, 'r')
-    return yaml.load(stream)
+    return yaml.load(stream, Loader=yaml.FullLoader)
 
 
 def scale_mrc(filename, apix=1.0):
@@ -150,9 +150,10 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
 
     num_stacks_per_cores = args["num_stacks"] // args["num_cores"]
 
-    # If last core, tack on the remainder stacks as well
-    if pid == args["num_cores"] - 1:
-        num_stacks_per_cores += args["num_stacks"] % args["num_cores"]
+    # If there are extra stacks (not evenly divisible) spread out the remainder
+    remainder = args["num_stacks"] % args["num_cores"]
+    if remainder != 0 and pid < remainder:
+        num_stacks_per_cores += 1
 
     assembler = T4SSAssembler(args["model"], process_temp_dir, chimera_commands_queue,
                               ack_event, pid, args["custom_configs"])
@@ -422,9 +423,9 @@ def main():
     metadata_process.join()
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
-    if send_notification:
-        send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
-                   "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
+    # if send_notification:
+    #     send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
+    #                "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
 
 
 if __name__ == '__main__':
