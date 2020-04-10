@@ -8,6 +8,8 @@ import os
 import re
 import json
 import sys
+import importlib.util
+from shutil import rmtree
 
 
 def eman2_main(root, name, eman2_args):
@@ -32,6 +34,7 @@ def eman2_main(root, name, eman2_args):
     template = current_dir + "../../templates/eman2/eman2_process.py"
     template_path = os.path.realpath(template)
     new_script = "%s/eman2_process.py" % e2_dir
+    print("")
     print("Creating processing script at: %s" % new_script)
 
     with open(new_script, "w") as new_file:
@@ -85,3 +88,17 @@ def eman2_main(root, name, eman2_args):
                     break
                 else:
                     new_file.write(line)
+
+    # Also output the commands as a simple text file for easier viewing and modification if desired
+    spec = importlib.util.spec_from_file_location("eman2_process", new_script)
+    eman2_process_script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(eman2_process_script)
+    text_output = "%s/eman2_process_commands.txt" % e2_dir
+    print("")
+    print("If desired, the full set of EMAN2 commands that have been assembled and available in "
+          "the newly generated eman2_process.py script can be found in raw text form at: %s" %
+          text_output)
+    eman2_process_script.collect_and_output_commands(text_output)
+
+    # Clean up compiled pycache from loading the script
+    rmtree(e2_dir + "/__pycache__")

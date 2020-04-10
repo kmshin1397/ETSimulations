@@ -1,11 +1,12 @@
 ---
-root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data"
+root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data_processors"
 name: "T4SS"
 processors: [
   {name: "eman2",
    args:
   {
      particle_coordinates_file: "/Users/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
+     unbinned_boxsize: 128,
      steps_to_run: ["import", "reconstruct", "estimate_ctf", "extract", "build_set",
                     "generate_initial_model", "3d_refinement"],
      e2import_parameters : {

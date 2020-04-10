@@ -20,6 +20,7 @@ raw_data_dir = ""
 name = ""
 particle_coordinates_file = ""
 steps_to_run = []
+unbinned_boxsize = 128
 
 e2import_parameters = {}
 
@@ -38,7 +39,7 @@ e2spt_refine_parameters = {}
 
 # ==========================================================
 
-def run_process_with_params(base_command, params_dict):
+def run_process_with_params(base_command, params_dict, get_command_without_running=False):
     """ Helper function to run a given command line command, used to invoke various EMAN2 programs.
     Command line arguments to the base command can be passed in as a dictionary of key, value pairs.
     Arguments that do not have a value (i.e --help for many programs) should instead be passed in
@@ -47,6 +48,8 @@ def run_process_with_params(base_command, params_dict):
     Args:
         base_command: The base command to run, i.e. e2tomogram.py
         params_dict: A dictionary of input arguments to the command
+        get_command_without_running: Option to return the assembled full command without actually
+            running it
     """
     for arg, value in params_dict.items():
         if value == "enable":
@@ -54,23 +57,25 @@ def run_process_with_params(base_command, params_dict):
         else:
             base_command += " --%s=%s" % (arg, str(value))
 
-    print("Running command: ")
-    print(base_command)
+    if get_command_without_running:
+        return base_command
+    else:
+        print("Running command: ")
+        print(base_command)
 
-    process = subprocess.Popen(shlex.split(base_command), stdout=subprocess.PIPE)
-    while True:
-        output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    if rc != 0:
-        exit(1)
+        process = subprocess.Popen(shlex.split(base_command), stdout=subprocess.PIPE)
+        while True:
+            output = os.fsdecode(process.stdout.readline())
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+        rc = process.poll()
+        return rc
 
 
 # ==================== Processing steps ====================
-def import_tiltseries():
+def import_tiltseries(get_command_without_running=False):
     """ Run the e2import.py program to import tilt stacks """
     # Scan everything in the raw data folder
     for dir_entry in os.scandir(raw_data_dir):
@@ -80,21 +85,39 @@ def import_tiltseries():
             stack_basename = dir_entry.name
             stack_to_import = dir_entry.path + "/%s.mrc" % stack_basename
             base_command = "e2import.py %s" % stack_to_import
-            run_process_with_params(base_command, e2import_parameters)
+            result = run_process_with_params(base_command, e2import_parameters,
+                                             get_command_without_running)
+
+            if not get_command_without_running and result != 0:
+                print("Error with import tiltseries, exiting...")
+                exit(1)
+            else:
+                return result
 
 
-def reconstruct_tomograms():
+def reconstruct_tomograms(get_command_without_running=False):
     """ Run the e2tomogram.py program to reconstruct tomograms """
     # Iterate through each tiltseries
     for tiltseries in os.scandir(os.path.join(eman2_root, "tiltseries")):
         command = "e2tomogram.py %s" % ("tiltseries/" + tiltseries.name)
-        run_process_with_params(command, e2tomogram_parameters)
+        result = run_process_with_params(command, e2tomogram_parameters,
+                                         get_command_without_running)
+        if not get_command_without_running and result != 0:
+            print("Error with reconstructing tomograms, exiting...")
+            exit(1)
+        else:
+            return result
 
 
-def estimate_ctf():
+def estimate_ctf(get_command_without_running=False):
     """ Run the e2spt_tomoctf.py program to estimate CTF for the tomograms """
     command = "e2spt_tomoctf.py"
-    run_process_with_params(command, e2spt_tomoctf_parameters)
+    result = run_process_with_params(command, e2spt_tomoctf_parameters, get_command_without_running)
+    if not get_command_without_running and result != 0:
+        print("Error with estimating CTF values, exiting...")
+        exit(1)
+    else:
+        return result
 
 
 def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
@@ -138,7 +161,7 @@ def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
         json.dump(tomogram_info, f, indent=4)
 
 
-def extract_particles():
+def extract_particles(get_command_without_running=False):
     """ Run the e2spt_extract.py program to extract subvolumes """
     # Record particles
     info_files = eman2_root + "/info"
@@ -146,31 +169,55 @@ def extract_particles():
         info_file = os.fsdecode(f)
         if info_file.startswith(name):
             record_eman2_particle(particle_coordinates_file, info_files + "/" + info_file, name,
-                                  128)
+                                  unbinned_boxsize)
     # Extract particles
     base_command = "e2spt_extract.py --label=%s" % name
-    run_process_with_params(base_command, e2spt_extract_parameters)
+    result = run_process_with_params(base_command, e2spt_extract_parameters,
+                                     get_command_without_running)
+    if not get_command_without_running and result != 0:
+        print("Error with extracting particles, exiting...")
+        exit(1)
+    else:
+        return result
 
 
-def make_particle_set():
-    """ Run the e2spt_buildsets.py program tocreate a list of particles for averaging """
+def make_particle_set(get_command_without_running=False):
+    """ Run the e2spt_buildsets.py program to create a list of particles for averaging """
     # Build set
     base_command = "e2spt_buildsets.py --label=%s" % name
-    run_process_with_params(base_command, e2spt_buildsets_parameters)
+    result = run_process_with_params(base_command, e2spt_buildsets_parameters,
+                                     get_command_without_running)
+    if not get_command_without_running and result != 0:
+        print("Error with building the particle set, exiting...")
+        exit(1)
+    else:
+        return result
 
 
-def make_initial_model():
+def make_initial_model(get_command_without_running=False):
     """ Run the e2spt_sgd program to automatically generate an initial reference for averaging """
     base_command = "e2spt_sgd.py sets/%s.lst" % name
-    run_process_with_params(base_command, e2spt_sgd_parameters)
+    result = run_process_with_params(base_command, e2spt_sgd_parameters,
+                                     get_command_without_running)
+    if not get_command_without_running and result != 0:
+        print("Error with generating the initial model, exiting...")
+        exit(1)
+    else:
+        return result
 
 
-def run_refinement():
+def run_refinement(get_command_without_running=False):
     """ Run the e2spt_refine.py program to do sub-tomogram refinement """
     particle_set_file = "sets/%s.lst" % name
     reference_file = "sptsgd_00/output.hdf"
     base_command = "e2spt_refine.py %s --reference=%s" % (particle_set_file, reference_file)
-    run_process_with_params(base_command, e2spt_refine_parameters)
+    result = run_process_with_params(base_command, e2spt_refine_parameters,
+                                     get_command_without_running)
+    if not get_command_without_running and result != 0:
+        print("Error with the 3D refinement, exiting...")
+        exit(1)
+    else:
+        return result
 
 
 # ==========================================================
@@ -189,6 +236,22 @@ functions_table = {
     "generate_initial_model": make_initial_model,
     "3d_refinement": run_refinement
 }
+
+
+def collect_and_output_commands(output_file):
+    commands = []
+    for step in steps_to_run:
+        if step in functions_table:
+            function = functions_table[step]
+            command = function(get_command_without_running=True)
+            command += "\n"
+            commands.append(command)
+        else:
+            print("ERROR: %s is not a valid EMAN2 processing step to run" % step)
+            exit(1)
+
+    with open(output_file, 'w') as f:
+        f.writelines(commands)
 
 
 def main():
