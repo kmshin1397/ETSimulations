@@ -185,7 +185,7 @@ def set_up_batchtomo(root, name, imod_args):
     with open(new_ebt, "a") as f:
         for i, info in enumerate(batchtomo_infos):
             f.writelines(["meta.row.ebt%d.Run=true\n" % (i + 1),
-                          "meta.row.ebt%d.Etomo.Enabled=false\n" % (i + 1),
+                          "meta.row.ebt%d.Etomo.Enabled=true\n" % (i + 1),
                           "meta.row.ebt%d.Tomogram.Done=false\n" % (i + 1),
                           "meta.row.ebt%d.RowNumber=%d\n" % (i + 1, i + 1),
                           "meta.row.ebt%d.Log.Enabled=false\n" % (i + 1),
@@ -193,8 +193,26 @@ def set_up_batchtomo(root, name, imod_args):
                           "meta.row.ebt%d.Rec.Enabled=false\n" % (i + 1),
                           "meta.row.ebt%d.dual=false\n" % (i + 1),
                           "meta.ref.ebt%d=%s\n" % (i + 1, info["stack"])])
+        f.write("meta.ref.ebt.lastID=ebt%d\n" % len(batchtomo_infos))
 
-    return new_com_file
+
+def replace_batchtomo_start_and_end_steps(com_file, start, end):
+    # Create temp file
+    fh, abs_path = mkstemp()
+    with os.fdopen(fh, 'w') as new_file:
+        with open(com_file) as old_file:
+            for line in old_file:
+                new_line = line
+                if line.startswith("StartingStep"):
+                    new_line = "StartingStep	%0.1f\n" % start
+                elif line.startswith("EndingStep"):
+                    new_line = "EndingStep	%0.1f\n" % end
+                new_file.write(new_line)
+
+    # Remove original file
+    os.remove(com_file)
+    # Move new file
+    shutil.move(abs_path, com_file)
 
 
 def imod_main(root, name, imod_args):
@@ -211,9 +229,43 @@ def imod_main(root, name, imod_args):
 
     """
 
-    com_file = set_up_batchtomo(root, name, imod_args)
+    start = imod_args["start_step"]
+    end = imod_args["end_step"]
+    com_file = "%s/%s.com" % (root + "/processed_data/IMOD", "batchETSimulations")
+    if end <= start:
+        print("ERROR: The batchruntomo ending step is less than or equal to the starting step")
+        exit(1)
+    elif start == 0:
+        set_up_batchtomo(root, name, imod_args)
+        # First run batchruntomo with just the set up step and stop before it does the coarse
+        # alignment
+        if os.getenv("IMOD_DIR") is not None:
+            submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
+            command = "%s -t %s" % (submfg_path, com_file)
+            print(command)
+            process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+            while True:
+                output = os.fsdecode(process.stdout.readline())
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    print(output.strip())
+            rc = process.poll()
+            if rc != 0:
+                exit(1)
+        else:
+            print('ERROR: IMOD_DIR is not defined')
+            exit(1)
 
-    # First run batchtomo with just the set up step and stop before it does the coarse alignment
+        # Now set it up to resume after the coarse alignment
+        replace_batchtomo_start_and_end_steps(com_file, 4, end)
+    else:
+        if start == 2 or start == 3:
+            print("WARNING: cross-correlation alignment will most likely fail due to low signal of "
+                  "simulated stacks")
+        replace_batchtomo_start_and_end_steps(com_file, start, end)
+
+    # Now run batchruntomo up to the desired end step, having avoided cross-correlation by default
     if os.getenv("IMOD_DIR") is not None:
         submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
         command = "%s -t %s" % (submfg_path, com_file)
@@ -231,5 +283,3 @@ def imod_main(root, name, imod_args):
     else:
         print('ERROR: IMOD_DIR is not defined')
         exit(1)
-
-    # TODO reset for fine alignment (maybe just expose start end step)

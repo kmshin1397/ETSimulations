@@ -8,7 +8,6 @@ meta.datasetTableHeader.open=true
 meta.dataset.ScaleToInteger=false
 meta.dataset.Use.fcaleFromZ=false
 meta.EnableStartingStep=false
-meta.ref.ebt.lastID=ebt0
 meta.dataset.TargetNumberOfBeads=10
 meta.dataset.Use.findSecAddThickness=false
 meta.EndingStep.Use=false
