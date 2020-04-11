@@ -171,7 +171,8 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
         if i > 0:
             assembler.reset_temp_dir()
 
-        global_id = pid * (args["num_stacks"] // args["num_cores"]) + i
+        remainders_assigned_before = min(pid, remainder)
+        global_id = pid * (args["num_stacks"] // args["num_cores"]) + i + remainders_assigned_before
         stack_dir = raw_data_dir + "/%s_%d" % (project_name, global_id)
         os.mkdir(stack_dir)
 
