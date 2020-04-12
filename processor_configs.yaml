@@ -7,7 +7,10 @@ processors: [
     args: {
       num_fiducials: 10,
       tilt_axis: -90,
-      apix: 0.283
+      apix: 0.283,
+      fiducial_method: "autofidseed",
+      start_step: 0.0,
+      end_step: 8.0
     }
   },
   {name: "eman2",

@@ -73,8 +73,21 @@ def replace_adoc_values(adoc_file, imod_args):
                     new_line = "setupset.copyarg.pixel = %0.3f\n" % imod_args["apix"]
                 elif line.startswith("setupset.copyarg.rotation"):
                     new_line = "setupset.copyarg.rotation = %0.2f\n" % imod_args["tilt_axis"]
+                elif line.startswith("runtime.Fiducials.any.trackingMethod"):
+                    if imod_args["fiducial_method"] == "raptor":
+                        new_line = "runtime.Fiducials.any.trackingMethod = 2\n"
+                elif line.startswith("runtime.RAPTOR.any.numberOfMarkers"):
+                    new_line = "runtime.RAPTOR.any.numberOfMarkers = %d\n" % \
+                               imod_args["num_fiducials"]
 
                 new_file.write(new_line)
+        if imod_args["fiducial_method"] == "raptor":
+            new_file.write("runtime.Fiducials.any.trackingMethod = 2\n")
+            new_file.write("runtime.RAPTOR.any.numberOfMarkers = %d\n" % imod_args["num_fiducials"])
+            new_file.write("runtime.RAPTOR.any.useAlignedStack = 1")
+        elif imod_args["fiducial_method"] == "autofidseed":
+            new_file.write("runtime.Fiducials.any.trackingMethod = 0")
+            new_file.write("runtime.Fiducials.any.seedingMethod = 3\n")
 
     # Remove original file
     os.remove(adoc_file)
@@ -142,8 +155,12 @@ def set_up_batchtomo(root, name, imod_args):
     # Copy over the adoc file and write in the passed in values
     main_adoc = "%s/%s.adoc" % (batchtomo_templates, batchtomo_name)
     new_main_adoc = imod_project_dir + "/%s.adoc" % batchtomo_name
-    shutil.copyfile(main_adoc, new_main_adoc)
-    replace_adoc_values(new_main_adoc, imod_args)
+
+    if "custom_batchruntomo_template" in imod_args:
+        shutil.copyfile(imod_args["custom_batchruntomo_template"], new_main_adoc)
+    else:
+        shutil.copyfile(main_adoc, new_main_adoc)
+        replace_adoc_values(new_main_adoc, imod_args)
 
     print("Copying in batchtomo files")
     directory = os.fsencode(imod_project_dir)
@@ -155,7 +172,7 @@ def set_up_batchtomo(root, name, imod_args):
             # Copy over individual sub-directory adoc files
             batch_file = ("%s_name.adoc" % batchtomo_name).replace("name", base)
             this_adoc = "%s/%s/%s" % (imod_project_dir, base, batch_file)
-            shutil.copyfile(main_adoc, this_adoc)
+            shutil.copyfile(new_main_adoc, this_adoc)
 
             # Look for stack
             stack = ""
