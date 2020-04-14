@@ -2,24 +2,10 @@
 root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data_processors"
 name: "T4SS"
 processors: [
-  {
-    name: "imod",
-    args: {
-      num_fiducials: 10,
-      tilt_axis: -90,
-      apix: 0.283,
-      fiducial_method: "autofidseed",
-      start_step: 0.0,
-      end_step: 8.0
-    }
-  },
   {name: "eman2",
    args:
   {
-     particle_coordinates_file: "/Users/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
-     unbinned_boxsize: 128,
-     steps_to_run: ["import", "reconstruct", "estimate_ctf", "extract", "build_set",
-                    "generate_initial_model", "3d_refinement"],
+     steps_to_run: ["import", "reconstruct", "extract", "build_set"],
      e2import_parameters : {
       "import_tiltseries": "enable",
       "importation": "copy",
@@ -38,7 +24,7 @@ processors: [
       "pk_mindist": 0.125,
       "filterto": 0.45,
       "rmbeadthr": 10.0,
-      "threads": 48,
+      "threads": 12,
       "clipz": 350,
       "notmp": "enable"
     },
@@ -54,6 +40,11 @@ processors: [
       "stepy": 40,
       "checkhand": "enable"
     },
+    particle_coordinates_parameters: {
+      mode: "multiple",
+      coordinates_file: "T4SS_coords_3by3.txt",
+      unbinned_boxsize: 128,
+    },
     e2spt_extract_parameters : {
       "alltomograms": "enable",
       "boxsz_unbin": 128,
@@ -62,7 +53,7 @@ processors: [
       "padtwod": 2.0,
       "shrink": 1,
       "tltkeep": 1.0,
-      "rmbeadthr": -1.0
+      "rmbeadthr": 10.0
     },
     e2spt_buildsets_parameters : {
       "allparticles": "enable"
@@ -87,5 +78,17 @@ processors: [
       "maxtilt": 90,
       "threads": 12
     }
+    }
+  },
+  {
+    name: "imod",
+    args: {
+      start_step: 0.0,
+      end_step: 8.0,
+      num_fiducials: 10,
+      tilt_axis: -90,
+      apix: 0.283,
+      fiducial_method: "autofidseed"
+    }
   }
-}]
+]

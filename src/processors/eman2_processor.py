@@ -12,6 +12,20 @@ import importlib.util
 from shutil import rmtree
 
 
+def validate_steps_to_run(steps_to_run):
+    valid_steps = ["import",
+                   "reconstruct",
+                   "estimate_ctf",
+                   "extract",
+                   "build_set",
+                   "generate_initial_model",
+                   "3d_refinement"]
+    for step in steps_to_run:
+        if step not in valid_steps:
+            print("ERROR: %s is not a valid EMAN2 processing step to run" % step)
+            exit(1)
+
+
 def eman2_main(root, name, eman2_args):
     """ The method to set-up tiltseries processing using EMAN2
 
@@ -23,6 +37,8 @@ def eman2_main(root, name, eman2_args):
     Returns: None
 
     """
+
+    validate_steps_to_run(eman2_args["steps_to_run"])
 
     # Set up an EMAN2 directory
     processed_data_dir = root + "/processed_data"

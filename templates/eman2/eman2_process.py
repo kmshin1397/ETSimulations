@@ -18,9 +18,10 @@ import json
 eman2_root = ""
 raw_data_dir = ""
 name = ""
-particle_coordinates_file = ""
 steps_to_run = []
-unbinned_boxsize = 128
+
+# Particle picking parameters
+particle_coordinates_parameters = {}
 
 e2import_parameters = {}
 
@@ -77,6 +78,7 @@ def run_process_with_params(base_command, params_dict, get_command_without_runni
 # ==================== Processing steps ====================
 def import_tiltseries(get_command_without_running=False):
     """ Run the e2import.py program to import tilt stacks """
+    results = ""
     # Scan everything in the raw data folder
     for dir_entry in os.scandir(raw_data_dir):
         # For every directory found which begins with the proper project name, i.e. assumed to
@@ -92,21 +94,50 @@ def import_tiltseries(get_command_without_running=False):
                 print("Error with import tiltseries, exiting...")
                 exit(1)
             else:
-                return result
+                # If we're returning the commands, append with newline
+                if get_command_without_running:
+                    results += result + "\n"
+                # Otherwise, we check for errors
+                else:
+                    if result != 0:
+                        results = result
+                    else:
+                        results = 0
+
+    return results
 
 
 def reconstruct_tomograms(get_command_without_running=False):
     """ Run the e2tomogram.py program to reconstruct tomograms """
-    # Iterate through each tiltseries
-    for tiltseries in os.scandir(os.path.join(eman2_root, "tiltseries")):
-        command = "e2tomogram.py %s" % ("tiltseries/" + tiltseries.name)
+
+    # If we haven't imported stacks yet, we don't know the exact reconstruction command
+    if get_command_without_running and not os.path.exists(os.path.join(eman2_root, "tiltseries")):
+        command = "e2tomogram.py tiltseries/{some_tiltseries_not_imported_yet}.hdf"
         result = run_process_with_params(command, e2tomogram_parameters,
                                          get_command_without_running)
-        if not get_command_without_running and result != 0:
-            print("Error with reconstructing tomograms, exiting...")
-            exit(1)
-        else:
-            return result
+        return result
+    else:
+        results = ""
+        # Iterate through each tiltseries
+        for tiltseries in os.scandir(os.path.join(eman2_root, "tiltseries")):
+            command = "e2tomogram.py %s" % ("tiltseries/" + tiltseries.name)
+            result = run_process_with_params(command, e2tomogram_parameters,
+                                             get_command_without_running)
+            if not get_command_without_running and result != 0:
+                print("Error with reconstructing tomograms, exiting...")
+                exit(1)
+            else:
+                # If we're returning the commands, append with newline
+                if get_command_without_running:
+                    results += result + "\n"
+                # Otherwise, we check for errors
+                else:
+                    if result != 0:
+                        results = result
+                    else:
+                        results = 0
+
+        return results
 
 
 def estimate_ctf(get_command_without_running=False):
@@ -162,14 +193,49 @@ def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
 
 
 def extract_particles(get_command_without_running=False):
-    """ Run the e2spt_extract.py program to extract subvolumes """
+    """ Run the e2spt_extract.py program to extract subvolumes after writing out the particle
+        coordinates to the EMAN2 info files
+    """
     # Record particles
-    info_files = eman2_root + "/info"
-    for f in os.listdir(info_files):
-        info_file = os.fsdecode(f)
-        if info_file.startswith(name):
-            record_eman2_particle(particle_coordinates_file, info_files + "/" + info_file, name,
-                                  unbinned_boxsize)
+    if not get_command_without_running:
+        mode = ""
+        if "mode" in particle_coordinates_parameters:
+            mode = particle_coordinates_parameters["mode"]
+        else:
+            print("Error - Missing 'mode' parameter in particle_coordinates_parameters")
+            exit(1)
+
+        coordinates_file = ""
+        if "coordinates_file" in particle_coordinates_parameters:
+            coordinates_file = particle_coordinates_parameters["coordinates_file"]
+        else:
+            print("Error - Missing 'coordinates_file' parameter in particle_coordinates_parameters")
+            exit(1)
+
+        unbinned_boxsize = 64
+        if "unbinned_boxsize" in particle_coordinates_parameters:
+            unbinned_boxsize = particle_coordinates_parameters["unbinned_boxsize"]
+
+        if mode == "single":
+            info_files = eman2_root + "/info"
+            for f in os.listdir(info_files):
+                info_file = os.fsdecode(f)
+                if info_file.startswith(name):
+                    record_eman2_particle(coordinates_file, info_files + "/" + info_file, name,
+                                          unbinned_boxsize)
+        elif mode == "multiple":
+            for subdir in os.scandir(raw_data_dir):
+                base_name = subdir.name
+                if base_name.startswith(name):
+                    coordinates = os.path.join(subdir.path, coordinates_file)
+                    info_file = os.path.join(eman2_root, "info", "%s_info.json" % base_name)
+                    record_eman2_particle(coordinates, info_file, name, unbinned_boxsize)
+
+        else:
+            print("Error - Invalid 'mode' for particle coordinates. Should be 'single' or "
+                  "'multiple'")
+            exit(1)
+
     # Extract particles
     base_command = "e2spt_extract.py --label=%s" % name
     result = run_process_with_params(base_command, e2spt_extract_parameters,
@@ -240,15 +306,11 @@ functions_table = {
 
 def collect_and_output_commands(output_file):
     commands = []
-    for step in steps_to_run:
-        if step in functions_table:
-            function = functions_table[step]
-            command = function(get_command_without_running=True)
-            command += "\n"
-            commands.append(command)
-        else:
-            print("ERROR: %s is not a valid EMAN2 processing step to run" % step)
-            exit(1)
+    for step in functions_table:
+        function = functions_table[step]
+        command = function(get_command_without_running=True)
+        command += "\n"
+        commands.append(command)
 
     with open(output_file, 'w') as f:
         f.writelines(commands)
