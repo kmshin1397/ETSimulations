@@ -68,7 +68,8 @@ class Simulation:
 
     """
     def __init__(self, config_file, base_coord_file, tiltseries_file, nonoise_tilts_file,
-                 global_stack_no, temp_dir, apix=None, defocus=5):
+                 global_stack_no, temp_dir, apix=None, defocus=5, template_configs="",
+                 template_coords=""):
         # TEM-Simulator configuration input file
         self.config_file = config_file
 
@@ -104,6 +105,10 @@ class Simulation:
 
         # The defocus value to use for the simulation
         self.defocus = defocus
+
+        # The original template TEM-Simulator configuration files, for the log records
+        self.template_configs = template_configs
+        self.template_coords = template_coords
 
     def add_position(self, position):
         """
@@ -148,13 +153,24 @@ class Simulation:
 
     def get_metadata(self):
         """
-        Get the contents of the Simulation object in dictionary form
+        Get the important contents of the Simulation object in dictionary form (the non-temp files)
 
         Returns: The attributes of the Simulation object in dictionary form, to be used as metadata
             logging
 
         """
-        return copy.deepcopy(self.__dict__)
+        metadata = {"output": self.tiltseries_file,
+                    "nonoise_output": self.nonoise_tilts_file,
+                    "global_stack_no": self.global_stack_no,
+                    "apix": self.apix,
+                    "defocus": self.defocus,
+                    "sim_configs": self.template_configs,
+                    "particle_coords": self.template_coords,
+                    "orientations": self.orientations,
+                    "positions": self.positions,
+                    "custom_data": self.custom_data}
+
+        return metadata
 
     # Replace line in file with a new line
     @staticmethod

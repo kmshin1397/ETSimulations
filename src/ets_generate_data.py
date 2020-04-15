@@ -183,7 +183,8 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
         defocus = get_defocus_value(args["defocus_values"], global_id)
 
         sim = Simulation(sim_input_file, coord_file, tiltseries_file, nonoise_tilts_file,
-                         global_id, process_temp_dir, apix=apix, defocus=defocus)
+                         global_id, process_temp_dir, apix=apix, defocus=defocus,
+                         template_configs=args["config"], template_coords=args["coord"])
 
         # Pass along the simulation object to the assembler to set up a simulation run
         sim = assembler.set_up_tiltseries(sim)
