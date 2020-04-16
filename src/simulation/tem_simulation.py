@@ -9,7 +9,6 @@ from tempfile import mkstemp
 import re
 from subprocess import check_output
 import logging
-import copy
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +66,7 @@ class Simulation:
             the set-up specified by current Simulation object attributes
 
     """
+
     def __init__(self, config_file, base_coord_file, tiltseries_file, nonoise_tilts_file,
                  global_stack_no, temp_dir, apix=None, defocus=5, template_configs="",
                  template_coords=""):
@@ -110,16 +110,6 @@ class Simulation:
         self.template_configs = template_configs
         self.template_coords = template_coords
 
-    def add_position(self, position):
-        """
-        Append to the positions attribute
-
-        Args:
-            position: The position X, Y, Z to add to the positions list attribute
-
-        """
-        self.positions.append(position)
-
     def extend_positions(self, positions):
         """
         Extend the positions attribute with a given list of positions
@@ -150,6 +140,17 @@ class Simulation:
 
         """
         self.orientations.extend(orientations)
+
+    def set_custom_data(self, data):
+        """
+        Update the custom data field, which is directly recorded in the metadata logs. Can be used
+        to keep track of information specific to custom Assemblers
+
+        Args:
+            data: The data object that should be recorded in the metadata logs
+
+        """
+        self.custom_data = data
 
     def get_metadata(self):
         """
@@ -273,7 +274,7 @@ class Simulation:
         """
         Read the particle coordinates in self.base_coord_file and return them as an array
 
-        Returns: A list of tuples (x, y, z) representing particle positions
+        Returns: A list of lists [x, y, z] representing particle positions
 
         """
         coordinates = []
@@ -287,7 +288,7 @@ class Simulation:
                         read_summary_line = True
                     else:
                         tokens = line.strip().split()
-                        coordinate = (float(tokens[0]), float(tokens[1]), float(tokens[2]))
+                        coordinate = [float(tokens[0]), float(tokens[1]), float(tokens[2])]
                         coordinates.append(coordinate)
 
         return coordinates

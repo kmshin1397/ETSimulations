@@ -214,7 +214,7 @@ def run_process(args, pid, metadata_queue, chimera_commands_queue, ack_event, co
 
     # Clean up temp files
     logger.debug("Removing temp dir")
-    rmtree(process_temp_dir)
+    # rmtree(process_temp_dir)
 
     logger.debug("Closing sub-process %d" % pid)
 
