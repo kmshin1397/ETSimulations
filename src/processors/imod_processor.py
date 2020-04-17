@@ -162,7 +162,7 @@ def set_up_batchtomo(root, name, imod_args):
         shutil.copyfile(main_adoc, new_main_adoc)
         replace_adoc_values(new_main_adoc, imod_args)
 
-    print("Copying in batchtomo files")
+    print("Copying in batchtomo files...")
     directory = os.fsencode(imod_project_dir)
     batchtomo_infos = []
     for base_folder in os.listdir(directory):

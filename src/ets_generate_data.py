@@ -425,6 +425,7 @@ def main():
     metadata_process.join()
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
+    print('Total time taken: %0.3f minutes' % time_taken)
     # if send_notification:
     #     send_email("kshin@umbriel.jensen.caltech.edu", args["email"],
     #                "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)
