@@ -1,8 +1,8 @@
 import pytest
-from src.simulation import tem_simulation as simulation
+from simulation import tem_simulation as simulation
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def base_test_config():
     return "=== simulation ===\n" + \
            "log_file = old_log_file.txt\n"+ \
@@ -14,22 +14,22 @@ def base_test_config():
            "defocus_nominal = 0\n"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def base_test_coords():
     return "# Random comment\n2 6\n0 0 0 0 0 0\n100 100 100 0 0 0\n"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def mock_particle_coordinates():
     return [[0, 0, 0], [100, 100, 100]]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def mock_orientations():
     return [[0, 0, 0], [90, 90, 90]]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def test_simulation(tmpdir_factory, base_test_config, base_test_coords):
     # Set up an initial test configuration file
     subdir = tmpdir_factory.mktemp("subdir")

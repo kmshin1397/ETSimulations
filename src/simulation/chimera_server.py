@@ -57,6 +57,9 @@ class ChimeraServer:
             self.process.terminate()
             logger.info("Chimera server shut down successfully")
 
+    def get_port(self):
+        return self.port
+
     @staticmethod
     def __output_reader(proc, outq):
         for line in iter(proc.stdout.readline, b''):

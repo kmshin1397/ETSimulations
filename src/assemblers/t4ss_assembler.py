@@ -383,9 +383,7 @@ class T4SSAssembler:
         # Apply completed particle set to TEM-Simulator configs
         self.simulation.create_particle_lists(particle_sets)
 
-        self.simulation.custom_data = custom_metadata
-
-        return self.simulation
+        self.simulation.set_custom_data(custom_metadata)
 
     def reset_temp_dir(self):
         """
