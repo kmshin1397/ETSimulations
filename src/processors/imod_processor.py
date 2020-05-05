@@ -283,7 +283,7 @@ def imod_main(root, name, imod_args):
         replace_batchtomo_start_and_end_steps(com_file, start, end)
 
     # Now run batchruntomo up to the desired end step, having avoided cross-correlation by default
-    if os.getenv("IMOD_DIR") is not None:
+    if os.getenv("IMOD_DIR") is not None and end >= 4:
         submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
         command = "%s -t %s" % (submfg_path, com_file)
         print(command)
