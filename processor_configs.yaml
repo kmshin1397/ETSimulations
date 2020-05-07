@@ -2,84 +2,84 @@
 root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data_processors"
 name: "T4SS"
 processors: [
-  {name: "eman2",
-   args:
-  {
-     steps_to_run: ["import", "reconstruct", "extract", "build_set"],
-     e2import_parameters : {
-      "import_tiltseries": "enable",
-      "importation": "copy",
-      "apix": 2.83,
-      "boxsize": 64
-    },
-    e2tomogram_parameters : {
-      "tltstep": 3,
-      "tltax": -90,
-      "npk": 10,
-      "tltkeep": 0.9,
-      "outsize": "1k",
-      "niter": "2,1,1,1",
-      "pkkeep": 0.9,
-      "bxsz": 64,
-      "pk_mindist": 0.125,
-      "filterto": 0.45,
-      "rmbeadthr": 10.0,
-      "threads": 12,
-      "clipz": 350,
-      "notmp": "enable"
-    },
-     e2spt_tomoctf_parameters : {
-      "alltiltseries": "enable",
-      "dfrange": "2.0,7.0,0.02",
-      "psrange": "0,5,5",
-      "tilesize": 256,
-      "voltage": 300,
-      "cs": 2.7,
-      "nref": 15,
-      "stepx": 20,
-      "stepy": 40,
-      "checkhand": "enable"
-    },
-    particle_coordinates_parameters: {
-      mode: "multiple",
-      coordinates_file: "T4SS_coords_3by3.txt",
-      unbinned_boxsize: 128,
-    },
-    e2spt_extract_parameters : {
-      "alltomograms": "enable",
-      "boxsz_unbin": 128,
-      "threads": 12,
-      "maxtilt": 100,
-      "padtwod": 2.0,
-      "shrink": 1,
-      "tltkeep": 1.0,
-      "rmbeadthr": 10.0
-    },
-    e2spt_buildsets_parameters : {
-      "allparticles": "enable"
-    },
-      e2spt_sgd_parameters : {
-      "sym": "c1",
-      "gaussz": -1.0,
-      "filterto": 0.02,
-      "fourier": "enable",
-      "batchsize": 12,
-      "learnrate": 0.1,
-      "niter": 5,
-      "nbatch": 10,
-      "shrink": 1
-    },
-    e2spt_refine_parameters : {
-      "niter": 5,
-      "sym": "c1",
-      "mass": 500,
-      "goldstandard": 70,
-      "pkeep": 1.0,
-      "maxtilt": 90,
-      "threads": 12
-    }
-    }
-  },
+#  {name: "eman2",
+#   args:
+#  {
+#     steps_to_run: ["import", "reconstruct", "extract", "build_set"],
+#     e2import_parameters : {
+#      "import_tiltseries": "enable",
+#      "importation": "copy",
+#      "apix": 2.83,
+#      "boxsize": 64
+#    },
+#    e2tomogram_parameters : {
+#      "tltstep": 3,
+#      "tltax": -90,
+#      "npk": 10,
+#      "tltkeep": 0.9,
+#      "outsize": "1k",
+#      "niter": "2,1,1,1",
+#      "pkkeep": 0.9,
+#      "bxsz": 64,
+#      "pk_mindist": 0.125,
+#      "filterto": 0.45,
+#      "rmbeadthr": 10.0,
+#      "threads": 12,
+#      "clipz": 350,
+#      "notmp": "enable"
+#    },
+#     e2spt_tomoctf_parameters : {
+#      "alltiltseries": "enable",
+#      "dfrange": "2.0,7.0,0.02",
+#      "psrange": "0,5,5",
+#      "tilesize": 256,
+#      "voltage": 300,
+#      "cs": 2.7,
+#      "nref": 15,
+#      "stepx": 20,
+#      "stepy": 40,
+#      "checkhand": "enable"
+#    },
+#    particle_coordinates_parameters: {
+#      mode: "multiple",
+#      coordinates_file: "T4SS_coords_3by3.txt",
+#      unbinned_boxsize: 128,
+#    },
+#    e2spt_extract_parameters : {
+#      "alltomograms": "enable",
+#      "boxsz_unbin": 128,
+#      "threads": 12,
+#      "maxtilt": 100,
+#      "padtwod": 2.0,
+#      "shrink": 1,
+#      "tltkeep": 1.0,
+#      "rmbeadthr": 10.0
+#    },
+#    e2spt_buildsets_parameters : {
+#      "allparticles": "enable"
+#    },
+#      e2spt_sgd_parameters : {
+#      "sym": "c1",
+#      "gaussz": -1.0,
+#      "filterto": 0.02,
+#      "fourier": "enable",
+#      "batchsize": 12,
+#      "learnrate": 0.1,
+#      "niter": 5,
+#      "nbatch": 10,
+#      "shrink": 1
+#    },
+#    e2spt_refine_parameters : {
+#      "niter": 5,
+#      "sym": "c1",
+#      "mass": 500,
+#      "goldstandard": 70,
+#      "pkeep": 1.0,
+#      "maxtilt": 90,
+#      "threads": 12
+#    }
+#    }
+#  },
   {
     name: "imod",
     args: {
@@ -88,7 +88,8 @@ processors: [
       num_fiducials: 10,
       tilt_axis: -90,
       apix: 0.283,
-      fiducial_method: "autofidseed"
+      fiducial_method: "autofidseed",
+      force_coarse_align: false
     }
   }
 ]
