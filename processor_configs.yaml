@@ -1,5 +1,5 @@
 ---
-root: "/Users/kshin/Documents/data/T4SS/simulations/parallel_test/data_processors"
+root: "/data/kshin/batchtomotest3/raw_data1"
 name: "T4SS"
 processors: [
 #  {name: "eman2",
@@ -91,7 +91,8 @@ processors: [
       fiducial_method: "autofidseed",
       force_coarse_align: true,
       real_data_mode: true,
-      data_dirs_start_with: "dg"
+      data_dirs_start_with: "dg",
+      custom_template: "/home/kshin/Documents/processing_scripts/imod_files/batchtomo_files/batchMar29-125518.adoc"
     }
   }
 ]

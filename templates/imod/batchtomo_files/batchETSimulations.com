@@ -1,6 +1,6 @@
 $batchruntomo -StandardInput
 CheckFile	batchETSimulations.cmds
-CPUMachineList	localhost:1
+CPUMachineList	localhost:12
 NiceValue	15
 EtomoDebug	0
 StartingStep	0.0

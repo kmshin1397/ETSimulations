@@ -177,8 +177,8 @@ def set_up_batchtomo(root, name, imod_args):
     main_adoc = "%s/%s.adoc" % (batchtomo_templates, batchtomo_name)
     new_main_adoc = imod_project_dir + "/%s.adoc" % batchtomo_name
 
-    if "custom_batchruntomo_template" in imod_args:
-        shutil.copyfile(imod_args["custom_batchruntomo_template"], new_main_adoc)
+    if "custom_template" in imod_args:
+        shutil.copyfile(imod_args["custom_template"], new_main_adoc)
     else:
         shutil.copyfile(main_adoc, new_main_adoc)
         replace_adoc_values(new_main_adoc, imod_args)
