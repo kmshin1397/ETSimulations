@@ -89,7 +89,9 @@ processors: [
       tilt_axis: -90,
       apix: 0.283,
       fiducial_method: "autofidseed",
-      force_coarse_align: false
+      force_coarse_align: true,
+      real_data_mode: true,
+      data_dirs_start_with: "dg"
     }
   }
 ]
