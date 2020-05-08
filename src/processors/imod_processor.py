@@ -138,9 +138,10 @@ def set_up_batchtomo(root, name, imod_args):
             new_base = ""
             for f in os.listdir(raw_data + "/" + base):
                 # Look for .mrc for the raw stack
-                if f.endswith(".mrc"):
+                if f.endswith(".mrc") or f.endswith(".st"):
                     raw_stack = f
                     new_base = os.path.splitext(f)[0]
+                    break
 
             new_tilt_folder = imod_project_dir + "/%s" % new_base
             os.mkdir(new_tilt_folder)
