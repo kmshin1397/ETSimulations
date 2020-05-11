@@ -142,6 +142,9 @@ def set_up_batchtomo(root, name, imod_args):
                     raw_stack = f
                     new_base = os.path.splitext(f)[0]
                     break
+            if new_base == "":
+                print("ERROR: No .st or .mrc found in %s to use for raw stack" % base)
+                exit(1)
 
             new_tilt_folder = imod_project_dir + "/%s" % new_base
             os.mkdir(new_tilt_folder)
