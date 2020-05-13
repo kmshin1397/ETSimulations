@@ -84,9 +84,9 @@ def replace_adoc_values(adoc_file, imod_args):
         if imod_args["fiducial_method"] == "raptor":
             new_file.write("runtime.Fiducials.any.trackingMethod = 2\n")
             new_file.write("runtime.RAPTOR.any.numberOfMarkers = %d\n" % imod_args["num_fiducials"])
-            new_file.write("runtime.RAPTOR.any.useAlignedStack = 1")
+            new_file.write("runtime.RAPTOR.any.useAlignedStack = 1\n")
         elif imod_args["fiducial_method"] == "autofidseed":
-            new_file.write("runtime.Fiducials.any.trackingMethod = 0")
+            new_file.write("runtime.Fiducials.any.trackingMethod = 0\n")
             new_file.write("runtime.Fiducials.any.seedingMethod = 3\n")
 
     # Remove original file
@@ -106,8 +106,19 @@ def set_up_batchtomo(root, name, imod_args):
     Returns: The newly created IMOD .com file to run the batchtomo
 
     """
+    # Default values for optional configs
+    if "real_data_mode" not in imod_args:
+        imod_args["real_data_mode"] = False
+    if "data_dirs_start_with" not in imod_args:
+        imod_args["data_dirs_start_with"] = name
+
     # Set up an IMOD project directory
-    raw_data = root + "/raw_data"
+    raw_data = ""
+    if imod_args["real_data_mode"]:
+        raw_data = root
+    else:
+        raw_data = root + "/raw_data"
+
     processed_data_dir = root + "/processed_data"
     imod_project_dir = processed_data_dir + "/IMOD"
     if not os.path.exists(imod_project_dir):
@@ -122,32 +133,46 @@ def set_up_batchtomo(root, name, imod_args):
     directory = os.fsencode(raw_data)
     for base_folder in os.listdir(directory):
         base = os.fsdecode(base_folder)
-        if base.startswith("T4SS"):
-            print(base)
-            new_tilt_folder = imod_project_dir + "/%s" % base
+        if base.startswith(imod_args["data_dirs_start_with"]):
+            raw_stack = ""
+            new_base = ""
+            for f in os.listdir(raw_data + "/" + base):
+                # Look for .mrc for the raw stack
+                if f.endswith(".mrc") or f.endswith(".st"):
+                    raw_stack = f
+                    new_base = os.path.splitext(f)[0]
+                    break
+            if new_base == "":
+                print("ERROR: No .st or .mrc found in %s to use for raw stack" % base)
+                exit(1)
 
+            new_tilt_folder = imod_project_dir + "/%s" % new_base
             os.mkdir(new_tilt_folder)
-            raw_stack = base + ".mrc"
 
             # Copy over stack and relevant intermediate IMOD files
             # We are copying over our own versions of the outputs of coarse alignment in IMOD
             # since we want to skip that step.
             shutil.copyfile(raw_data + "/" + base + "/" + raw_stack,
                             new_tilt_folder + "/" + base + ".mrc")
-            shutil.copyfile(raw_data + "/" + base + "/" + raw_stack,
-                            new_tilt_folder + "/" + base + ".preali")
-            for template_file in os.listdir(template_path):
-                template = os.fsdecode(template_file)
 
-                # Copy over all the IMOD coarse alignment files so that we can fake that we've done
-                # it and can skip it. These are the .prexf, .prexg, and .rawtlt files.
-                if not template.endswith(".txt") and not template.startswith("batchtomo_files"):
-                    ext = os.path.splitext(template)[1]
-                    shutil.copyfile(template_path + "/" + template,
-                                    new_tilt_folder + "/" + base + ext)
+            # Simulated data needs to skip coarse alignment, so copy over fake outputs for it
+            if not imod_args["real_data_mode"]:
+                shutil.copyfile(raw_data + "/" + base + "/" + raw_stack,
+                                new_tilt_folder + "/" + base + ".preali")
 
-    print("Retrieving directories..")
-    retrieve_orientations(root + "/sim_metadata.json", imod_project_dir)
+                for template_file in os.listdir(template_path):
+                    template = os.fsdecode(template_file)
+
+                    # Copy over all the IMOD coarse alignment files so that we can fake that we've
+                    # done it and can skip it. These are the .prexf, .prexg, and .rawtlt files.
+                    if template.startswith("name"):
+                        ext = os.path.splitext(template)[1]
+                        shutil.copyfile(template_path + "/" + template,
+                                        new_tilt_folder + "/" + base + ext)
+
+    if not imod_args["real_data_mode"]:
+        print("Retrieving orientations...")
+        retrieve_orientations(root + "/sim_metadata.json", imod_project_dir)
 
     # Copy over batchtomo files
     batchtomo_name = "batchETSimulations"
@@ -156,19 +181,18 @@ def set_up_batchtomo(root, name, imod_args):
     main_adoc = "%s/%s.adoc" % (batchtomo_templates, batchtomo_name)
     new_main_adoc = imod_project_dir + "/%s.adoc" % batchtomo_name
 
-    if "custom_batchruntomo_template" in imod_args:
-        shutil.copyfile(imod_args["custom_batchruntomo_template"], new_main_adoc)
+    if "custom_template" in imod_args:
+        shutil.copyfile(imod_args["custom_template"], new_main_adoc)
     else:
         shutil.copyfile(main_adoc, new_main_adoc)
         replace_adoc_values(new_main_adoc, imod_args)
 
-    print("Copying in batchtomo files")
+    print("Copying in batchtomo files...")
     directory = os.fsencode(imod_project_dir)
     batchtomo_infos = []
     for base_folder in os.listdir(directory):
         base = os.fsdecode(base_folder)
-        if base.startswith(name):
-
+        if not base.startswith("batch"):
             # Copy over individual sub-directory adoc files
             batch_file = ("%s_name.adoc" % batchtomo_name).replace("name", base)
             this_adoc = "%s/%s/%s" % (imod_project_dir, base, batch_file)
@@ -232,6 +256,26 @@ def replace_batchtomo_start_and_end_steps(com_file, start, end):
     shutil.move(abs_path, com_file)
 
 
+def run_submfg(com_file, cwd=None):
+    submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
+    command = "%s -t %s" % (submfg_path, com_file)
+    print(command)
+    process = None
+    if cwd:
+        process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, cwd=r"%s" % cwd)
+    else:
+        process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
 def imod_main(root, name, imod_args):
     """ The method to set-up tiltseries processing using IMOD
 
@@ -252,51 +296,90 @@ def imod_main(root, name, imod_args):
     if end <= start:
         print("ERROR: The batchruntomo ending step is less than or equal to the starting step")
         exit(1)
-    elif start == 0:
-        set_up_batchtomo(root, name, imod_args)
-        # First run batchruntomo with just the set up step and stop before it does the coarse
-        # alignment
-        if os.getenv("IMOD_DIR") is not None:
-            submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
-            command = "%s -t %s" % (submfg_path, com_file)
-            print(command)
-            process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-            while True:
-                output = os.fsdecode(process.stdout.readline())
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    print(output.strip())
-            rc = process.poll()
-            if rc != 0:
-                exit(1)
-        else:
-            print('ERROR: IMOD_DIR is not defined')
-            exit(1)
-
-        # Now set it up to resume after the coarse alignment
-        replace_batchtomo_start_and_end_steps(com_file, 4, end)
-    else:
-        if start == 2 or start == 3:
-            print("WARNING: cross-correlation alignment will most likely fail due to low signal of "
-                  "simulated stacks")
-        replace_batchtomo_start_and_end_steps(com_file, start, end)
-
-    # Now run batchruntomo up to the desired end step, having avoided cross-correlation by default
-    if os.getenv("IMOD_DIR") is not None:
-        submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
-        command = "%s -t %s" % (submfg_path, com_file)
-        print(command)
-        process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-        while True:
-            output = os.fsdecode(process.stdout.readline())
-            if output == '' and process.poll() is not None:
-                break
-            if output:
-                print(output.strip())
-        rc = process.poll()
-        if rc != 0:
-            exit(1)
-    else:
+    if os.getenv("IMOD_DIR") is None:
         print('ERROR: IMOD_DIR is not defined')
         exit(1)
+
+    # If starting anew, set up batchtomo
+    if start == 0:
+        set_up_batchtomo(root, name, imod_args)
+
+    # Determine steps to run depending on whether we need to skip coarse alignment or not
+    if "force_coarse_align" not in imod_args:
+        imod_args["force_coarse_align"] = False
+
+    if imod_args["force_coarse_align"]:
+        print("WARNING: cross-correlation alignment will most likely fail due to low signal for "
+              "simulated stacks")
+        replace_batchtomo_start_and_end_steps(com_file, start, end)
+
+        msg = "Running batchruntomo..."
+
+        # Note: Batchruntomo includes dynamic adjustment of the AngleOffset parameter for tiltalign
+        # which we do not want, so we run tiltalign manually and skip step 6
+        if start <= 6 <= end:
+            # Do up to tiltalign but not including
+            if start <= 5:
+                print("Running batchruntomo steps up to tiltalign...")
+                replace_batchtomo_start_and_end_steps(com_file, start, 5)
+                run_submfg(com_file)
+
+            # Manually run each tiltalign using the align.com files in subdirectories
+            print("Manually running tiltalign for each stack...")
+            imod_proj_dir = root + "/processed_data/IMOD"
+            for f in os.listdir(imod_proj_dir):
+                # Ignore batchtomo files and go to data dirs
+                if not f.startswith("batchETSimulations"):
+                    tilt_com = "align.com"
+                    run_submfg(tilt_com, cwd=os.path.join(imod_proj_dir, f))
+
+            # Now set main batchtomo com to resume from step 7
+            if end >= 7:
+                replace_batchtomo_start_and_end_steps(com_file, 7, end)
+                msg = "Running remaining batchruntomo steps..."
+
+        # Need to run remaining steps if not handled yet above
+        if end != 6:
+            print(msg)
+            run_submfg(com_file)
+
+    else:
+        # First run batchruntomo with just the initial steps and stop before it does the coarse
+        # alignment
+        if start <= 1:
+            print("Running initial batchruntomo pre-processing...")
+            run_submfg(com_file)
+
+        # Now set it up to resume after the coarse alignment
+        if end >= 4:
+            replace_batchtomo_start_and_end_steps(com_file, 4, end)
+            start = 4
+
+        # Run remaining steps if there are any
+        if end >= 1:
+            # Note: Batchruntomo includes dynamic adjustment of the AngleOffset parameter for
+            # tiltalign which we do not want, so we run tiltalign manually and skip step 6
+            if start <= 6 <= end:
+                # Do up to tiltalign but not including
+                if start <= 5:
+                    print("Running batchruntomo steps up to tiltalign...")
+                    replace_batchtomo_start_and_end_steps(com_file, start, 5)
+                    run_submfg(com_file)
+
+                # Manually run each tiltalign using the align.com files in subdirectories
+                print("Manually running tiltalign for each stack...")
+                imod_proj_dir = root + "/processed_data/IMOD"
+                for f in os.listdir(imod_proj_dir):
+                    # Ignore batchtomo files and go to data dirs
+                    if not f.startswith("batchETSimulations"):
+                        tilt_com = "align.com"
+                        run_submfg(tilt_com, cwd=os.path.join(imod_proj_dir, f))
+
+                # Now set main batchtomo com to resume from step 7
+                if end >= 7:
+                    replace_batchtomo_start_and_end_steps(com_file, 7, end)
+
+            # Need to run remaining steps if not handled yet above
+            if end != 6:
+                print("Running remaining batchruntomo steps...")
+                run_submfg(com_file)

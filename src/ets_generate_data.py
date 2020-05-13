@@ -445,6 +445,7 @@ def main(configs):
     metadata_process.join()
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
+    
     # if "email" in configs:
     #     send_email("kshin@umbriel.jensen.caltech.edu", configs["email"],
     #                "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)

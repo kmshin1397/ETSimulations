@@ -59,9 +59,11 @@ def main(args):
 
     # Read processor requests
     for processor in args["processors"]:
+        print("################################\n")
         print("Working on processor %s" % processor["name"])
         processor_handler = processor_handlers[processor["name"]]
         processor_handler(args["root"], args["name"], processor["args"])
+        print("")
 
 
 if __name__ == '__main__':
