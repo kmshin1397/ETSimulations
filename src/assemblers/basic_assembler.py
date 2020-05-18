@@ -6,8 +6,8 @@ import logging
 # External packages
 
 # Custom modules
-from src.simulation.particle_set import ParticleSet
-from src.simulation import chimera_server as chimera
+from simulation.particle_set import ParticleSet
+from simulation import chimera_server as chimera
 
 logger = logging.getLogger(__name__)
 

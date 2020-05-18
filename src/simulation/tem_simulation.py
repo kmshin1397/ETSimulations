@@ -34,37 +34,6 @@ class Simulation:
         custom_data: Field that can be used to store custom Assembler-specific metadata which will
             be output to the metadata log
 
-    Methods:
-        ### Private methods ###
-        __replace: Helper function to go through a text file and replace instances of a given
-            pattern with the provided replacement
-        __replace_nonoise: Variant helper function of the __replace function used to replace the
-            no-noise tiltseries file path in the configs file, since it replaces just the second
-            instance of the given pattern
-        __write_coord_file: Helper function to write out particle coordinates and orientations in
-            the format expected by TEM-Simulator for a particle set
-        __write_particle_section: For a given particle set, write out the particle parameters
-            segment for the TEM-Simulator configuration file
-        __write_particle_set_section: For a given particle set, write out the "particleset"
-            parameters segment for the TEM-Simulator configuration file
-
-        ### Public methods ###
-        add_position: Append to the positions attribute
-        extend_positions: Extend the positions attribute with a given list of positions
-        add_orientation: Append to the orientations attribute
-        extend_orientations: Extend the orientations attribute with a given list of orientations
-        get_metadata: Get the contents of the Simulation object in dictionary form
-        edit_output_files: Go into the actual TEM-Simulator input files and update the output and
-            log file values to be what is currently stored in the appropriate class attributes
-        get_num_particles: Open the self.base_coord_file and get the number of particles for the
-            simulation indicated
-        parse_coordinates: Read the particle coordinates in self.base_coord_file and return them as
-            an array
-        create_particle_lists: Given a list of particle sets, create TEM-Simulator coordinate files
-            for them and add the relevant parameter segments for them into the configuration file
-        run_tem_simulator: Given the executable path to the TEM-Simulator, run the simulation with
-            the set-up specified by current Simulation object attributes
-
     """
 
     def __init__(self, config_file, base_coord_file, tiltseries_file, nonoise_tilts_file,
