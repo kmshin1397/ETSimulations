@@ -13,6 +13,16 @@ from shutil import rmtree
 
 
 def validate_steps_to_run(steps_to_run):
+    """
+    Helper function to validate that a list of steps given by the user is within the list of valid
+        EMAN2 processing steps to run
+
+    Args:
+        steps_to_run: The steps to validate
+
+    Returns: None
+
+    """
     valid_steps = ["import",
                    "reconstruct",
                    "estimate_ctf",
@@ -30,9 +40,9 @@ def eman2_main(root, name, eman2_args):
     """ The method to set-up tiltseries processing using EMAN2
 
     The steps taken are:
-    1. Make EMAN2 dir
-    2. Copy over template script
-    3. Fill in the specific parameters for the scripts based on the passed in arguments
+        1. Make EMAN2 dir
+        2. Copy over template script
+        3. Fill in the specific parameters for the scripts based on the passed in arguments
 
     Returns: None
 

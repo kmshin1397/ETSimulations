@@ -24,17 +24,28 @@ logger = logging.getLogger(__name__)
 
 
 class Barrel:
-    resolution = 10
+    """
+    Basic class to assemble Chimera commands to open a "barrel" for a T4SS model
+
+    Attributes:
+        volume_id: The Chimera volume ID to assign to the opened barrel
+        source: The path to the MRC to open for the barrel
+        angle: Random angle relative to the membrane perpendicular assigned to the barrel.
+
+    """
 
     def __init__(self, volume_id, source, angle):
         self.volume_id = volume_id
         self.source = source
         self.angle = angle
 
-    def set_resolution(self, resolution):
-        self.resolution = resolution
-
     def get_commands(self):
+        """
+        Get the list of commands to send to Chimera
+
+        Returns: List of Chimera commands
+
+        """
         commands = ["open #%d %s" % (self.volume_id, self.source)]
 
         return commands
@@ -44,7 +55,17 @@ class Barrel:
 # volume_id + 1 as well and thus assumes this Id value is still available,
 # at least until volume creation of the rod is complete
 class Rod:
-    resolution = 10
+    """
+    Basic class to assemble Chimera commands to open a "rod" for a T4SS model
+
+    Attributes:
+        volume_id: The Chimera volume ID to assign to the opened rod
+        source: The path to the MRC to open for the rod
+        center: The location at which the rod should be centered
+        degrees: The degrees to rotate the rod around the z-axis
+        angle: Random angle relative to the membrane perpendicular assigned to the rod.
+
+    """
 
     def __init__(self, volume_id, source, center, degrees, angle):
         self.volume_id = volume_id
@@ -54,10 +75,13 @@ class Rod:
         self.degrees = degrees
         self.angle = angle
 
-    def set_resolution(self, resolution):
-        self.resolution = resolution
-
     def get_commands(self):
+        """
+        Get the list of commands to send to Chimera
+
+        Returns: List of Chimera commands
+
+        """
         commands = ["open #%d %s" % (self.volume_id, self.source),
                     "turn z %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.degrees,
                                                                                   self.volume_id,
@@ -96,32 +120,8 @@ class T4SSAssembler:
             membrane segment for each particle
         chosen_angles: The list of randomly selected angles off of the perpendicular to the
             membrane segment for each particle
-        simulation: The src.simulation.Simulation object responsible for feeding particles assembled
-            here to a TEM-Simulator run
-
-    Methods:
-        ### Private methods ###
-        __get_random_position: Get a random shift from the center of the membrane segment to apply
-            to a new particle
-        __get_random_angle: Get a random article away from the perpendicular to the membrane segment
-            to apply to a new particle
-        __get_random_tbl_orientation: Get a random particle orientation from the distribution
-            loaded in from the .tbl file
-        __open_membrane: Enqueues the command to open the previously saved membrane segment MRC to
-            the Chimera session
-        __assemble_particle: Assemble a new particle by putting together a membrane segment and a
-            particle map at randomized angle/position
-        __send_commands_to_chimera: Send the accumulated Chimera commands to the Chimera server for
-            completion, waiting until the commands have been carried out
-
-        ### Public methods ###
-        set_up_tiltseries: Assembles a set of new particles to be placed in a single simulated tilt
-            stack, and updates the TEM-Simulator configurations accordingly
-        reset_temp_dir: Cleans up the temporary files directory used by the Assembler (can be used
-            to set up for a new TEM-Simulator run without having to re-instantiate the Assembler)
-        close: Sends a notification to the Chimera REST server that this particular Assembler (and
-            thus the child process using the Assembler, as currently set up) is done using the
-            Chimera server
+        simulation: The src.simulation.tem_simulation.Simulation object responsible for feeding
+            particles assembled here to a TEM-Simulator run
 
     """
 
@@ -329,14 +329,15 @@ class T4SSAssembler:
         Assembles a set of new particles to be placed in a single simulated tilt stack, and updates
         the TEM-Simulator configurations accordingly
 
-        For number of particles (i.e 4)
-            Make a temp truth volume
-            Assemble particle and save truth
-            Set up sim configs and update TEM input files
+        For number of particles (i.e 4):
+            1. Make a temp truth volume
+            2. Assemble particle and save truth
+            3. Set up sim configs and update TEM input files
 
         Args:
-            simulation: The src.simulation.Simulation object which holds the relevant TEM-Simulator
-                run parameters
+            simulation: The src.simulation.tem_simulation.Simulation object responsible for feeding
+                particles assembled here to a TEM-Simulator run, passed in from the simulation child
+                process running the simulation using this Assembler.
 
         """
         self.simulation = simulation

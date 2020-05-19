@@ -5,4 +5,4 @@ This section contains the developer-facing technical documentation of the ETSimu
 
 .. toctree::
     Architecture
-    Source
+    Source/Source

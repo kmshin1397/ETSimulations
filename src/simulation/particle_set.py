@@ -16,9 +16,10 @@ class ParticleSet:
             averaged), versus say just fake gold fiducials added to facilitate processing
 
     Methods:
-        add_coordinate: Append an XYZ coordinate to the list of particle coordinates
-        add_orientation: Append an ZXZ Euler angle rotation to the list of particle orientations
-        add_source: Set the particle source file for the particle set
+        add_coordinate(coord): Append an XYZ coordinate to the list of particle coordinates
+        add_orientation(orientation): Append an ZXZ Euler angle rotation to the list of particle
+            orientations
+        add_source(source): Set the particle source file for the particle set
 
     """
     def __init__(self, name, key=False):

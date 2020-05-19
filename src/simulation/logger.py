@@ -19,7 +19,8 @@ class RuntimeFormatter(logging.Formatter):
 
 def truncate_utf8_chars(filename, count, ignore_newlines=True):
     """
-    Truncates last `count` characters of a text file encoded in UTF-8/ASCII.
+    Truncates last `count` characters of a text file encoded in UTF-8/ASCII. Used to edit the JSON
+        metadata log file in the end into legitimate JSON formatting.
 
     Args:
         filename: The path to the text file to read
@@ -56,6 +57,17 @@ def truncate_utf8_chars(filename, count, ignore_newlines=True):
 
 
 def configure_listener(logfile, start_time):
+    """
+    Configure the main log listener to write out logs complete with time since the beginning of
+        program execution, the child/main process the log is coming from, etc.
+
+    Args:
+        logfile: The log file for the logger
+        start_time: The start time since execution
+
+    Returns: None
+
+    """
     root = logging.getLogger()
     file_handler = handlers.RotatingFileHandler(logfile)
     console_handler = logging.StreamHandler()
@@ -69,6 +81,19 @@ def configure_listener(logfile, start_time):
 
 
 def log_listener_process(queue, logfile, start_time):
+    """
+    Defines a logging listener process to listen for log messages coming through a multiprocessing
+        queue.
+
+    Args:
+        queue: The multiprocessing queue where log messages are put by main/child processes
+        logfile: The file to write out logs to
+        start_time: The execution start time of the listener, to allow for track timestamps of
+            messages
+
+    Returns: None
+
+    """
     configure_listener(logfile, start_time)
     while True:
         while not queue.empty():
@@ -82,6 +107,17 @@ def log_listener_process(queue, logfile, start_time):
 
 
 def metadata_log_listener_process(queue, logfile):
+    """
+    Defines a logging listener process for the metadata queue, compiling messages (which should be
+        a Simulation metadata object) into a JSON file.
+
+    Args:
+        queue: The multiprocessing queue where metadata log messages are put
+        logfile: The JSON file to compile the metadata into
+
+    Returns: None
+
+    """
     with open(logfile, "w") as f:
         f.write("[")
 

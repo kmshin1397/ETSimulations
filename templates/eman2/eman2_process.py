@@ -42,6 +42,7 @@ e2spt_refine_parameters = {}
 
 def run_process_with_params(base_command, params_dict, get_command_without_running=False):
     """ Helper function to run a given command line command, used to invoke various EMAN2 programs.
+
     Command line arguments to the base command can be passed in as a dictionary of key, value pairs.
     Arguments that do not have a value (i.e --help for many programs) should instead be passed in
     with the special value of 'enabled' for that key.
@@ -51,6 +52,7 @@ def run_process_with_params(base_command, params_dict, get_command_without_runni
         params_dict: A dictionary of input arguments to the command
         get_command_without_running: Option to return the assembled full command without actually
             running it
+
     """
     for arg, value in params_dict.items():
         if value == "enable":

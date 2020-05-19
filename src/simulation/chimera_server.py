@@ -27,6 +27,20 @@ def run_commands(commands, port, server_lock):
 
 
 class ChimeraCommandSet:
+    """ Represents a package of Chimera commands to be sent to the Chimera REST Servers.
+
+    The object has access to an acknowledge event from the Chimera server process so that it can
+    send the commands off and wait for notification that the commands were received and sent along
+    to the server.
+
+    Attributes:
+        commands: The list of Chimera commands to send along to the server
+        pid: The process ID of the subprocess requesting the Chimera commands so that the server can
+            notify the proper subprocess upon completion
+        ack_event: The event which will be set by the Chimera server upon completion of command
+            requests
+
+    """
     def __init__(self, commands, pid, ack_event):
         self.commands = commands
 
@@ -38,6 +52,19 @@ class ChimeraCommandSet:
         self.ack_event = ack_event
 
     def send_and_wait(self, commands_queue):
+        """
+        Sends a list of Chimera commands to the main Chimera server process, which will
+            eventually pull it from the queue and make the HTTP request to the Chimera REST server.
+            This function will wait until the HTTP request is made before returning.
+
+        Args:
+            commands_queue: The multiprocessing queue to put the package of commands into, passed in
+                from the main function which spawned both the Chimera server process and the
+                simulation subprocess.
+
+        Returns: None
+
+        """
         logger.info("Queueing up Chimera requests")
         commands_queue.put((self.pid, self.commands))
         self.ack_event.wait()
@@ -45,12 +72,29 @@ class ChimeraCommandSet:
 
 
 class ChimeraServer:
+    """ Class representing a Chimera REST Server process.
+
+    Uses the Python subprocess module to start Chimera as a REST server, and maintains the localhost
+        port number the Chimera server is running at.
+
+    Attributes:
+        port: The localhost port number the Chimera server is running at
+        process: The subprocess object for the Chimera server process
+        chimera_exec_path: The path to the Chimera program executable to run
+
+    """
     def __init__(self, chimera_exec_path):
         self.port = None
         self.process = None
         self.chimera_exec_path = chimera_exec_path
 
     def quit(self):
+        """
+        Terminate the Chimera server process
+
+        Returns: None
+
+        """
         logger.info("Shutting down Chimera server")
         # If the server has been started, terminate it
         if self.process is not None:
@@ -58,6 +102,12 @@ class ChimeraServer:
             logger.info("Chimera server shut down successfully")
 
     def get_port(self):
+        """
+        Get the Chimera server port number
+
+        Returns: The port number
+
+        """
         return self.port
 
     @staticmethod
@@ -67,6 +117,13 @@ class ChimeraServer:
             break  # Only need to read the one line for the port
 
     def start_chimera_server(self):
+        """
+        Start the Chimera REST Server as a subprocess, reading its output to figure out what port it
+            lies at
+
+        Returns: None
+
+        """
         port = -1
         # Need to provide executable path because subprocess does not know about aliases
         command = self.chimera_exec_path + ' --start RESTServer'

@@ -13,6 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class BasicAssembler:
+    """
+    An example bare minimum Assembler implementation which just opens an MRC to use as the "assembled" particle.
+
+    Attributes:
+        model: The path to the model MRC to use as the particle
+        temp_dir: The directory into which temporary truth volumes should be placed
+        chimera_queue: The multiprocessing queue that the server process is listening to
+        ack_event: The child process-specific acknowledgement event to subscribe to for
+            completion notifications from the Chimera server
+        pid: The ID of the child process running this assembler
+        commands: The list of Chimera commands accrued by the Assembler during processing, to be
+            sent to the Chimera REST server once ready
+        simulation: The src.simulation.tem_simulation.Simulation object responsible for feeding
+            particles assembled here to a TEM-Simulator run
+
+    """
     def __init__(self, model, temp_dir, chimera_queue, ack_event, pid):
         self.model = model
         self.temp_dir = temp_dir
@@ -48,6 +64,13 @@ class BasicAssembler:
         self.commands.append("close session")
 
     def __send_commands_to_chimera(self):
+        """
+        Create a Chimera Command Set object with the current commands stored in the Assembler and
+            send them off to the server
+
+        Returns: None
+
+        """
         # Now that we've built up the sequence of commands to generate the model, send to Chimera
         # Make sure to wait until the server is available by sending over the lock
         command_set = chimera.ChimeraCommandSet(self.commands, self.pid, self.ack_event)
@@ -55,10 +78,17 @@ class BasicAssembler:
 
     def set_up_tiltseries(self, simulation):
         """
-        For number of particles (i.e 4)
-            Make a temp truth volume
-            Assemble particle and save truth
-            Set up sim configs and update TEM input files
+        Implements the basic tiltseries set-up procedure, which consists of:
+
+        For number of particles (i.e 4):
+            1. Make a temp truth volume
+            2. Assemble particle and save truth
+            3. Set up sim configs and update TEM input files
+
+        Args:
+            simulation: The src.simulation.tem_simulation.Simulation object responsible for feeding
+                particles assembled here to a TEM-Simulator run, passed in from the simulation child
+                process running the simulation using this Assembler.
         """
         self.simulation = simulation
 
@@ -103,9 +133,21 @@ class BasicAssembler:
         return self.simulation
 
     def reset_temp_dir(self):
+        """
+        Resets the temp directory resources for the Assembler, i.e removes current particles created
+
+        Returns: None
+
+        """
         rmtree(self.temp_dir + "/truth_vols")
 
     def close(self):
+        """
+        Lets the Chimera server know that this Assembler is done for good
+
+        Returns: None
+
+        """
         # Let the Chimera server know that this Assembler is done using the server
         self.commands = ["END"]
         self.__send_commands_to_chimera()

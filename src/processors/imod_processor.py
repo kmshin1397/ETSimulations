@@ -1,3 +1,8 @@
+""" This module implements the processing function for the IMOD software package.
+
+The module will create an IMOD project directory and set up a batchruntomo run within it.
+"""
+
 import shutil
 import csv
 import json
@@ -6,7 +11,6 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 import sys
 from tempfile import mkstemp
-import re
 import subprocess
 import shlex
 
@@ -58,6 +62,17 @@ def retrieve_orientations(metadata_file, root):
 
 
 def replace_adoc_values(adoc_file, imod_args):
+    """
+    Helper function to replace certain .adoc values for the batchruntomo run, specifically dealing
+        with the fiducial tracking options made available to the ets_process_data.py configs.
+
+    Args:
+        adoc_file: The .adoc file path to edi
+        imod_args: The dictionary of IMOD Processor arguments
+
+    Returns: None
+
+    """
     # Create temp file
     fh, abs_path = mkstemp()
     with os.fdopen(fh, 'w') as new_file:
@@ -96,14 +111,15 @@ def replace_adoc_values(adoc_file, imod_args):
 
 
 def set_up_batchtomo(root, name, imod_args):
-    """
+    """ Generates a new set of batchruntomo configuration files in the project directory, such as
+        the .com file for the batchruntomo run, the .adoc directive files, and the .ebt Etomo file
 
     Args:
-        root:
-        name:
-        imod_args:
+        root: The ets_generate_data.py project root path
+        name: The name of the project
+        imod_args: A dictionary of IMOD Processor arguments
 
-    Returns: The newly created IMOD .com file to run the batchtomo
+    Returns: The newly created IMOD .com file to run the batchruntomo
 
     """
     # Default values for optional configs
@@ -238,6 +254,17 @@ def set_up_batchtomo(root, name, imod_args):
 
 
 def replace_batchtomo_start_and_end_steps(com_file, start, end):
+    """
+    Helper function to edit the start and end step parameters in the batchruntomo .com file
+
+    Args:
+        com_file: The path to the .com file
+        start: The batchruntomo start step
+        end: The batchruntom end step
+
+    Returns: None
+
+    """
     # Create temp file
     fh, abs_path = mkstemp()
     with os.fdopen(fh, 'w') as new_file:
@@ -257,6 +284,16 @@ def replace_batchtomo_start_and_end_steps(com_file, start, end):
 
 
 def run_submfg(com_file, cwd=None):
+    """
+    Helper function to run the IMOD submfg program which runs an IMOD .com file
+
+    Args:
+        com_file: The path to the .com file to run
+        cwd: The current working directory to run the program under
+
+    Returns: None
+
+    """
     submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
     command = "%s -t %s" % (submfg_path, com_file)
     print(command)
@@ -280,11 +317,12 @@ def imod_main(root, name, imod_args):
     """ The method to set-up tiltseries processing using IMOD
 
     The steps taken are:
-    1. Make IMOD dir
-    2. Copy over template batchtomo files, as well as IMOD coarse alignment files (simulated data
-        will not have enough signal usually to work well with the template-matching coarse alignment
-        step, so we need to skip and fake that step)
-    3. Fill in the specific parameters for the batchtomo files based on the passed in arguments
+        1. Make IMOD dir
+        2. Copy over template batchruntomo files, as well as IMOD coarse alignment files (simulated
+            data will not have enough signal usually to work well with the template-matching coarse
+            alignment step, so we need to skip and fake that step)
+        3. Fill in the specific parameters for the batchruntomo files based on the passed in
+            arguments
 
     Returns: None
 

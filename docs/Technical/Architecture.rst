@@ -4,7 +4,7 @@ Software architecture
 ==========
 Simulation
 ==========
-.. figure:: _static/generate_architecture.jpg
+.. figure:: ../_static/generate_architecture.jpg
     :width: 100%
     :alt: Simulation module architecture
 

@@ -15,7 +15,7 @@ Table of Contents
     Installation
     Simulation
     Processing
-    Technical
+    Technical/Technical
 
 Indices and tables
 ==================
