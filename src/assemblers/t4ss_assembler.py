@@ -34,10 +34,11 @@ class Barrel:
 
     """
 
-    def __init__(self, volume_id, source, angle):
+    def __init__(self, volume_id, source, angle, orig_coord_sys):
         self.volume_id = volume_id
         self.source = source
         self.angle = angle
+        self.orig_coord_sys = orig_coord_sys
 
     def get_commands(self):
         """
@@ -46,8 +47,11 @@ class Barrel:
         Returns: List of Chimera commands
 
         """
-        commands = ["open #%d %s" % (self.volume_id, self.source)]
-
+        commands = ["open #%d %s" % (self.volume_id, self.source),
+                    "turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" %
+                    (self.angle[0], self.volume_id, self.orig_coord_sys),
+                    "turn y %.3f models #%d center 0,0,0 coordinateSystem #%d" %
+                    (self.angle[1], self.volume_id, self.orig_coord_sys)]
         return commands
 
 
@@ -64,16 +68,18 @@ class Rod:
         center: The location at which the rod should be centered
         degrees: The degrees to rotate the rod around the z-axis
         angle: Random angle relative to the membrane perpendicular assigned to the rod.
+        orig_coord_sys: The reference model number for the original coordinate system for the entire
+            particle - used in case the laboratory frame is changed by the user mid-assembly
 
     """
 
-    def __init__(self, volume_id, source, center, degrees, angle):
+    def __init__(self, volume_id, source, center, degrees, angle, orig_coord_sys):
         self.volume_id = volume_id
-        # self.source = "/Users/kshin/Documents/data/T4SS/simulations/real_pdbs/rod.pdb"
         self.source = source
         self.center = center
         self.degrees = degrees
         self.angle = angle
+        self.orig_coord_sys = orig_coord_sys
 
     def get_commands(self):
         """
@@ -82,18 +88,24 @@ class Rod:
         Returns: List of Chimera commands
 
         """
+        center_string = "0,0,0"
         commands = ["open #%d %s" % (self.volume_id, self.source),
                     "turn z %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.degrees,
                                                                                   self.volume_id,
                                                                                   self.volume_id),
-                    "move %.3f,%.3f,%.3f models #%d" % (self.center[0], self.center[1],
-                                                        self.center[2], self.volume_id),
-                    "turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.angle[0],
-                                                                                  self.volume_id,
-                                                                                  self.volume_id),
-                    "turn y %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.angle[1],
-                                                                                  self.volume_id,
-                                                                                  self.volume_id)]
+                    "move %.3f,%.3f,%.3f models #%d coordinateSystem #%d" % (self.center[0],
+                                                                             self.center[1],
+                                                                             self.center[2],
+                                                                             self.volume_id,
+                                                                             self.orig_coord_sys),
+                    "turn x %.3f models #%d center %s coordinateSystem #%d" % (self.angle[0],
+                                                                               self.volume_id,
+                                                                               center_string,
+                                                                               self.volume_id),
+                    "turn y %.3f models #%d center %s coordinateSystem #%d" % (self.angle[1],
+                                                                               self.volume_id,
+                                                                               center_string,
+                                                                               self.volume_id)]
         return commands
 
 
@@ -165,8 +177,8 @@ class T4SSAssembler:
         Returns: A tuple (x, y) of the x-axis and y-axis shifts
 
         """
-        x = random.randrange(-20, 20, 1)
-        y = random.randrange(-20, 20, 1)
+        x = random.randrange(-75, 75, 1)
+        y = random.randrange(-75, 75, 1)
         return x, y
 
     @staticmethod
@@ -192,7 +204,7 @@ class T4SSAssembler:
         choice = random.choice(self.loaded_orientations).tolist()
         return [-choice[2], -choice[1], -choice[0]]
 
-    def __open_membrane(self, model_id, particle_height_offset):
+    def __open_membrane(self, model_id, particle_height_offset, orig_coord_sys):
         """
         Enqueues the command to open the previously saved membrane segment MRC to the Chimera
         session
@@ -201,14 +213,15 @@ class T4SSAssembler:
             model_id: The Chimera session model ID to assign to the opened membrane segment
             particle_height_offset: The z-axis offset to move up the membrane so that it sits above
                 the particle
+            orig_coord_sys: The reference model number for the original coordinate system for the
+                entire particle - used in case the laboratory frame is changed by the user
+                mid-assembly
 
         Returns: The model ID of the membrane volume within the Chimera segment
 
         """
         path = self.custom_args["membrane_path"]
         self.commands.append('open #%d %s' % (model_id + 10, path))
-        self.commands.append(
-            'move 0,0,%d models #%d' % (particle_height_offset + 25, model_id + 10))
         self.commands.append(
             "vop scale #%d factor %0.3f modelId #%d" % (model_id + 10, 1.5, model_id))
         self.commands.append('close #%d' % (model_id + 10))
@@ -223,9 +236,15 @@ class T4SSAssembler:
             output_filename: The filepath where the assembled particle map is saved
 
         """
+        # We create a small sphere to mark the original coordinate system reference for the Chimera
+        # session. This will be used as an external reference to use to keep the following models
+        # in a logical frame of reference while they are being moved and rotated
+        reference_coord_sys = 999
+        membrane_model = 98
+        self.commands.append("shape sphere modelId #%d" % reference_coord_sys)
 
         # Clear state variables
-        model_id = 0
+        model_id = 1
         random_angles = []
 
         # Draw random orientation and position
@@ -236,19 +255,25 @@ class T4SSAssembler:
         random_position = self.__get_random_position()
         self.chosen_positions.append(random_position)
 
-        # model = Chimera.load_model_from_source(self.model, model_id, self.commands)
-
-        resolution = 5
+        # Tack on membrane
+        particle_height_offset = 18
+        membrane_model = self.__open_membrane(membrane_model, particle_height_offset,
+                                              reference_coord_sys)
 
         # Random angle with respect to the membrane (different from overall orientation angles)
-        random_angle = self.__get_random_angle()
-        random_angles.append(random_angle)
-        b = Barrel(model_id, self.custom_args["barrel"], random_angle)
+        barrel_angle = self.__get_random_angle()
+        random_angles.append(barrel_angle)
+        b = Barrel(model_id, self.custom_args["barrel"], barrel_angle, membrane_model)
         self.commands.extend(b.get_commands())
 
+        # Move the central barrel down to below the membrane
+        self.commands.append(
+            'move 0,0,%d models #%d coordinateSystem #%d' % (-particle_height_offset - 25,
+                                                             b.volume_id,
+                                                             membrane_model))
         # Rods
         rods_id = model_id + 1
-        num_rods = 4
+        num_rods = 5
         rod_ids = []
         for i in range(num_rods):
             deg_increment = 360. / num_rods
@@ -261,7 +286,10 @@ class T4SSAssembler:
             # Random angle with respect to the membrane (different from overall orientation angles)
             random_angle = self.__get_random_angle()
 
-            rod = Rod(rods_id + i, self.custom_args["rod"], (x, y, 0), degrees, random_angle)
+            # Note: rods seem to get added moved-down to where the barrel is automatically since the
+            # last thing we added was the barrel, so no need to move them down with a command
+            rod = Rod(rods_id + i, self.custom_args["rod"], (x, y, 0), degrees, random_angle,
+                      membrane_model)
             rod_ids.append(rods_id + i)
             random_angles.append(random_angle)
 
@@ -269,35 +297,20 @@ class T4SSAssembler:
 
         self.chosen_angles.append(random_angles)
 
-        # Have to rotate the central barrel last so the frame of reference doesn't get messed up
-        self.commands.append("turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" %
-                             (b.angle[0], b.volume_id, b.volume_id))
-        self.commands.append("turn y %.3f models #%d center 0,0,0 coordinateSystem #%d" %
-                             (b.angle[1], b.volume_id, b.volume_id))
-
         # Combine the barrel and rod maps
-        full_model = 98
-        combine_command = "vop add #%d," % model_id
-        for i, rod_id in enumerate(rod_ids):
-            combine_command += "#%d" % rod_id
-            if i != len(rod_ids) - 1:
-                combine_command += ","
-
-        combine_command += " modelId #%d" % full_model
+        full_model = 99
+        max_rod_id = rod_ids[-1]
+        combine_command = "vop add #%d-%d modelId #%d" % (model_id, max_rod_id, full_model)
         self.commands.append(combine_command)
 
-        # Tack on membrane
-        particle_height_offset = 20
-        membrane_model = self.__open_membrane(99, particle_height_offset)
-
         # Apply random position
-        self.commands.append("move %.2f,%.2f,0 models #%d" % (random_position[0],
-                                                              random_position[1], full_model))
+        self.commands.append("move %.2f,%.2f,0 models #%d coordinateSystem #%d" %
+                             (random_position[0], random_position[1], full_model, membrane_model))
 
         # Commands to combine membrane and particle into one mrc
         final_model = 100
         self.commands.append(
-            "vop add #%d,#%d modelId #%d" % (membrane_model, full_model, final_model))
+            "vop add #%d-%d modelId #%d" % (membrane_model, full_model, final_model))
 
         self.commands.append(
             "vop scale #%d factor %0.3f modelId #%d" % (final_model, 3, final_model + 1))
@@ -361,7 +374,6 @@ class T4SSAssembler:
             particle_set = ParticleSet("T4SS%d" % (i + 1), key=True)
 
             new_particle = truth_vols_dir + "/%d.mrc" % i
-            # new_particle = truth_vols_dir + "/%d.pdb" % i
 
             # Assemble a new particle
             orientation, position, angles = self.__assemble_particle(new_particle)

@@ -126,7 +126,6 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
     Returns: None
 
     """
-    print("STARTBPLSDSADSFASWF")
     root = configs["root"]
     raw_data_dir = root + "/raw_data"
 
@@ -273,9 +272,10 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
 
             logger.debug("Making request: " + c)
             requests.get(base_request, params={'command': c})
+            # time.sleep(2)
 
-        # Clean up
-        # requests.get(base_request, params={'command': 'close session'})
+        # Clean up in case the Assembler did not
+        requests.get(base_request, params={'command': 'close session'})
 
         # Pass along an ack
         process_events[requester_pid].set()
