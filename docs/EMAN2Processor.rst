@@ -76,7 +76,7 @@ Running the generated script
 ============================
 The generated EMAN2 processing script that is outputted by ets\_process\_data.py will be located in the newly created EMAN2 project directory in the processed\_data folder created. This will be a normal Python script you can run, albeit requiring Python 3, using: ::
 
-    python3 eman2\_process.py
+    python3 eman2_process.py
 
 Note that Python 3 is only used for the proper file IO and kicking off EMAN2 programs. The EMAN2 programs themselves will be run using Python 2 as EMAN2 is still using Python 2 officially.
 
