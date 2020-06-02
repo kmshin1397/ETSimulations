@@ -1,7 +1,7 @@
 # ETSimulations
 Automated pipeline to generate and process simulated cryo-electron tomography data
 
-Documentation available online at : https://etsimulations.readthedocs.io/en/sphinx/index.html
+Documentation available online at : https://etsimulations.readthedocs.io/en/latest/index.html
 
 ## Getting started
 The ETSimulations package is designed to be a tool to facilitate generation and processing of simulated cryo-electron tomography data. As of this preliminary version, only the generation of simulated tilt stacks is well-supported and covered by this manual.
