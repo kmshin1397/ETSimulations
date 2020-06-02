@@ -174,6 +174,7 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
         remainders_assigned_before = min(pid, remainder)
         global_id = pid * (configs["num_stacks"] // configs["num_cores"]) + i + \
                     remainders_assigned_before
+
         stack_dir = raw_data_dir + "/%s_%d" % (project_name, global_id)
         os.mkdir(stack_dir)
 
@@ -445,7 +446,7 @@ def main(configs):
     metadata_process.join()
 
     logger.info('Total time taken: %0.3f minutes' % time_taken)
-    
+
     # if "email" in configs:
     #     send_email("kshin@umbriel.jensen.caltech.edu", configs["email"],
     #                "Simulation complete", 'Total time taken: %0.3f minutes' % time_taken)

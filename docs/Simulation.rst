@@ -56,13 +56,18 @@ As noted above, configuration parameters for simulating data sets with the **ets
         The number of Chimera instances to spawn to drive particle assembly. Creating more windows will clutter your display more, but can make simulations run faster. If your particle assembly does not use a lot of Chimera commands/spend a lot of time running Chimera commands, then having multiple Chimera windows may not be necessary
 
     * **defocus\_values** : List of floats
-        A list of defocus values to assign to simulations. The values will be evenly assigned across the dataset, i.e. if 2 defocus values are provided half of the simulated stacks in a dataset will be given one and the other given the other.
+        A list of defocus values to assign to simulations. The values will be evenly assigned across the data set, i.e. if 2 defocus values are provided half of the simulated stacks in a dataset will be given one and the other given the other.
 
     * **bead\_map** : string
         The path to the MRC map representing fake gold beads to scatter throughout the tilt stacks. An example is provided in the templates folder.
 
     * **email** : string
         An email address to send completion notifications to
+
+    * **custom_configs** : YAML object (parsed in as Python dict)
+        Any custom parameters to be passed on to your particular Assembler class goes here
+
+For parameters specific to the included T4SS Assembler, please see :ref:`the T4SS tutorial <tutorial-t4ss-assembler>`.
 
 ===========================
 Data set generation outputs

@@ -273,15 +273,15 @@ class T4SSAssembler:
                                                              membrane_model))
         # Rods
         rods_id = model_id + 1
-        num_rods = 5
+        num_rods = self.custom_args["num_rods"]
         rod_ids = []
         for i in range(num_rods):
             deg_increment = 360. / num_rods
             degrees = deg_increment * i
 
             # Compute positions
-            x = math.cos(math.radians(degrees)) * 125
-            y = math.sin(math.radians(degrees)) * 125
+            x = math.cos(math.radians(degrees)) * self.custom_args["rod_distance_from_center"]
+            y = math.sin(math.radians(degrees)) * self.custom_args["rod_distance_from_center"]
 
             # Random angle with respect to the membrane (different from overall orientation angles)
             random_angle = self.__get_random_angle()
