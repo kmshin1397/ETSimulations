@@ -20,7 +20,7 @@ More details on the parameters available can be found in the next section.
 Simulation configuration parameters
 ===================================
 
-As noted above, configuration parameters for simulating data sets with the **ets\_geenrate\_data.py** program relies on a YAML file defining values for various arguments. The specifc options available are listed below.
+As noted above, configuration parameters for simulating data sets with the **ets\_generate\_data.py** program relies on a YAML file defining values for various arguments. The specifc options available are listed below.
 
     * **tem\_simulator\_executable** : string
         The file path to the TEM-simulator executable
@@ -61,13 +61,21 @@ As noted above, configuration parameters for simulating data sets with the **ets
     * **bead\_map** : string
         The path to the MRC map representing fake gold beads to scatter throughout the tilt stacks. An example is provided in the templates folder.
 
+    * **bead\_occupancy** : float
+        This value is tied to the "occupancy" parameter for particles in the TEM-Simulator configurations, and affects the amount of fiducial beads present in the stacks.
+
+    * **assembler** : string
+        The Assembler class to use. The two choices included out-of-the-box are "basic" and "t4ss". Custom assemblers can be added to the framework and exposed here.
+
     * **email** : string
         An email address to send completion notifications to
 
     * **custom_configs** : YAML object (parsed in as Python dict)
         Any custom parameters to be passed on to your particular Assembler class goes here
 
-For parameters specific to the included T4SS Assembler, please see :ref:`the T4SS tutorial <tutorial-t4ss-assembler>`.
+For a quick look at these in action (and a more in-depth starter guide than the overview intro above), please see :ref:`the Basic Assembler guide <tutorial-basic-assembler>`.
+
+For custom parameters specific to the included T4SS Assembler, please see :ref:`the T4SS tutorial <tutorial-t4ss-assembler>`.
 
 ===========================
 Data set generation outputs

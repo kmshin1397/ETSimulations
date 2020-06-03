@@ -327,7 +327,7 @@ class Simulation:
             f.write("particle_coords = file\n")
             f.write("coord_file_in = %s\n\n" % coord_file)
 
-    def __write_fiducials_particle_set_section(self):
+    def __write_fiducials_particle_set_section(self, bead_occupancy):
         """
         Write out the "particleset" section for the gold fiducials, which uses the random
             coordinates from the occupancy option for the TEM-simulator instead of the standard
@@ -337,7 +337,7 @@ class Simulation:
         with open(self.config_file, "a") as f:
             f.write("=== particleset ===\n")
             f.write("particle_type = Fiducial\n")
-            f.write("occupancy = 0.00025\n")
+            f.write("occupancy = %d\n" % bead_occupancy)
             f.write("particle_coords = random\n")
             f.write("where = volume\n\n")
 
@@ -368,18 +368,19 @@ class Simulation:
             self.__write_particle_section(particle, particle_set.source, self.apix)
             self.__write_particle_set_section(particle_set, new_coord_file)
 
-    def create_fiducials(self, fiducials_source):
+    def create_fiducials(self, fiducials_source, bead_occupancy):
         """
         Set up the TEM-simulator configurations to generate randomly distributed gold fiducials
 
         Args:
             fiducials_source: The MRC file designed to simulate gold fiducials
+            bead_occupancy: The TEM-Simulator occupancy value for the beads
 
         """
 
         # Add Particle and ParticleSet segments to config file
         self.__write_particle_section("Fiducial", fiducials_source, self.apix)
-        self.__write_fiducials_particle_set_section()
+        self.__write_fiducials_particle_set_section(bead_occupancy)
 
     def run_tem_simulator(self, tem_exec_path):
         """

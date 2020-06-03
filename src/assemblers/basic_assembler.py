@@ -29,7 +29,7 @@ class BasicAssembler:
             particles assembled here to a TEM-Simulator run
 
     """
-    def __init__(self, model, temp_dir, chimera_queue, ack_event, pid):
+    def __init__(self, model, temp_dir, chimera_queue, ack_event, pid, custom_args):
         self.model = model
         self.temp_dir = temp_dir
         self.commands = []
@@ -44,6 +44,8 @@ class BasicAssembler:
 
         # The subprocess ID of the worker using this Assembler
         self.pid = pid
+
+        self.custom_args = custom_args
 
     def __assemble_particle(self, output_filename):
         """
@@ -105,10 +107,14 @@ class BasicAssembler:
         particle_set = ParticleSet("BasicParticle", key=True)
 
         for i in range(num_particles):
-            new_particle = truth_vols_dir + "/%d.mrc" % i
 
-            # Assemble a new particle
-            self.__assemble_particle(new_particle)
+            if not self.custom_args["use_common_model"]:
+                new_particle = truth_vols_dir + "/%d.mrc" % i
+
+                # Assemble a new particle
+                self.__assemble_particle(new_particle)
+            else:
+                new_particle = self.model
 
             # Update the simulation parameters with the new particle
 

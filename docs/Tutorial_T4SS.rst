@@ -1,6 +1,6 @@
 Simulating the T4SS
 ===================
-Included in the ETSimulations repository are example files relating to the simulation of Type IV Secretion Systems. This tutorial covers the process of generating a data set from these as a way to demonstrate the simulation workflow. 
+Included in the ETSimulations repository are example files relating to the simulation of Type IV Secretion Systems. This tutorial covers the process of generating a data set from these as a way to demonstrate the simulation workflow.
 Rest of tutorial to be completed.
 
 .. _tutorial-t4ss-assembler:

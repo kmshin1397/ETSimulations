@@ -31,9 +31,16 @@ import yaml
 # Custom modules
 from simulation.notify import send_email
 from simulation.tem_simulation import Simulation
+from assemblers.basic_assembler import BasicAssembler
 from assemblers.t4ss_assembler import T4SSAssembler
 from simulation.chimera_server import ChimeraServer
 from simulation.logger import log_listener_process, metadata_log_listener_process
+
+
+assembler_registry = {
+    "basic": BasicAssembler,
+    "t4ss": T4SSAssembler
+}
 
 
 def configure_root_logger(queue):
@@ -155,8 +162,10 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
     if remainder != 0 and pid < remainder:
         num_stacks_per_cores += 1
 
-    assembler = T4SSAssembler(configs["model"], process_temp_dir, chimera_commands_queue,
-                              ack_event, pid, configs["custom_configs"])
+    assembler_type = configs["assembler"]
+    assembler = assembler_registry[assembler_type](configs["model"], process_temp_dir,
+                                                   chimera_commands_queue, ack_event, pid,
+                                                   configs["custom_configs"])
 
     apix = None
     if "apix" in configs:
@@ -193,7 +202,7 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
         sim.edit_output_files()
 
         # Set up beads
-        sim.create_fiducials(configs["bead_map"])
+        sim.create_fiducials(configs["bead_map"], configs["bead_occupancy"])
 
         TEM_exec_path = configs["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)

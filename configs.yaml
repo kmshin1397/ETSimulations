@@ -16,6 +16,8 @@ apix: 0.283
 num_chimera_windows: 3
 defocus_values: [1, 5, 10]
 bead_map: "/data/kshin/T4SS_sim/bead.mrc"
+bead_occupancy: 0.00025
+assembler: "t4ss"
 email: "kshin@caltech.edu"
 
 # Custom configs
