@@ -153,7 +153,7 @@ def set_up_batchtomo(root, name, imod_args):
             raw_stack = ""
             new_base = ""
             for f in os.listdir(raw_data + "/" + base):
-                # Look for .mrc for the raw stack
+                # Look for map for the raw stack
                 if f.endswith(".mrc") or f.endswith(".st"):
                     raw_stack = f
                     new_base = os.path.splitext(f)[0]
@@ -218,7 +218,7 @@ def set_up_batchtomo(root, name, imod_args):
             stack = ""
             for file in os.listdir(os.fsencode("%s/%s" % (imod_project_dir, base))):
                 filename = os.fsdecode(file)
-                if filename.endswith(".mrc"):
+                if f.endswith(".mrc") or f.endswith(".st"):
                     stack = filename
                     break
 
