@@ -218,7 +218,7 @@ def set_up_batchtomo(root, name, imod_args):
             stack = ""
             for file in os.listdir(os.fsencode("%s/%s" % (imod_project_dir, base))):
                 filename = os.fsdecode(file)
-                if f.endswith(".mrc") or f.endswith(".st"):
+                if filename.endswith(".mrc") or filename.endswith(".st"):
                     stack = filename
                     break
 
