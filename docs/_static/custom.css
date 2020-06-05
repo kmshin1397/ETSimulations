@@ -6,3 +6,29 @@
     padding: 0;
     border: none;
 }
+
+div.body p {
+    line-height: 1.5em;
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
+}
+
+.highlight pre {
+    padding: 0.5em;
+    overflow-x: auto;
+    width: 550px;
+}
+
+.highlight td.code pre {
+    padding: 0;
+    white-space: pre;
+}
+
+.highlight > pre {
+    white-space: pre;
+    word-wrap: normal;
+}
+
+table.highlighttable {
+    margin-left: 0;
+}

@@ -152,7 +152,6 @@ class T4SSAssembler:
         self.ack_event = ack_event
 
         # Load in orientations distribution from file
-        # orientation_table = "/data/kshin/T4SS_sim/manual_full.tbl"
         orientation_table = custom_args["orientations_tbl"]
         raw_data = np.loadtxt(orientation_table)
         self.loaded_orientations = raw_data[:, 6:9]

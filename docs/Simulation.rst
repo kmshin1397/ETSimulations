@@ -1,3 +1,6 @@
+
+.. _simulation-overview:
+
 Simulation
 ==========
 
@@ -15,6 +18,8 @@ To actually run a set of simulations, run (assuming you've activated the virtual
     python src/ets_generate_data.py -i configs.yaml
 
 More details on the parameters available can be found in the next section.
+
+.. _ets-generate-data-params:
 
 ===================================
 Simulation configuration parameters

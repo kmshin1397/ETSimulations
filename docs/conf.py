@@ -54,7 +54,9 @@ html_static_path = ['_static']
 master_doc = 'index'
 
 html_theme_options = {
-    'sidebar_width': '250px'
+    'sidebar_width': '250px',
+    'font_size': '21px',
+    'code_font_size': '18px'
 }
 
 html_css_files = {

@@ -15,7 +15,7 @@ Table of Contents
     Installation
     Simulation
     Processing
-    Tutorials
+    Guides
     Technical/Technical
 
 Indices and tables
