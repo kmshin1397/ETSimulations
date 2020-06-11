@@ -337,7 +337,7 @@ class Simulation:
         with open(self.config_file, "a") as f:
             f.write("=== particleset ===\n")
             f.write("particle_type = Fiducial\n")
-            f.write("occupancy = %d\n" % bead_occupancy)
+            f.write("occupancy = %f\n" % bead_occupancy)
             f.write("particle_coords = random\n")
             f.write("where = volume\n\n")
 
