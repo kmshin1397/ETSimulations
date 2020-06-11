@@ -32,7 +32,7 @@ def retrieve_orientations(metadata_file, root):
     with open(metadata_file, "r") as f:
         metadata = json.loads(f.read())
         for particle_set in metadata:
-            basename = os.path.basename(particle_set["tiltseries_file"]).split(".")[0]
+            basename = os.path.basename(particle_set["output"]).split(".")[0]
             csv_name = root + "/%s/" % basename + "T4SS_slicerAngles.csv"
             orientations = np.array(particle_set["orientations"])
             with open(csv_name, 'w', newline='') as csvfile:
@@ -154,7 +154,7 @@ def set_up_batchtomo(root, name, imod_args):
             new_base = ""
             for f in os.listdir(raw_data + "/" + base):
                 # Look for map for the raw stack
-                if f.endswith(".mrc") or f.endswith(".st"):
+                if (f.endswith(".mrc") or f.endswith(".st")) and not f.endswith("nonoise.mrc"):
                     raw_stack = f
                     new_base = os.path.splitext(f)[0]
                     break
