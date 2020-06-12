@@ -20,16 +20,16 @@ For tips on using Chimera to assemble particles, refer to :ref:`the Chimera guid
 Setting up the simulation run
 -----------------------------
 
-Once you have a particle source file to use for your simulation, it is time to set up the run of **ets\_generate\_data.py**. You need to make a .yaml configuration file to pass in to the data generation program, much like the example provided as **configs.yaml**. The specific parameters are described :ref:`here <ets-generate-data-params>`. The **model** parameter should hold the full file path to your particle source file. The **assembler** parameter should be set to "basic" since we are using the Basic Assembler. Finally, take note of the **custom\_configs** parameter. The custom\_configs object is used to pass along any Assembler-specific arguments to the particle assembler. For the Basic Assembler, there is a single custom configuration option available - the **use_common_map** option.
+Once you have a particle source file to use for your simulation, it is time to set up the run of **ets\_generate\_data.py**. You need to make a .yaml configuration file to pass in to the data generation program, much like the example provided as **configs.yaml**. The specific parameters are described :ref:`here <ets-generate-data-params>`. The **model** parameter should hold the full file path to your particle source file. The **assembler** parameter should be set to "basic" since we are using the Basic Assembler. Finally, take note of the **custom\_configs** parameter. The custom\_configs object is used to pass along any Assembler-specific arguments to the particle assembler. For the Basic Assembler, there is a single custom configuration option available - the **use_common_model** option.
 
-use\_common\_map
+use\_common\_model
 ````````````````
-The **use\_common\_map** is incorporated into your YAML configurations like so: ::
+The **use\_common\_model** is incorporated into your YAML configurations like so: ::
 
     ... # Other configurations
 
     custom_configs:
-        use_common_map: true
+        use_common_model: true
 
 Enable this option to just use the same particle model source file for every instance of the particle within the generated data set (given by the **model** parameter).
 
@@ -65,7 +65,7 @@ Once you have the configuration YAML and any modifications to the assembler done
 
     python ets_generate_data.py -i <your-YAML-file>
 
-You will see Chimera windows open up (the number of which was specified in your YAML file) and if you have **use\_common\_map** turned to false, you will see models being opened and saved through Chimera as ETSimulations sets up runs of the TEM-Simulator. The maximum number of TEM-Simulator runs that can run concurrently is determined by your **num\_cores** parameter, though the true number may be less at times if processes need to spend time assembling particles through Chimera before running TEM-Simulator.
+You will see Chimera windows open up (the number of which was specified in your YAML file) and if you have **use\_common\_model** turned to false, you will see models being opened and saved through Chimera as ETSimulations sets up runs of the TEM-Simulator. The maximum number of TEM-Simulator runs that can run concurrently is determined by your **num\_cores** parameter, though the true number may be less at times if processes need to spend time assembling particles through Chimera before running TEM-Simulator.
 
 To keep track of the current progress of the overall data set run in more detail, you can take a look at the <name>.log file located in your project **root** folder.
 
