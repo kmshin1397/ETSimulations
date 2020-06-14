@@ -387,18 +387,20 @@ def main(configs):
         processes.append(process)
         complete_processes.append(complete_event)
 
-    for i in range(num_chimeras):
-        chimera_commands, chimera_process_events = chimera_objects[i]
+    # When using the Basic Assembler with use_common_model mode, we don't need Chimera servers
+    if not (configs["assembler"] == "basic" and configs["custom_configs"]["use_common_model"]):
+        for i in range(num_chimeras):
+            chimera_commands, chimera_process_events = chimera_objects[i]
 
-        # Start the Chimera server first, so it can be ready for the model assemblers
-        chimera_process = multiprocessing.Process(target=run_chimera_server,
-                                                  args=(configs["chimera_exec_path"],
-                                                        chimera_commands,
-                                                        chimera_process_events))
-        logger.info("Starting Chimera server process")
-        chimera_process.start()
+            # Start the Chimera server first, so it can be ready for the model assemblers
+            chimera_process = multiprocessing.Process(target=run_chimera_server,
+                                                      args=(configs["chimera_exec_path"],
+                                                            chimera_commands,
+                                                            chimera_process_events))
+            logger.info("Starting Chimera server process")
+            chimera_process.start()
 
-        chimera_processes.append(chimera_process)
+            chimera_processes.append(chimera_process)
 
     # Now start all the processes
     for i, process in enumerate(processes):
@@ -443,11 +445,12 @@ def main(configs):
         investigated more in the future'''
         # processes[i].terminate()
 
-    for i, chimera_process in enumerate(chimera_processes):
-        chimera_process.join()
-        logger.info("Joined in Chimera process %d" % i)
+    if not (configs["assembler"] == "basic" and configs["custom_configs"]["use_common_model"]):
+        for i, chimera_process in enumerate(chimera_processes):
+            chimera_process.join()
+            logger.info("Joined in Chimera process %d" % i)
 
-    logger.info("Joined Chimera server processes")
+        logger.info("Joined Chimera server processes")
 
     time_taken = (time.time() - start_time) / 60.
 

@@ -128,8 +128,9 @@ class BasicAssembler:
             custom_metadata["your_custom_information_to_log"].append("some_custom_log_info")
 
         # Now send off the Chimera commands you have compiled for this stack off to the Chimera
-        # server to be processed
-        self.__send_commands_to_chimera()
+        # server to be processed (if we used Chimera, as use_common_map mode will not
+        if not self.custom_args["use_common_model"]:
+            self.__send_commands_to_chimera()
 
         # Apply completed particle set to TEM-Simulator configs
         self.simulation.create_particle_lists([particle_set])
@@ -155,5 +156,6 @@ class BasicAssembler:
 
         """
         # Let the Chimera server know that this Assembler is done using the server
-        self.commands = ["END"]
-        self.__send_commands_to_chimera()
+        if not self.custom_args["use_common_model"]:
+            self.commands = ["END"]
+            self.__send_commands_to_chimera()
