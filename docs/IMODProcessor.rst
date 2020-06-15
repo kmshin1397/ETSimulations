@@ -25,6 +25,7 @@ The IMOD Processor, found in processors/imod\_processor.py, is implemented to fa
 
 Reconstruction
 --------------
+THIS FEATURE IS STILL IN TESTING AND LIKELY BROKEN.
 As exemplified above, tomogram reconstruction is available as part of the steps handled by the IMOD Processor. This can be done using IMOD's built-in reconstruction methods (as part of the batchruntomo processing", or by interfacing with the SIRT implementation provided by `tomo3d <https://sites.google.com/site/3demimageprocessing/tomo3d>`_, if installed. Some common post-processing applied to reconstructed tomograms is also provided - namely, rotation and binning. **Note: Even if you are planning to use tomo3d and not a built-in IMOD reconstruction method, you must set the end\_step parameter to 14 or higher to let the processor know that you intend to proceed through reconstruction.** If you specify "tomo3d" as the reconstruction method, it will be substituted in instead of step 14 for the batchruntomo runs.
 
 Parameters
