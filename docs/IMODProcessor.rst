@@ -25,7 +25,7 @@ The IMOD Processor, found in processors/imod\_processor.py, is implemented to fa
 
 Reconstruction
 --------------
-As exemplified above, tomogram reconstruction is available as part of the steps handled by the IMOD Processor. This can be done using IMOD's built-in reconstruction methods (as part of the batchruntomo processing", or by interfacing with the SIRT implementation provided by `tomo3d <tomo3durl>`_, if installed. Some common post-processing applied to reconstructed tomograms is also provided - namely, rotation and binning. **Note: Even if you are planning to use tomo3d and not a built-in IMOD reconstruction method, you must set the end\_step parameter to 14 or higher to let the processor know that you intend to proceed through reconstruction.** If you specify "tomo3d" as the reconstruction method, it will be substituted in instead of step 14 for the batchruntomo runs.
+As exemplified above, tomogram reconstruction is available as part of the steps handled by the IMOD Processor. This can be done using IMOD's built-in reconstruction methods (as part of the batchruntomo processing", or by interfacing with the SIRT implementation provided by `tomo3d <https://sites.google.com/site/3demimageprocessing/tomo3d>`_, if installed. Some common post-processing applied to reconstructed tomograms is also provided - namely, rotation and binning. **Note: Even if you are planning to use tomo3d and not a built-in IMOD reconstruction method, you must set the end\_step parameter to 14 or higher to let the processor know that you intend to proceed through reconstruction.** If you specify "tomo3d" as the reconstruction method, it will be substituted in instead of step 14 for the batchruntomo runs.
 
 Parameters
 ----------
@@ -62,7 +62,7 @@ The IMOD Processor, like all others, have the **name** argument ("imod") and an 
         (Optional) By default this will be set to the **name** parameter for the project, and tells the processor what to consider as data subdirectories within the provided root folder. For simulated data, the subdirectories will be in the form name\_particleNum so the default is fine. This option is exposed for when dealing with real data where this may not be the case.
 
     * **reconstruction\_method**: string
-        (Optional) This parameter can be set to either "imod" or "tomo3d" and is only relevant if the batchruntomo **end\_step** is set to 14 or higher (the step for reconstruction). Using the "imod" option will run the reconstruction with the built-in IMOD reconstruction method, while "tomo3d" will use the SIRT algorithm implemented by `tomo3d <tomo3durl>`_, assuming you have tomo3d installed.
+        (Optional) This parameter can be set to either "imod" or "tomo3d" and is only relevant if the batchruntomo **end\_step** is set to 14 or higher (the step for reconstruction). Using the "imod" option will run the reconstruction with the built-in IMOD reconstruction method, while "tomo3d" will use the SIRT algorithm implemented by `tomo3d <https://sites.google.com/site/3demimageprocessing/tomo3d>`_, assuming you have tomo3d installed.
 
     * **rotx** : bool
         (Optional) Set this parameter to true if you wish to apply the common step of running "clip rotx" IMOD program on the reconstructed tomogram.
