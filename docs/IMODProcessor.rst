@@ -1,6 +1,8 @@
+.. _imod_processor:
+
 The IMOD Processor
 ==================
-The IMOD Processor, found in processors/imod\_processor.py, is implemented to facilitate processing of the generated simulation dataset with the IMOD software. Specifically, a project directory is created and set up, along with necessary files, for running the `**batchruntomo** <https://bio3d.colorado.edu/imod/doc/man/batchruntomo.html>`_ program for processing the simulated stacks in batch. The IMOD Processor as well will take its inputs from the configuration YAML passed into ets\_process\_data.py. Consider the following example: ::
+The IMOD Processor, found in processors/imod\_processor.py, is implemented to facilitate processing of the generated simulation dataset with the IMOD software. Specifically, a project directory is created and set up, along with necessary files, for running the `batchruntomo <https://bio3d.colorado.edu/imod/doc/man/batchruntomo.html>`_ program for processing the simulated stacks in batch. The IMOD Processor as well will take its inputs from the configuration YAML passed into ets\_process\_data.py. Consider the following example: ::
 
     processors: [
       {
@@ -11,14 +13,28 @@ The IMOD Processor, found in processors/imod\_processor.py, is implemented to fa
           num_fiducials: 10,
           tilt_axis: -90,
           apix: 0.283,
-          fiducial_method: "autofidseed"
+          fiducial_method: "autofidseed",
+          reconstruction_method: "tomo3d",
+          rotx: true,
+          binvol: {
+            "binning": 2
+          },
+          tomo3d_path: ""
+          tomo3d_options: {
+            "S": "enable",
+            "z": 700
+          }
         }
       }
     ]
 
-==========
+
+Reconstruction
+--------------
+As exemplified above, tomogram reconstruction is available as part of the steps handled by the IMOD Processor. This can be done using IMOD's built-in reconstruction methods (as part of the batchruntomo processing", or by interfacing with the SIRT implementation provided by `tomo3d <https://sites.google.com/site/3demimageprocessing/tomo3d>`_, if installed. Some common post-processing applied to reconstructed tomograms is also provided - namely, rotation and binning. **Note: Even if you are planning to use tomo3d and not a built-in IMOD reconstruction method, you must set the end\_step parameter to 14 or higher to let the processor know that you intend to proceed through reconstruction.** If you specify "tomo3d" as the reconstruction method, it will be substituted in instead of step 14 for the batchruntomo runs.
+
 Parameters
-==========
+----------
 The IMOD Processor, like all others, have the **name** argument ("imod") and an **args** object filled with parameters. The parameters exposed here are abstracted versions of some of the more common ones when processing with batchruntomo, as well as some others specifying processing options for the IMOD processor itself. Specifically, we have:
 
     * **start\_step** : float
@@ -51,13 +67,30 @@ The IMOD Processor, like all others, have the **name** argument ("imod") and an 
     * **data\_dirs\_start\_with** : string
         (Optional) By default this will be set to the **name** parameter for the project, and tells the processor what to consider as data subdirectories within the provided root folder. For simulated data, the subdirectories will be in the form name\_particleNum so the default is fine. This option is exposed for when dealing with real data where this may not be the case.
 
+    * **reconstruction\_method**: string
+        (Optional) This parameter can be set to either "imod-wbp", "imod-sirt", or "tomo3d" and is only relevant if the batchruntomo **end\_step** is set to 14 or higher (the step for reconstruction). Using the "imod" option will run the reconstruction with the built-in IMOD WBP or SIRT reconstruction method, while "tomo3d" will use the WBP or SIRT implemented (specified in the **tomo3d\_options**) by `tomo3d <https://sites.google.com/site/3demimageprocessing/tomo3d>`_, assuming you have tomo3d installed.
+
+    * **rotx** : bool
+        (Optional) Set this parameter to true if you wish to apply the common step of running "clip rotx" IMOD program on the reconstructed tomogram.
+
+    * **binvol** : YAML object
+        (Optional) If this parameter is included, reconstructed tomograms will be put through the IMOD "binvol" program. Here, a YAML object containing binvol options as keys should be given, with options that do not require an input value must instead be given the string "enable". This matches the YAML parameter scheme used by the :ref:`EMAN2 Processor <eman2_processor>` to handle arbitrary command line arguments for sub-processes.
+
+    * **imod\_tomogram\_thickness** : integer
+        (Optional; only considered if using "imod-wbp" or "imod-sirt" reconstructions) The unbinned tomogram thickness to pass along as an argument to the IMOD reconstruction step.
+
+    * **tomo3d\_path** : string
+        (Required only if **reconstruction\_method** set to "tomo3d") The file path to the tomo3d executable, or just the "tomo3d" command if it is set on your PATH variable.
+
+    * **tomo3d\_options** : YAML object
+        (Optional) This parameter provides a place to feed in any additional options to your tomo3d reconstruction calls **not including** the .tlt file, the aligned tiltseries, and the output file (those three are required and always handled by the IMOD Processor code). Options that do not require specific input values, such as the "S" option for using SIRT, should be passed the special value "enable".
+
 An important thing to note is that stacks generated by the simulations will most likely not have enough signal to have the IMOD course alignment with cross-correlation step work. Instead, the cross-correlation is likelier to shift tilts extremely out of alignment than to make any improvements. Thus, the IMOD Processor is designed to automatically skip the coarse alignment (steps 2.0 and 3.0) and fake having done it by moving in fake versions of its outputs like the .rawtlt file. It is possible to override this using the **force_coarse_align** option. \\
 
 Additionally, as mentioned, fake versions of the rough alignment are used in place of doing the cross-correlation. These fake files are located in the templates/imod folder and can be edited if desired. For example, the rawtlt file is for a 2-degree increment, -54 to 54 degrees tilt scheme and should be edited if using a different tilt scheme with your TEM-Simulator.
 
-=====================================
 Using the IMOD Processor on real data
-=====================================
+-------------------------------------
 It is possible to use the IMOD Processor to set up and run batchruntomo for real data sets. To do so, something like the processor arguments below should be used: ::
 
     processors: [

@@ -104,6 +104,13 @@ def replace_adoc_values(adoc_file, imod_args):
             new_file.write("runtime.Fiducials.any.trackingMethod = 0\n")
             new_file.write("runtime.Fiducials.any.seedingMethod = 3\n")
 
+        if imod_args["reconstruction_method"] == "imod-sirt":
+            new_file.write("runtime.Reconstruction.any.useSirt = 1\n")
+
+        if imod_args["imod_tomogram_thickness"]:
+            new_file.write("comparam.tilt.tilt.THICKNESS = %d\n" %
+                           imod_args["imod_tomogram_thickness"])
+
     # Remove original file
     os.remove(adoc_file)
     # Move new file
@@ -163,7 +170,8 @@ def set_up_batchtomo(root, name, imod_args):
                 exit(1)
 
             new_tilt_folder = imod_project_dir + "/%s" % new_base
-            os.mkdir(new_tilt_folder)
+            if not os.path.exists(new_tilt_folder):
+                os.mkdir(new_tilt_folder)
 
             # Copy over stack and relevant intermediate IMOD files
             # We are copying over our own versions of the outputs of coarse alignment in IMOD
@@ -208,7 +216,7 @@ def set_up_batchtomo(root, name, imod_args):
     batchtomo_infos = []
     for base_folder in os.listdir(directory):
         base = os.fsdecode(base_folder)
-        if not base.startswith("batch"):
+        if not base.startswith("batch") and not base.startswith("."):
             # Copy over individual sub-directory adoc files
             batch_file = ("%s_name.adoc" % batchtomo_name).replace("name", base)
             this_adoc = "%s/%s/%s" % (imod_project_dir, base, batch_file)
@@ -219,8 +227,10 @@ def set_up_batchtomo(root, name, imod_args):
             for file in os.listdir(os.fsencode("%s/%s" % (imod_project_dir, base))):
                 filename = os.fsdecode(file)
                 if filename.endswith(".mrc") or filename.endswith(".st"):
-                    stack = filename
-                    break
+                    # Prioritize .st files over .mrc for when re-processing data that already has
+                    # tomogram MRC's inside the folder
+                    if stack == "" or filename.endswith(".st"):
+                        stack = filename
 
             batchtomo_info = {"root": stack.split(".")[0],
                               "tilt_folder": "%s/%s" % (imod_project_dir, base), "adoc": this_adoc,
@@ -297,11 +307,103 @@ def run_submfg(com_file, cwd=None):
     submfg_path = os.path.join(os.environ["IMOD_DIR"], "bin", "submfg")
     command = "%s -t %s" % (submfg_path, com_file)
     print(command)
-    process = None
     if cwd:
         process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, cwd=r"%s" % cwd)
     else:
         process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
+def run_tomo3d(tomo3d_path, tlt, tiltseries, output, other_args):
+    """
+    Helper function to run the tomo3d SIRT reconstruction program
+
+    Args:
+        tomo3d_path: The path to tomo3d executable
+        tiltseries: The tiltseries to reconstruct
+        output: The output reconstruction file path
+
+    Returns: None
+
+    """
+    command = "%s -a %s -i %s -o %s" % (tomo3d_path, tlt, tiltseries, output)
+    print("Running command:")
+    print(command)
+
+    for arg, value in other_args.items():
+        if value == "enable":
+            command += " -%s" % arg
+        else:
+            command += " -%s %s" % (arg, str(value))
+
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
+def run_rotx(input, output):
+    """
+    Helper function to run the IMOD clip rotx program to rotate a tomogram 90 degrees around the
+        x-axis
+
+    Args:
+        input: The path to tomogram to rotate
+        output: The path to write the rotated tomogram to
+
+    Returns: None
+
+    """
+    clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "clip")
+    command = "%s rotx %s %s" % (clip_path, input, output)
+    print(command)
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
+def run_binvol(input, output, options):
+    """
+    Helper function to run the IMOD binvol program to bin a tomogram
+
+    Args:
+        input: The path to tomogram to bin
+        output: The path to write the binned tomogram to
+
+    Returns: None
+
+    """
+    clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "binvol")
+    command = "%s %s %s" % (clip_path, input, output)
+    for arg, value in options.items():
+        if value == "enable":
+            command += " -%s" % arg
+        else:
+            command += " -%s %s" % (arg, str(value))
+    print("Running command:")
+    print(command)
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
         if output == '' and process.poll() is not None:
@@ -338,6 +440,8 @@ def imod_main(root, name, imod_args):
         print('ERROR: IMOD_DIR is not defined')
         exit(1)
 
+    reconstruct = end >= 14
+
     # If starting anew, set up batchtomo
     if start == 0:
         set_up_batchtomo(root, name, imod_args)
@@ -367,14 +471,14 @@ def imod_main(root, name, imod_args):
             imod_proj_dir = root + "/processed_data/IMOD"
             for f in os.listdir(imod_proj_dir):
                 # Ignore batchtomo files and go to data dirs
-                if not f.startswith("batchETSimulations"):
+                if not f.startswith("batchETSimulations") and not f.startswith("."):
                     tilt_com = "align.com"
                     run_submfg(tilt_com, cwd=os.path.join(imod_proj_dir, f))
 
-            # Now set main batchtomo com to resume from step 7
+            # Now set main batchtomo com to resume from step 7, up to reconstruction
             if end >= 7:
-                replace_batchtomo_start_and_end_steps(com_file, 7, end)
-                msg = "Running remaining batchruntomo steps..."
+                replace_batchtomo_start_and_end_steps(com_file, 7, min(end, 13))
+                msg = "Running remaining batchruntomo steps up to reconstruction..."
 
         # Need to run remaining steps if not handled yet above
         if end != 6:
@@ -409,15 +513,92 @@ def imod_main(root, name, imod_args):
                 imod_proj_dir = root + "/processed_data/IMOD"
                 for f in os.listdir(imod_proj_dir):
                     # Ignore batchtomo files and go to data dirs
-                    if not f.startswith("batchETSimulations"):
+                    if not f.startswith("batchETSimulations") and not f.startswith("."):
                         tilt_com = "align.com"
                         run_submfg(tilt_com, cwd=os.path.join(imod_proj_dir, f))
 
-                # Now set main batchtomo com to resume from step 7
+                # Now set main batchtomo com to resume from step 7, up to reconstruction
                 if end >= 7:
-                    replace_batchtomo_start_and_end_steps(com_file, 7, end)
+                    replace_batchtomo_start_and_end_steps(com_file, 7, min(end, 13))
 
             # Need to run remaining steps if not handled yet above
             if end != 6:
-                print("Running remaining batchruntomo steps...")
+                print("Running remaining batchruntomo steps up to reconstruction...")
                 run_submfg(com_file)
+
+    # Run reconstruction if necessary
+    if reconstruct:
+        if imod_args["reconstruction_method"] == "imod-wbp" or \
+                imod_args["reconstruction_method"] == "imod-sirt":
+            print("Running remaining batchruntomo steps from step 14...")
+            replace_batchtomo_start_and_end_steps(com_file, 14, end)
+            run_submfg(com_file)
+
+            # If we need to apply rotations or binning to each tomogram, start iterating through the
+            # data directories
+            if imod_args["rotx"] or imod_args["binvol"]:
+                print("Running tomogram rotations and/or tomogram binning...")
+                imod_proj_dir = root + "/processed_data/IMOD"
+                for f in os.listdir(imod_proj_dir):
+                    # Ignore batchtomo files and go to data dirs
+                    if not f.startswith("batchETSimulations") and not f.startswith("."):
+
+                        # Look for tomograms
+                        rec_path = ""
+                        rec_basename = ""
+                        for file in os.listdir(os.path.join(imod_proj_dir, f)):
+                            if file.endswith(".rec"):
+                                rec_path = os.path.join(imod_proj_dir, f, file)
+                                rec_basename = os.path.splitext(file)[0]
+                                break
+
+                        if rec_path == "":
+                            print("ERROR: Couldn't find reconstruction for directory: %s" % f)
+                            exit(1)
+
+                        if imod_args["rotx"]:
+                            run_rotx(rec_basename, rec_basename)
+
+                        if imod_args["binvol"]:
+                            bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %
+                                                (rec_basename, imod_args["binvol"]["binning"]))
+                            run_binvol(rec_basename, bin_path, imod_args["binvol"])
+
+        elif imod_args["reconstruction_method"] == "tomo3d":
+            print("Running tomo3d reconstructions...")
+            imod_proj_dir = root + "/processed_data/IMOD"
+            for f in os.listdir(imod_proj_dir):
+                # Ignore batchtomo files and go to data dirs
+                if not f.startswith("batchETSimulations") and not f.startswith("."):
+
+                    # Look for final aligned tiltseries
+                    tiltseries = ""
+                    basename = ""
+                    tlt = ""
+                    for file in os.listdir(os.path.join(imod_proj_dir, f)):
+                        if file.endswith(".ali"):
+                            tiltseries = os.path.join(imod_proj_dir, f, file)
+                            basename = os.path.splitext(file)[0]
+                            tlt = os.path.join(imod_proj_dir, f, "%s.tlt" % basename)
+                            break
+
+                    if tiltseries == "":
+                        print("ERROR: Couldn't find final aligned tiltseries for directory: %s" % f)
+                        exit(1)
+
+                    reconstruction_name = "%s_SIRT.mrc" % basename
+                    reconstruction_full_path = os.path.join(imod_proj_dir, f, reconstruction_name)
+                    run_tomo3d(imod_args["tomo3d_path"], tlt, tiltseries, reconstruction_full_path,
+                               imod_args["tomo3d_options"])
+
+                    if imod_args["rotx"]:
+                        run_rotx(reconstruction_full_path, reconstruction_full_path)
+
+                    if imod_args["binvol"]:
+                        bin_path = os.path.join(imod_proj_dir, f, "%s_SIRT_bin%d.mrc" %
+                                                (basename, imod_args["binvol"]["binning"]))
+                        run_binvol(reconstruction_full_path, bin_path, imod_args["binvol"])
+
+        else:
+            print("ERROR: Invalid reconstruction method specified!")
+            exit(1)
