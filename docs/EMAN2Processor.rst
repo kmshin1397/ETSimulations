@@ -1,3 +1,5 @@
+.. _eman2_processor:
+
 The EMAN2 Processor
 ===================
 The EMAN2 Processor, found in processors/eman2\_processor.py, is implemented to automatically set up cryo-ET processing of generated simulated data. It works by taking a pre-written Python template script, which lists the EMAN2 programs needed to run to take a series of raw tilt stacks to a sub-tomogram average, and filling in the desired parameters to those programs based on configurations provided in the YAML input file. This template script can be found at templates/eman2/eman2\_process.py. Any argument which can be given to the EMAN2 programs called can be given in the YAML file as part of the parameters object for the program. Note the example configurations below. ::
