@@ -9,8 +9,7 @@ import shutil
 import mrcfile
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-import subprocess
-import shlex
+import subprocess, shlex
 import json
 
 
@@ -103,27 +102,27 @@ def slicer_angles_to_i3_matrix(angles):
     rot = R.from_euler('zyx', [angles[2], angles[1], angles[0]], degrees=True)
     # The Slicer angles are particle-to-reference, but PEET MOTLs are ref-to-part, so we invert
     rot = rot.inv()
-    # motl = rot.as_euler('zxz', degrees=True)
-    #
-    # command = "i3euler %f %f %f" % (motl[0], motl[2], motl[1])
-    #
-    # process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    # matrix_str = ""
-    # while True:
-    #     output = os.fsdecode(process.stdout.readline())
-    #     if output == '' and process.poll() is not None:
-    #         break
-    #     if output:
-    #         matrix_str = output.strip()
-    #
-    # rc = process.poll()
-    # if rc != 0:
-    #     exit(1)
-    #
-    # matrix = np.fromstring(matrix_str, sep=" ")
-    # return matrix
-    matrix = np.array(rot.as_matrix()).flatten()
+    motl = rot.as_euler('zxz', degrees=True)
+
+    command = "i3euler %f %f %f" % (motl[0], motl[2], motl[1])
+
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    matrix_str = ""
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            matrix_str = output.strip()
+
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+    matrix = np.fromstring(matrix_str, sep=" ")
     return matrix
+    # matrix = np.array(rot.as_matrix()).flatten()
+    # return matrix
 
 
 def split_coords(coords):
@@ -183,41 +182,6 @@ def get_trf_lines(slicer_info, basename):
         lines.append(new_line)
 
     return lines
-
-
-def get_simulated_particle_info(root):
-    metadata_file = os.path.join(root, "sim_metadata.json")
-
-    with open(metadata_file, "r") as f:
-        metadata = json.loads(f.read())
-        slicer_infos = []
-        for particle_set in metadata:
-            basename = os.path.basename(particle_set["output"]).split(".")[0]
-            orientations = np.array(particle_set["orientations"])
-            with open(csv_name, 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile, delimiter=',',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
-                for i, row in enumerate(orientations):
-                    # In ZXZ
-                    # ETSimulations gives ref-to-part, external;
-                    # rotate by z to account for reconstruction rotation
-                    euler = [-row[2] - 90, -row[1], -row[0]] # now at part-to-ref, ext
-
-                    # TEM-Simulator is in stationary zxz
-                    rotation = R.from_euler('zxz', euler, degrees=True)
-
-                    # rotate around x by -90 to get the side view
-                    orientation_mat = np.dot(R.from_euler('zxz', [0, -90, 0],
-                                                          degrees=True).as_matrix(),
-                                             rotation.as_matrix())
-
-                    rotation = R.from_matrix(orientation_mat)
-
-                    euler = rotation.as_euler('zyx', degrees=True)
-                    new_row = [euler[2], euler[1], euler[0]]
-
-                    writer.writerow(new_row)
 
 
 def imod_processor_to_i3(root, name, i3_args):
