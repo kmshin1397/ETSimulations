@@ -8,6 +8,10 @@ import struct
 import shutil
 import mrcfile
 import numpy as np
+from scipy.spatial.transform import Rotation as R
+import subprocess
+import shlex
+import json
 
 
 def get_mrc_size(rec):
@@ -21,7 +25,7 @@ def get_mrc_size(rec):
     Returns: A tuple (x/2, y/2, z/2) of the half-lengths in each dimension
 
     """
-    with mrcfile.open(rec) as mrc:
+    with mrcfile.open(rec, header_only=True) as mrc:
         x = mrc.header.nx
         y = mrc.header.ny
         z = mrc.header.nz
@@ -85,11 +89,13 @@ def get_slicer_info(mod_file):
 
 def slicer_angles_to_i3_matrix(angles):
     """
+    Given the Slicer angles, convert them to the PEET MOTL angles, then feed those into a call of
+        i3avg to get the I3 rotation matrix
 
     Args:
-        angles:
+        angles: The Slicer angles
 
-    Returns:
+    Returns: The rotation matrix as a 1D Numpy array
 
     """
 
@@ -98,9 +104,25 @@ def slicer_angles_to_i3_matrix(angles):
     # The Slicer angles are particle-to-reference, but PEET MOTLs are ref-to-part, so we invert
     rot = rot.inv()
     # motl = rot.as_euler('zxz', degrees=True)
-    # print(motl)
-    # rot = R.from_euler('zxz', [motl[0], motl[1], motl[2]], degrees=True)
-    matrix = rot.as_matrix()
+    #
+    # command = "i3euler %f %f %f" % (motl[0], motl[2], motl[1])
+    #
+    # process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    # matrix_str = ""
+    # while True:
+    #     output = os.fsdecode(process.stdout.readline())
+    #     if output == '' and process.poll() is not None:
+    #         break
+    #     if output:
+    #         matrix_str = output.strip()
+    #
+    # rc = process.poll()
+    # if rc != 0:
+    #     exit(1)
+    #
+    # matrix = np.fromstring(matrix_str, sep=" ")
+    # return matrix
+    matrix = np.array(rot.as_matrix()).flatten()
     return matrix
 
 
@@ -154,25 +176,57 @@ def get_trf_lines(slicer_info, basename):
         # Add the rotation matrix
         rot_matrix = slicer_angles_to_i3_matrix(angles)
         new_line += "%f %f %f %f %f %f %f %f %f\n" % \
-                    (rot_matrix[0][0], rot_matrix[0][1], rot_matrix[0][2],
-                     rot_matrix[1][0], rot_matrix[1][1], rot_matrix[1][2],
-                     rot_matrix[2][0], rot_matrix[2][1], rot_matrix[2][2])
+                    (rot_matrix[0], rot_matrix[1], rot_matrix[2],
+                     rot_matrix[3], rot_matrix[4], rot_matrix[5],
+                     rot_matrix[6], rot_matrix[7], rot_matrix[8])
 
         lines.append(new_line)
 
     return lines
 
 
-def get_simulated_particle_info():
-    pass
+def get_simulated_particle_info(root):
+    metadata_file = os.path.join(root, "sim_metadata.json")
+
+    with open(metadata_file, "r") as f:
+        metadata = json.loads(f.read())
+        slicer_infos = []
+        for particle_set in metadata:
+            basename = os.path.basename(particle_set["output"]).split(".")[0]
+            orientations = np.array(particle_set["orientations"])
+            with open(csv_name, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',',
+                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+                for i, row in enumerate(orientations):
+                    # In ZXZ
+                    # ETSimulations gives ref-to-part, external;
+                    # rotate by z to account for reconstruction rotation
+                    euler = [-row[2] - 90, -row[1], -row[0]] # now at part-to-ref, ext
+
+                    # TEM-Simulator is in stationary zxz
+                    rotation = R.from_euler('zxz', euler, degrees=True)
+
+                    # rotate around x by -90 to get the side view
+                    orientation_mat = np.dot(R.from_euler('zxz', [0, -90, 0],
+                                                          degrees=True).as_matrix(),
+                                             rotation.as_matrix())
+
+                    rotation = R.from_matrix(orientation_mat)
+
+                    euler = rotation.as_euler('zyx', degrees=True)
+                    new_row = [euler[2], euler[1], euler[0]]
+
+                    writer.writerow(new_row)
 
 
-def imod_processor_to_i3(root, i3_args):
+def imod_processor_to_i3(root, name, i3_args):
     """
     Implements the I3 processing of simulated data that was reconstructed using the IMOD Processor.
 
     Args:
         root: The ETSimulations project root directory
+        name: The particle name
         i3_args: The I3 Processor arguments
 
     Returns: None
@@ -185,9 +239,11 @@ def imod_processor_to_i3(root, i3_args):
     print("Creating I3 project directories")
     processed_data_dir = root + "/processed_data"
     i3_root = processed_data_dir + "/I3"
-    imod_dir = processed_data_dir + "/IMOD"
     if not os.path.exists(i3_root):
         os.mkdir(i3_root)
+
+    # Copy over mraparam.sh file
+    shutil.copyfile(i3_args["mraparam_path"], os.path.join(i3_root, "mraparam.sh"))
 
     # Make the maps folder if necessary
     maps_path = os.path.join(i3_root, "maps")
@@ -208,49 +264,66 @@ def imod_processor_to_i3(root, i3_args):
     if not os.path.exists(trf_path):
         os.mkdir(trf_path)
 
-    # -------------------------------------
-    # Retrieve parameters to write to files
-    # -------------------------------------
-    for subdir in os.listdir(imod_dir):
-        if subdir.startswith(i3_args["dir_pattern"]):
+    # Iterate through the tomograms in the order they appear in the metadata file instead of just
+    # iterating through the processed IMOD directory like with the real data version of this
+    # function. This is faster since we avoid searching through the metadata dictionary to match up
+    # data directories to the original raw data metadata.
 
-            print("Collecting information for directory: %s" % subdir)
+    metadata_file = os.path.join(root, "sim_metadata.json")
+
+    # Load IMOD Processor info
+    processor_info_file = os.path.join(root, "processed_data/imod_info.json")
+    processor_info = json.load(open(processor_info_file, "r"))["args"]
+
+    with open(metadata_file, "r") as f:
+        metadata = json.loads(f.read())
+
+        # -------------------------------------
+        # Retrieve parameters to write to files
+        # -------------------------------------
+        for tomogram in metadata:
+            basename = "%s_%d" % (name, tomogram["global_stack_no"])
+            tomogram_dir = os.path.join(root, "processed_data/IMOD", basename)
+            print("Collecting information for directory: %s" % tomogram_dir)
+
+            # Positions for TEM-Simulator are in nm, need to convert to pixels
+            positions = np.array(tomogram["positions"]) / tomogram["apix"]
+
+            slicer_angles_csv = os.path.join(tomogram_dir, "T4SS_slicerAngles.csv")
+            print("Loading Slicer angles...")
+            orientations = np.loadtxt(slicer_angles_csv, delimiter=",")
+
+            # Compile Slicer infos
+            slicer_info = []
+            for i, coords in enumerate(positions):
+                angles = orientations[i]
+                slicer_info.append({"coords": coords, "angles": angles})
 
             # Look for the necessary IMOD files
-            mod = ""
-            tlt = ""
-            rec = ""
-            for file in os.listdir(os.path.join(imod_dir, subdir)):
-                if i3_args["mod_pattern"] in file and file.endswith(".mod"):
-                    mod = file
-                elif i3_args["tlt_pattern"] in file and file.endswith(".tlt"):
-                    tlt = file
-                elif i3_args["rec_pattern"] in file and (file.endswith(".mrc") or
-                                                         file.endswith(".rec")):
-                    rec = file
-
-                # Break out of loop once all three relevant files have been found
-                if mod != "" and tlt != "" and rec != "":
-                    break
-
-            basename = os.path.splitext(rec)[0]
+            if processor_info["reconstruction_method"].startswith("imod"):
+                if processor_info["binvol"]:
+                    rec = "%s_full_bin%d.rec" % (basename, processor_info["binvol"]["binning"])
+                else:
+                    rec = "%s_full.rec" % basename
+            else:
+                if processor_info["binvol"]:
+                    rec = "%s_SIRT_bin%d.rec" % (basename, processor_info["binvol"]["binning"])
+                else:
+                    rec = "%s_SIRT.mrc" % basename
 
             # Copy over the tomogram to the maps folder
-            if rec != "":
-                shutil.copyfile(os.path.join(imod_dir, subdir, rec), os.path.join(maps_path, rec))
+            if os.path.exists(os.path.join(tomogram_dir, rec)):
+                shutil.copyfile(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, rec))
             else:
-                print("ERROR: No reconstruction was found for sub-directory: %s" % subdir)
+                print("ERROR: No reconstruction was found for sub-directory: %s" % tomogram_dir)
                 exit(1)
 
+            tlt = "%s.tlt" % basename
             # Copy over the tlt file to the maps folder
-            if tlt != "":
-                shutil.copyfile(os.path.join(imod_dir, subdir, tlt), os.path.join(maps_path, tlt))
+            if os.path.exists(os.path.join(tomogram_dir, tlt)):
+                shutil.copyfile(os.path.join(tomogram_dir, tlt), os.path.join(maps_path, tlt))
             else:
-                print("WARNING: No tlt file was found for sub-directory: %s" % subdir)
-
-            if mod == "":
-                print("Error: No mod file was found for sub-directory: %s" % subdir)
-                exit(1)
+                print("WARNING: No tlt file was found for sub-directory: %s" % tomogram_dir)
 
             # Add the tomogram info to the defs/maps file
             print("Updating the maps file...")
@@ -259,14 +332,12 @@ def imod_processor_to_i3(root, i3_args):
 
             # Add the tomogram info to the defs/sets file
             print("Updating the sets file...")
-            new_sets_line = "%s %s_%s\n" % (rec, basename, i3_args["particle_name"])
+            new_sets_line = "%s %s_%s\n" % (rec, basename, name)
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
-            print("Reading the .mod file for Slicer info...")
-            slicer_info = get_slicer_info(os.path.join(imod_dir, subdir, mod))
             print("Shifting the origins to the center for the particle coordinates...")
-            rec_fullpath = os.path.join(imod_dir, subdir, rec)
+            rec_fullpath = os.path.join(root, tomogram_dir, rec)
             size = get_mrc_size(rec_fullpath)
             for particle in slicer_info:
                 # Shift the coordinates to have the origin at the tomogram center
@@ -284,15 +355,14 @@ def imod_processor_to_i3(root, i3_args):
     sets_file.close()
 
 
-def i3_main(root, name, i3_args):
+def imod_real_to_i3(name, i3_args):
     root = i3_args["imod_dir"]
 
     # -------------------------------------
     # Set up I3 project directory structure
     # -------------------------------------
     print("Creating I3 project directories")
-    processed_data_dir = root + "/processed_data"
-    i3_root = processed_data_dir + "/I3"
+    i3_root = i3_args["i3_dir"]
     if not os.path.exists(i3_root):
         os.mkdir(i3_root)
 
@@ -366,7 +436,7 @@ def i3_main(root, name, i3_args):
 
             # Add the tomogram info to the defs/sets file
             print("Updating the sets file...")
-            new_sets_line = "%s %s_%s\n" % (rec, basename, i3_args["particle_name"])
+            new_sets_line = "%s %s_%s\n" % (rec, basename, name)
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
@@ -389,3 +459,11 @@ def i3_main(root, name, i3_args):
     # Close files
     maps_file.close()
     sets_file.close()
+
+
+def i3_main(root, name, i3_args):
+    if i3_args["real_data_mode"]:
+        imod_real_to_i3(name, i3_args)
+    else:
+        imod_processor_to_i3(root, name, i3_args)
+

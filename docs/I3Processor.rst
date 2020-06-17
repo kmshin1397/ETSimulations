@@ -69,4 +69,6 @@ It is possible to use the I3 Processor to set up an I3 project on real data proc
       }
     ]
 
+When interacting with the Processor in this manner, the **root** parameter in the YAML configs passed to ets\_process\_data.py doesn't matter (since we don't have a ets\_generate\_data.py project root folder to look to for retrieving knowing orientations, etc.) and is ignored. However, the **name** parameter is still used as the particle name to use when apt. For the I3 Processor specifically, this name is tacked on to set names in the defs/sets file.
+
 Note that the I3 Processor will only do the project set up, such as creating the defs, maps, and trf folders and the defs/maps and defs/sets files. The user must still run *i3avg* on their own and perform manual inspection of classes, etc. as would be involved in normal I3 usage.
