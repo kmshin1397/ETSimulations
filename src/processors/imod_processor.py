@@ -33,7 +33,7 @@ def retrieve_orientations(metadata_file, root):
         metadata = json.loads(f.read())
         for particle_set in metadata:
             basename = os.path.basename(particle_set["output"]).split(".")[0]
-            csv_name = root + "/%s/" % basename + "T4SS_slicerAngles.csv"
+            csv_name = root + "/%s/" % basename + "slicerAngles.csv"
             orientations = np.array(particle_set["orientations"])
             with open(csv_name, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',',
@@ -48,12 +48,14 @@ def retrieve_orientations(metadata_file, root):
                     # TEM-Simulator is in stationary zxz
                     rotation = R.from_euler('zxz', euler, degrees=True)
 
+                    # Note: Used to rotate here but have since moved rotations to when recording
+                    # the chosen orientations in the T4SS Assembler
                     # rotate around x by -90 to get the side view
-                    orientation_mat = np.dot(R.from_euler('zxz', [0, -90, 0],
-                                                          degrees=True).as_matrix(),
-                                             rotation.as_matrix())
-
-                    rotation = R.from_matrix(orientation_mat)
+                    # orientation_mat = np.dot(R.from_euler('zxz', [0, -90, 0],
+                    #                                       degrees=True).as_matrix(),
+                    #                          rotation.as_matrix())
+                    #
+                    # rotation = R.from_matrix(orientation_mat)
 
                     euler = rotation.as_euler('zyx', degrees=True)
                     new_row = [euler[2], euler[1], euler[0]]
@@ -437,7 +439,7 @@ def imod_main(root, name, imod_args):
         print("ERROR: The batchruntomo ending step is less than or equal to the starting step")
         exit(1)
     if os.getenv("IMOD_DIR") is None:
-        print('ERROR: IMOD_DIR is not defined')
+        print('ERROR: IMOD_DIR is not defined as an ENV variable')
         exit(1)
 
     reconstruct = end >= 14
@@ -557,7 +559,7 @@ def imod_main(root, name, imod_args):
                             exit(1)
 
                         if imod_args["rotx"]:
-                            run_rotx(rec_basename, rec_basename)
+                            run_rotx(rec_path, rec_path)
 
                         if imod_args["binvol"]:
                             bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %

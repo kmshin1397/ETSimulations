@@ -10,6 +10,7 @@ import math
 
 # External packages
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 # Custom modules
 from simulation.particle_set import ParticleSet
@@ -248,7 +249,15 @@ class T4SSAssembler:
 
         # Draw random orientation and position
         random_orientation = self.__get_random_tbl_orientation()
-        self.chosen_orientations.append(random_orientation)
+        # The random orientation gives proper side views from TEM-Simulator when viewed, but gives
+        # the top-view in terms of the recorded rotations because source is top-view, so rotate it
+        # by -90 around the X
+        orientation = R.from_euler("zxz", random_orientation, degrees=True)
+        orientation_mat = np.dot(R.from_euler("zxz", [0, -90, 0], degrees=True).as_matrix(),
+                                 orientation.as_matrix())
+        corrected_orientation = R.from_matrix(orientation_mat)
+        corrected_orientation = corrected_orientation.as_euler("zxz", degrees=True)
+        self.chosen_orientations.append(corrected_orientation)
 
         # Random position is with respect to center of membrane segment, not in entire tiltseries
         random_position = self.__get_random_position()
