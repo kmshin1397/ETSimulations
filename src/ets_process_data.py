@@ -9,6 +9,8 @@ specified steps of the data processing process.
 # Built-in modules
 import os
 import argparse
+from datetime import datetime
+import json
 
 # External modules
 import yaml
@@ -39,6 +41,23 @@ def parse_inputs():
     return yaml.load(stream, Loader=yaml.FullLoader)
 
 
+def save_processor_info(processed_data_dir, processor):
+    """
+    Save the processor arguments and the time the processor was run for future information
+
+    Args:
+        processed_data_dir: The processed_data directory to save a log file to
+        processor: The processor object parsed from the YAML configs
+
+    Returns: None
+
+    """
+    new_log_file = os.path.join(processed_data_dir, "%s_info.json" % processor["name"])
+    processor["processor_timestamp"] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    with open(new_log_file, "w") as f:
+        f.write(json.dumps(processor, indent=4))
+
+
 def main(args):
     """ Create the processed_data directory if needed and call the proper handlers for all specified
     processors parsed from the configurations
@@ -61,6 +80,7 @@ def main(args):
     for processor in args["processors"]:
         print("################################\n")
         print("Working on processor %s" % processor["name"])
+        save_processor_info(processed_data_dir, processor)
         processor_handler = processor_handlers[processor["name"]]
         processor_handler(args["root"], args["name"], processor["args"])
         print("")
