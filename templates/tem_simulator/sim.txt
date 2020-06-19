@@ -97,7 +97,7 @@ defocus_nominal = 5
 # A specification of the detector is the last component needed to simulate 
 # micrographs.
 #
-# Here a 400 x 400 pixel detector area is simulated.
+# Here a 2000 x 2000 pixel detector area is simulated.
 
 det_pix_x = 2000
 det_pix_y = 2000
