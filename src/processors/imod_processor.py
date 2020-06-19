@@ -109,7 +109,7 @@ def replace_adoc_values(adoc_file, imod_args):
         if imod_args["reconstruction_method"] == "imod-sirt":
             new_file.write("runtime.Reconstruction.any.useSirt = 1\n")
 
-        if imod_args["imod_tomogram_thickness"]:
+        if "imod_tomogram_thickness" in imod_args:
             new_file.write("comparam.tilt.tilt.THICKNESS = %d\n" %
                            imod_args["imod_tomogram_thickness"])
 
@@ -538,7 +538,8 @@ def imod_main(root, name, imod_args):
 
             # If we need to apply rotations or binning to each tomogram, start iterating through the
             # data directories
-            if imod_args["rotx"] or imod_args["binvol"]:
+            if ("rotx" in imod_args and imod_args["rotx"]) or 
+                ("binvol" in imod_args and imod_args["binvol"]):
                 print("Running tomogram rotations and/or tomogram binning...")
                 imod_proj_dir = root + "/processed_data/IMOD"
                 for f in os.listdir(imod_proj_dir):
@@ -558,10 +559,10 @@ def imod_main(root, name, imod_args):
                             print("ERROR: Couldn't find reconstruction for directory: %s" % f)
                             exit(1)
 
-                        if imod_args["rotx"]:
+                        if "rotx" in imod_args and imod_args["rotx"]:
                             run_rotx(rec_path, rec_path)
 
-                        if imod_args["binvol"]:
+                        if "binvol" in imod_args:
                             bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %
                                                 (rec_basename, imod_args["binvol"]["binning"]))
                             run_binvol(rec_basename, bin_path, imod_args["binvol"])
@@ -593,10 +594,10 @@ def imod_main(root, name, imod_args):
                     run_tomo3d(imod_args["tomo3d_path"], tlt, tiltseries, reconstruction_full_path,
                                imod_args["tomo3d_options"])
 
-                    if imod_args["rotx"]:
+                    if "rotx" in imod_args and imod_args["rotx"]:
                         run_rotx(reconstruction_full_path, reconstruction_full_path)
 
-                    if imod_args["binvol"]:
+                    if "binvol" in imod_args:
                         bin_path = os.path.join(imod_proj_dir, f, "%s_SIRT_bin%d.mrc" %
                                                 (basename, imod_args["binvol"]["binning"]))
                         run_binvol(reconstruction_full_path, bin_path, imod_args["binvol"])
