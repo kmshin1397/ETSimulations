@@ -245,15 +245,18 @@ def imod_processor_to_i3(root, name, i3_args):
         # -------------------------------------
         # Retrieve parameters to write to files
         # -------------------------------------
-        for tomogram in metadata:
+        total_num = len(metadata)
+        for num, tomogram in enumerate(metadata):
             basename = "%s_%d" % (name, tomogram["global_stack_no"])
             tomogram_dir = os.path.join(root, "processed_data/IMOD", basename)
+            print("")
             print("Collecting information for directory: %s" % tomogram_dir)
+            print("This is directory %d out of %d" % (num + 1, total_num))
 
             # Positions for TEM-Simulator are in nm, need to convert to pixels
             positions = np.array(tomogram["positions"]) / tomogram["apix"]
 
-            slicer_angles_csv = os.path.join(tomogram_dir, "T4SS_slicerAngles.csv")
+            slicer_angles_csv = os.path.join(tomogram_dir, "slicerAngles.csv")
             print("Loading Slicer angles...")
             orientations = np.loadtxt(slicer_angles_csv, delimiter=",")
 
@@ -264,17 +267,18 @@ def imod_processor_to_i3(root, name, i3_args):
                 slicer_info.append({"coords": coords, "angles": angles})
 
             # Look for the necessary IMOD files
+            print("Looking for necessary IMOD files...")
             if processor_info["reconstruction_method"].startswith("imod"):
                 if processor_info["binvol"]:
-                    rec = "%s_full_bin%d.rec" % (basename, processor_info["binvol"]["binning"])
+                    rec = "%s_full_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
                 else:
                     rec = "%s_full.rec" % basename
             else:
                 if processor_info["binvol"]:
-                    rec = "%s_SIRT_bin%d.rec" % (basename, processor_info["binvol"]["binning"])
+                    rec = "%s_SIRT_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
                 else:
                     rec = "%s_SIRT.mrc" % basename
-
+      
             # Copy over the tomogram to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, rec)):
                 shutil.copyfile(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, rec))
@@ -311,7 +315,7 @@ def imod_processor_to_i3(root, name, i3_args):
             print("Writing the .trf file...")
             trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
             with open(trf_filepath, 'w') as trf:
-                lines = get_trf_lines(slicer_info, basename)
+                lines = get_trf_lines(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
 
     # Close files
@@ -354,7 +358,7 @@ def imod_real_to_i3(name, i3_args):
     # -------------------------------------
     for subdir in os.listdir(root):
         if subdir.startswith(i3_args["dir_contains"]):
-
+            print("")
             print("Collecting information for directory: %s" % subdir)
 
             # Look for the necessary IMOD files
@@ -417,7 +421,7 @@ def imod_real_to_i3(name, i3_args):
             print("Writing the .trf file...")
             trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
             with open(trf_filepath, 'w') as trf:
-                lines = get_trf_lines(slicer_info, basename)
+                lines = get_trf_lines(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
 
     # Close files
