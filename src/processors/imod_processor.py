@@ -538,7 +538,7 @@ def imod_main(root, name, imod_args):
 
             # If we need to apply rotations or binning to each tomogram, start iterating through the
             # data directories
-            if ("rotx" in imod_args and imod_args["rotx"]) or 
+            if ("rotx" in imod_args and imod_args["rotx"]) or \
                 ("binvol" in imod_args and imod_args["binvol"]):
                 print("Running tomogram rotations and/or tomogram binning...")
                 imod_proj_dir = root + "/processed_data/IMOD"
