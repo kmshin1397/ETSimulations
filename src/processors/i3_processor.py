@@ -13,6 +13,32 @@ import subprocess, shlex
 import json
 
 
+def convert_tlt(file_in, file_out):
+    """
+    Convert an IMOD .tlt file to I# tilt file format
+    Args:
+        file_in: The IMOD .tlt file
+        file_out: The I3 tilt file
+
+    Returns: None
+
+    """
+
+    command = "tomoinit -tlt %s %s" % (file_out, file_in)
+
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
 def get_mrc_size(rec):
     """
     Return the half the size of each dimension for an MRC file, so that we can move the origin to
@@ -289,7 +315,7 @@ def imod_processor_to_i3(root, name, i3_args):
             tlt = "%s.tlt" % basename
             # Copy over the tlt file to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, tlt)):
-                shutil.copyfile(os.path.join(tomogram_dir, tlt), os.path.join(maps_path, tlt))
+                convert_tlt(os.path.join(tomogram_dir, tlt), os.path.join(maps_path, tlt))
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % tomogram_dir)
 
@@ -389,7 +415,7 @@ def imod_real_to_i3(name, i3_args):
 
             # Copy over the tlt file to the maps folder
             if tlt != "":
-                shutil.copyfile(os.path.join(root, subdir, tlt), os.path.join(maps_path, tlt))
+                convert_tlt(os.path.join(root, subdir, tlt), os.path.join(maps_path, tlt))
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % subdir)
 
