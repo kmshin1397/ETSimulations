@@ -199,7 +199,7 @@ def set_up_batchtomo(root, name, imod_args):
 
     if not imod_args["real_data_mode"]:
         print("Retrieving orientations...")
-        retrieve_orientations(root + "/sim_metadata.json", imod_project_dir)
+        retrieve_orientations(root + "/sim_metadata.json", name, imod_project_dir)
 
     # Copy over batchtomo files
     batchtomo_name = "batchETSimulations"
