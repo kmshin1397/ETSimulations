@@ -26,26 +26,25 @@ def convert_tlt(map_file, tilt_angle, file_in, file_out):
 
     """
 
-    lines = ["TILT SERIES %s" % map_file,
-             "",
-             "  AXIS",
-             "",
-             "    TILT AZIMUTH    %f" % tilt_angle,
-             "",
-             "",
-             "  ORIENTATION",
-             "    PHI    0.000"]
+    lines = ["TILT SERIES %s\n" % map_file,
+             "\n",
+             "  AXIS\n",
+             "\n",
+             "    TILT AZIMUTH    %f\n" % tilt_angle,
+             "\n",
+             "\n",
+             "  ORIENTATION\n",
+             "    PHI    0.000\n"]
 
     angles = np.loadtxt(file_in)
-    line = ""
     for i, angle in enumerate(angles):
         line = "  IMAGE %03d" % (i + 1)
         line += "       ORIGIN [  0.000   0.000 ]"
         line += "    TILT ANGLE   %.3f" % angle
-        line += "    ROTATION     0.000"
+        line += "    ROTATION     0.000\n"
+        lines.append(line)
 
-    lines.append(line)
-    lines.extend(["", "", "END"])
+    lines.extend(["\n", "\n", "END"])
 
     with open(file_out, "w") as f:
         f.writelines(lines)
@@ -70,19 +69,21 @@ def get_mrc_size(rec):
         return float(x) / 2, float(y) / 2, float(z) / 2
 
 
-def center_coordinates(coords, size):
+def center_coordinates(coords, size, binning=1):
     """
     Given an XYZ tuple of particle coordinates and the reconstruction they came from, shift the
-        coordinates so that the origin is at the center of the tomogram
+        coordinates so that the origin is at the bottom-left of the tomogram
 
     Args:
         coords: the (x, y, z) coordinates for the particle
         size: the reconstruction MRC half-dimensions in (nx/2, ny/2, nz/2) form
+        binning: the bin factor from the original stack to the final reconstruction
 
     Returns: the new coordinates as a (x, y, z) tuple
 
     """
-    return coords[0] - size[0], coords[1] - size[1], coords[2] - size[2]
+    return float(coords[0]) / binning + size[0], float(coords[1]) / binning + size[1], \
+           float(coords[2]) / binning + size[2]
 
 
 def get_slicer_info(mod_file):
@@ -316,7 +317,7 @@ def imod_processor_to_i3(root, name, i3_args):
                     rec = "%s_SIRT_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
                 else:
                     rec = "%s_SIRT.mrc" % basename
-      
+
             # Copy over the tomogram to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, rec)):
                 shutil.copyfile(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, rec))
@@ -343,16 +344,21 @@ def imod_processor_to_i3(root, name, i3_args):
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
-            print("Shifting the origins to the center for the particle coordinates...")
+            print("Shifting the origins to the bottom-left for the particle coordinates...")
             rec_fullpath = os.path.join(root, tomogram_dir, rec)
             size = get_mrc_size(rec_fullpath)
+            if "binvol" in processor_info:
+                binning = processor_info["binvol"]["binning"]
+            else:
+                binning = 1
+
             for particle in slicer_info:
-                # Shift the coordinates to have the origin at the tomogram center
-                particle["coords"] = center_coordinates(particle["coords"], size)
+                # Shift the coordinates to have the origin at the tomogram bottom-left
+                particle["coords"] = center_coordinates(particle["coords"], size, binning)
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
-            trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
+            trf_filepath = os.path.join(trf_path, "%s_%s.trf" % (basename, name))
             with open(trf_filepath, 'w') as trf:
                 lines = get_trf_lines(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
@@ -410,7 +416,7 @@ def imod_real_to_i3(name, i3_args):
                 elif i3_args["tlt_contains"] in file and file.endswith(".tlt"):
                     tlt = file
                 elif i3_args["rec_contains"] in file and (file.endswith(".mrc") or
-                                                         file.endswith(".rec")):
+                                                          file.endswith(".rec")):
                     rec = file
 
                 # Break out of loop once all three relevant files have been found
@@ -459,7 +465,7 @@ def imod_real_to_i3(name, i3_args):
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
-            trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
+            trf_filepath = os.path.join(trf_path, "%s_%s.trf" % (basename, name))
             with open(trf_filepath, 'w') as trf:
                 lines = get_trf_lines(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
@@ -474,4 +480,3 @@ def i3_main(root, name, i3_args):
         imod_real_to_i3(name, i3_args)
     else:
         imod_processor_to_i3(root, name, i3_args)
-
