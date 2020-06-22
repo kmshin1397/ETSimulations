@@ -72,7 +72,7 @@ def get_mrc_size(rec):
 def center_coordinates(coords, size, binning=1):
     """
     Given an XYZ tuple of particle coordinates and the reconstruction they came from, shift the
-        coordinates so that the origin is at the center of the tomogram
+        coordinates so that the origin is at the bottom-left of the tomogram
 
     Args:
         coords: the (x, y, z) coordinates for the particle
@@ -82,8 +82,8 @@ def center_coordinates(coords, size, binning=1):
     Returns: the new coordinates as a (x, y, z) tuple
 
     """
-    return float(coords[0]) / binning - size[0], float(coords[1]) / binning - size[1], \
-           float(coords[2]) / binning - size[2]
+    return float(coords[0]) / binning + size[0], float(coords[1]) / binning + size[1], \
+           float(coords[2]) / binning + size[2]
 
 
 def get_slicer_info(mod_file):
@@ -344,15 +344,17 @@ def imod_processor_to_i3(root, name, i3_args):
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
+            print("Shifting the origins to the bottom-left for the particle coordinates...")
+            rec_fullpath = os.path.join(root, tomogram_dir, rec)
+            size = get_mrc_size(rec_fullpath)
             if "binvol" in processor_info:
-                print("Binning the particle coordinates...")
                 binning = processor_info["binvol"]["binning"]
             else:
                 binning = 1
 
             for particle in slicer_info:
-                # Bin the particle coordinates if necessary
-                particle["coords"] = (np.array(particle["coords"]) / binning).tolist()
+                # Shift the coordinates to have the origin at the tomogram bottom-left
+                particle["coords"] = center_coordinates(particle["coords"], size, binning)
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
