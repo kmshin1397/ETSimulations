@@ -344,17 +344,15 @@ def imod_processor_to_i3(root, name, i3_args):
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
-            print("Shifting the origins to the center for the particle coordinates...")
-            rec_fullpath = os.path.join(root, tomogram_dir, rec)
-            size = get_mrc_size(rec_fullpath)
             if "binvol" in processor_info:
+                print("Binning the particle coordinates...")
                 binning = processor_info["binvol"]["binning"]
             else:
                 binning = 1
 
             for particle in slicer_info:
-                # Shift the coordinates to have the origin at the tomogram center
-                particle["coords"] = center_coordinates(particle["coords"], size, binning)
+                # Bin the particle coordinates if necessary
+                particle["coords"] = (np.array(particle["coords"]) / binning).tolist()
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
