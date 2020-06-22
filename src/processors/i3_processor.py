@@ -26,26 +26,25 @@ def convert_tlt(map_file, tilt_angle, file_in, file_out):
 
     """
 
-    lines = ["TILT SERIES %s" % map_file,
-             "",
-             "  AXIS",
-             "",
-             "    TILT AZIMUTH    %f" % tilt_angle,
-             "",
-             "",
-             "  ORIENTATION",
-             "    PHI    0.000"]
+    lines = ["TILT SERIES %s\n" % map_file,
+             "\n",
+             "  AXIS\n",
+             "\n",
+             "    TILT AZIMUTH    %f\n" % tilt_angle,
+             "\n",
+             "\n",
+             "  ORIENTATION\n",
+             "    PHI    0.000\n"]
 
     angles = np.loadtxt(file_in)
-    line = ""
     for i, angle in enumerate(angles):
         line = "  IMAGE %03d" % (i + 1)
         line += "       ORIGIN [  0.000   0.000 ]"
         line += "    TILT ANGLE   %.3f" % angle
-        line += "    ROTATION     0.000"
+        line += "    ROTATION     0.000\n"
+        lines.append(line)
 
-    lines.append(line)
-    lines.extend(["", "", "END"])
+    lines.extend(["\n", "\n", "END"])
 
     with open(file_out, "w") as f:
         f.writelines(lines)
