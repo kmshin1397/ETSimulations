@@ -13,10 +13,12 @@ import subprocess, shlex
 import json
 
 
-def convert_tlt(file_in, file_out):
+def convert_tlt(map_file, tilt_angle, file_in, file_out):
     """
-    Convert an IMOD .tlt file to I# tilt file format
+    Convert an IMOD .tlt file to I3 tilt file format
     Args:
+        map_file: The map MRC file
+        tilt_angle: The angle to put as the tilt azimuth
         file_in: The IMOD .tlt file
         file_out: The I3 tilt file
 
@@ -24,19 +26,29 @@ def convert_tlt(file_in, file_out):
 
     """
 
-    command = "tomoinit -tlt %s %s" % (file_out, file_in)
+    lines = ["TILT SERIES %s" % map_file,
+             "",
+             "  AXIS",
+             "",
+             "    TILT AZIMUTH    %f" % tilt_angle,
+             "",
+             "",
+             "  ORIENTATION",
+             "    PHI    0.000"]
 
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while True:
-        output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
+    angles = np.loadtxt(file_in)
+    line = ""
+    for i, angle in enumerate(angles):
+        line = "  IMAGE %03d" % (i + 1)
+        line += "       ORIGIN [  0.000   0.000 ]"
+        line += "    TILT ANGLE   %.3f" % angle
+        line += "    ROTATION     0.000"
 
-    rc = process.poll()
-    if rc != 0:
-        exit(1)
+    lines.append(line)
+    lines.extend(["", "", "END"])
+
+    with open(file_out, "w") as f:
+        f.writelines(lines)
 
 
 def get_mrc_size(rec):
@@ -315,7 +327,8 @@ def imod_processor_to_i3(root, name, i3_args):
             tlt = "%s.tlt" % basename
             # Copy over the tlt file to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, tlt)):
-                convert_tlt(os.path.join(tomogram_dir, tlt), os.path.join(maps_path, tlt))
+                convert_tlt(rec, i3_args["tlt_angle"], os.path.join(tomogram_dir, tlt),
+                            os.path.join(maps_path, tlt))
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % tomogram_dir)
 
@@ -415,7 +428,8 @@ def imod_real_to_i3(name, i3_args):
 
             # Copy over the tlt file to the maps folder
             if tlt != "":
-                convert_tlt(os.path.join(root, subdir, tlt), os.path.join(maps_path, tlt))
+                convert_tlt(rec, i3_args["tlt_angle"], os.path.join(root, subdir, tlt),
+                            os.path.join(maps_path, tlt))
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % subdir)
 

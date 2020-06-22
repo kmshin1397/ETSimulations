@@ -1,5 +1,5 @@
 ---
-root: "/data/kshin/batchtomotest3/raw_data1"
+root: "/Users/kshin/Documents/data/T4SS/cluster_041720/data_processors"
 name: "T4SS"
 processors: [
 #  {name: "eman2",
@@ -83,16 +83,28 @@ processors: [
   {
     name: "imod",
     args: {
-      start_step: 0.0,
-      end_step: 8.0,
+      start_step: 8.0,
+      end_step: 14.0,
       num_fiducials: 10,
       tilt_axis: -90,
       apix: 0.283,
       fiducial_method: "autofidseed",
-      force_coarse_align: true,
-      real_data_mode: true,
-      data_dirs_start_with: "dg",
-      custom_template: "/home/kshin/Documents/processing_scripts/imod_files/batchtomo_files/batchMar29-125518.adoc"
+      data_dirs_start_with: "T4SS",
+      reconstruction_method: "imod-wbp",
+      rotx: true,
+      binvol: {
+        "binning": 2
+      },
+      tomo3d_path: "tomo3d.osx",
+      imod_tomogram_thickness: 500
     }
   }
+#{
+#  name: "i3",
+#  args: {
+#    mraparam_path: "/Users/kshin/Documents/data/T4SS/cluster_041720/data_processors/processed_data/IMOD/T4SS_0/T4SS_0.tlt",
+#    real_data_mode: false,
+#    tlt_angle: -90.0
+#  }
+#}
 ]

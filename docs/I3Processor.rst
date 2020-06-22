@@ -11,7 +11,8 @@ The IMOD Processor as well will take its inputs from the configuration YAML pass
         name: "i3",
         args: {
           mraparam_path: "",
-          real_data_mode: false
+          real_data_mode: false,
+          tlt_angle: -90.0
         }
       }
     ]
@@ -28,6 +29,9 @@ Specifically, we have:
 
     * **real\_data\_mode** : bool
         Enable this to let the I3 Processor know that you are processing real data and to use the other parameters below rather than assuming the directory/file naming patterns used by IMOD Processor.
+
+    * **tlt\_angle** : float
+        The tilt angle for the maps to record in the generated .tlt files for missing-wedge compensation
 
     * **imod\_dir** : string
         (Required only if **real\_data\_mode** is set to true) The IMOD project directory to transfer to an I3 project
@@ -59,6 +63,7 @@ It is possible to use the I3 Processor to set up an I3 project on real data proc
         args: {
           mraparam_path: "path/to/mraparam.sh",
           real_data_mode: true,
+          tlt_angle: 85.7,
           imod_dir: "path/to/imod/project/directory",
           i3_dir: "path/to/new/i3/project/directory",
           dir_contains: "project_name",
