@@ -352,7 +352,7 @@ def imod_processor_to_i3(root, name, i3_args):
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
-            trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
+            trf_filepath = os.path.join(trf_path, "%s_%s.trf" % (basename, name))
             with open(trf_filepath, 'w') as trf:
                 lines = get_trf_lines(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
@@ -459,7 +459,7 @@ def imod_real_to_i3(name, i3_args):
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
-            trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
+            trf_filepath = os.path.join(trf_path, "%s_%s.trf" % (basename, name))
             with open(trf_filepath, 'w') as trf:
                 lines = get_trf_lines(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
