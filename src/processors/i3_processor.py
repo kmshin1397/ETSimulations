@@ -141,9 +141,9 @@ def slicer_angles_to_i3_matrix(angles):
     rot = R.from_euler('zyx', [angles[2], angles[1], angles[0]], degrees=True)
     # The Slicer angles are particle-to-reference, but PEET MOTLs are ref-to-part, so we invert
     rot = rot.inv()
-    motl = rot.as_euler('zxz', degrees=True)
+    motl = rot.as_euler('ZXZ', degrees=True)
 
-    command = "i3euler %f %f %f" % (motl[0], motl[2], motl[1])
+    command = "i3euler %f %f %f" % (motl[0], motl[1], motl[2])
 
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     matrix_str = ""
