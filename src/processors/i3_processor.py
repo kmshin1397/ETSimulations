@@ -14,7 +14,18 @@ import json
 
 
 def rotate_positions_around_z(positions):
-    rot = R.from_euler('zxz', (90, 0 ,0), degrees=True)
+    """
+    Given a list of coordinates, rotate them all by 90 degrees around the z-axis. This is used to
+        convert particle coordinates from the raw tiltseries to the final reconstruction's
+        coordinate system for simulated data.
+
+    Args:
+        positions: A list of [x, y, z] coordinates
+
+    Returns: None
+
+    """
+    rot = R.from_euler('zxz', (90, 0, 0), degrees=True)
     for i, point in enumerate(positions):
         positions[i] = np.dot(rot.as_matrix(), np.array(point))
 
@@ -77,7 +88,7 @@ def get_mrc_size(rec):
         return float(x) / 2, float(y) / 2, float(z) / 2
 
 
-def center_coordinates(coords, size, binning=1):
+def shift_coordinates_bottom_left(coords, size, binning=1):
     """
     Given an XYZ tuple of particle coordinates and the reconstruction they came from, shift the
         coordinates so that the origin is at the bottom-left of the tomogram
@@ -94,7 +105,33 @@ def center_coordinates(coords, size, binning=1):
            float(coords[2]) / binning + size[2]
 
 
+def center_coordinates(coords, size, binning=1):
+    """
+    Given an XYZ tuple of particle coordinates and the reconstruction they came from, shift the
+        coordinates so that the origin is at the center of the tomogram
+
+    Args:
+        coords: the (x, y, z) coordinates for the particle
+        size: the reconstruction MRC half-dimensions in (nx/2, ny/2, nz/2) form
+        binning: the bin factor from the original stack to the final reconstruction
+
+    Returns: the new coordinates as a (x, y, z) tuple
+
+    """
+    return float(coords[0]) / binning - size[0], float(coords[1]) / binning - size[1], \
+           float(coords[2]) / binning - size[2]
+
+
 def get_slicer_info(mod_file):
+    """
+    Open an IMOD .mod file and retrieve the Slicer information
+
+    Args:
+        mod_file: The .mod file path
+
+    Returns: A list of Slicer point objects with keys {"angles", "coords"}
+
+    """
     results = []
     with open(mod_file, "rb") as file:
         token = file.read(4)
@@ -145,31 +182,16 @@ def slicer_angles_to_i3_matrix(angles):
 
     """
 
+    # Note: The i3euler program will take ZXZ euler angles and invert that rotation before
+    # converting it to a rotation matrix. Thus, previous workflows had conversions from the Slicer
+    # angles to the PEET MOTL angles (which inverts the rotation since Slicer is particle-to-ref and
+    # PEET MOTLs use ref-to-particle) before feeding those angles into i3euler. We can skip all
+    # those steps by just converting the Slicer angles to a rotation matrix.
+
     # Slicer stores angles in XYZ order even though rotations are applied as ZYX, so we flip here
     rot = R.from_euler('zyx', [angles[2], angles[1], angles[0]], degrees=True)
-    # The Slicer angles are particle-to-reference, but PEET MOTLs are ref-to-part, so we invert
-    rot = rot.inv()
-    motl = rot.as_euler('ZXZ', degrees=True)
-
-    command = "i3euler %f %f %f" % (motl[0], motl[1], motl[2])
-
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    matrix_str = ""
-    while True:
-        output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            matrix_str = output.strip()
-
-    rc = process.poll()
-    if rc != 0:
-        exit(1)
-
-    matrix = np.fromstring(matrix_str, sep=" ")
+    matrix = np.array(rot.as_matrix()).flatten()
     return matrix
-    # matrix = np.array(rot.as_matrix()).flatten()
-    # return matrix
 
 
 def split_coords(coords):
@@ -365,7 +387,8 @@ def imod_processor_to_i3(root, name, i3_args):
 
             for particle in slicer_info:
                 # Shift the coordinates to have the origin at the tomogram bottom-left
-                particle["coords"] = center_coordinates(particle["coords"], size, binning)
+                particle["coords"] = shift_coordinates_bottom_left(particle["coords"], size,
+                                                                   binning)
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
@@ -380,6 +403,16 @@ def imod_processor_to_i3(root, name, i3_args):
 
 
 def imod_real_to_i3(name, i3_args):
+    """
+    Implements the I3 processing of a real data set reconstructed/particle-picked with IMOD
+
+    Args:
+        name: The particle name
+        i3_args: The I3 Processor arguments
+
+    Returns: None
+    """
+
     root = i3_args["imod_dir"]
 
     # -------------------------------------
@@ -472,7 +505,7 @@ def imod_real_to_i3(name, i3_args):
             size = get_mrc_size(rec_fullpath)
             for particle in slicer_info:
                 # Shift the coordinates to have the origin at the tomogram center
-                particle["coords"] = center_coordinates(particle["coords"], size)
+                particle["coords"] = shift_coordinates_bottom_left(particle["coords"], size)
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
