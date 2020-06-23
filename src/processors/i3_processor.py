@@ -13,6 +13,14 @@ import subprocess, shlex
 import json
 
 
+def rotate_positions_around_z(positions):
+    rot = R.from_euler('zxz', (90, 0 ,0), degrees=True)
+    for i, point in enumerate(positions):
+        positions[i] = np.dot(rot.as_matrix(), np.array(point))
+
+    return positions
+
+
 def convert_tlt(map_file, tilt_angle, file_in, file_out):
     """
     Convert an IMOD .tlt file to I3 tilt file format
@@ -294,6 +302,9 @@ def imod_processor_to_i3(root, name, i3_args):
 
             # Positions for TEM-Simulator are in nm, need to convert to pixels
             positions = np.array(tomogram["positions"]) / tomogram["apix"]
+            # During reconstruction, there is a 90 degree rotation around the z-axis, so correct for
+            # that with the positions
+            positions = rotate_positions_around_z(positions)
 
             slicer_angles_csv = os.path.join(tomogram_dir, "%s_slicerAngles.csv" % name)
             print("Loading Slicer angles...")
