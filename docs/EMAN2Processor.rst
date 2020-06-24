@@ -73,6 +73,8 @@ Each EMAN2 program is given its own \*\_parameters section in the "args" field, 
     * **e2spt\_sgd.py** : e2spt\_sgd\_parameters
     * **e2spt\_refine.py** : e2spt\_refine\_parameters
 
+Note: It is recommended that you consider enabling the "noali" option in the e2tomogram\_parameters when processing simulated data. The overall lack of large distinct features across the tiltseries (like entire cells in real tomograms) can confuse the coarse alignment step in e2tomogram.py and cause undesired large alignment errors computed during the reconstruction step.
+
 ============================
 Running the generated script
 ============================

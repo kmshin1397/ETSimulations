@@ -359,20 +359,20 @@ def run_tomo3d(tomo3d_path, tlt, tiltseries, output, other_args):
         exit(1)
 
 
-def run_rotx(input, output):
+def run_rotx(input_file, output):
     """
     Helper function to run the IMOD clip rotx program to rotate a tomogram 90 degrees around the
         x-axis
 
     Args:
-        input: The path to tomogram to rotate
+        input_file: The path to tomogram to rotate
         output: The path to write the rotated tomogram to
 
     Returns: None
 
     """
     clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "clip")
-    command = "%s rotx %s %s" % (clip_path, input, output)
+    command = "%s rotx %s %s" % (clip_path, input_file, output)
     print(command)
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
@@ -386,19 +386,19 @@ def run_rotx(input, output):
         exit(1)
 
 
-def run_binvol(input, output, options):
+def run_binvol(input_file, output, options):
     """
     Helper function to run the IMOD binvol program to bin a tomogram
 
     Args:
-        input: The path to tomogram to bin
+        input_file: The path to tomogram to bin
         output: The path to write the binned tomogram to
 
     Returns: None
 
     """
     clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "binvol")
-    command = "%s %s %s" % (clip_path, input, output)
+    command = "%s %s %s" % (clip_path, input_file, output)
     for arg, value in options.items():
         if value == "enable":
             command += " -%s" % arg

@@ -33,24 +33,32 @@ Specifically, we have:
     * **tlt\_angle** : float
         The tilt angle for the maps to record in the generated .tlt files for missing-wedge compensation
 
+    * **source\_type** : string
+        The source software from which to import into an I3 project. This should be "imod" or "eman2".
+
     * **imod\_dir** : string
-        (Required only if **real\_data\_mode** is set to true) The IMOD project directory to transfer to an I3 project
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") The IMOD project directory to transfer to an I3 project
 
     * **i3\_dir** : string
-        (Required only if **real\_data\_mode** is set to true) The destination directory to create the I3 project in
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") The destination directory to create the I3 project in
 
-    * **dir_contains** : string
-        (Required only if **real\_data\_mode** is set to true) When iterating through the IMOD directory, take only the sub-directories containing this string as tomogram data directories to import into I3
+    * **dir\_contains** : string
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") When iterating through the IMOD directory, take only the sub-directories containing this string as tomogram data directories to import into I3
 
-    * **rec_contains** : string
-        (Required only if **real\_data\_mode** is set to true) When looking for the tomogram reconstruction file in a directory, look for .mrc or .rec files containing this string
+    * **rec\_contains** : string
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") When looking for the tomogram reconstruction file in a directory, look for .mrc or .rec files containing this string
 
-    * **mod_contains** : string
-        (Required only if **real\_data\_mode** is set to true) When looking for the particle MOD file in a directory, look for .mod files containing this string
+    * **mod\_contains** : string
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") When looking for the particle MOD file in a directory, look for .mod files containing this string
 
-    * **tlt_contains** : string
-        (Required only if **real\_data\_mode** is set to true) When looking for the .tlt file in a data directory, look for .tlt files containing this string. Note that standard IMOD processing will produce both "\*\_fid.tlt" and "\*\_.tlt" files; you probably want to use the latter. Thus, this parameter should probably be set to something like "\*.tlt" to exclude the "\*\_fid.tlt" files.
+    * **tlt\_contains** : string
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") When looking for the .tlt file in a data directory, look for .tlt files containing this string. Note that standard IMOD processing will produce both "\*\_fid.tlt" and "\*\_.tlt" files; you probably want to use the latter. Thus, this parameter should probably be set to something like "\*.tlt" to exclude the "\*\_fid.tlt" files.
 
+    * **eman2\_dir** : string
+        (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The EMAN2 project directory path.
+
+    * **params\_json** : string
+        (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The particle_parms_*.json from a run of e2spt_align.py to retrieve pre-orientations and the particle list from.
 
 =====================================
 Using the I3 Processor on real data
