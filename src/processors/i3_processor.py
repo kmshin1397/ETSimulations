@@ -544,7 +544,7 @@ def extract_e2_particles(stack_file, name, destination):
     Returns: None
 
     """
-    command = "e2proc3d.py --unstacking %s %s/%s.mrc" % (stack_file, name, destination)
+    command = "e2proc3d.py --unstacking %s %s/%s.mrc" % (stack_file, destination, name)
     print(command)
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
@@ -577,10 +577,9 @@ def read_particle_params(json_file):
         data = json.load(f)
 
         for key, value in data.items():
-            text = key.translate(str.maketrans('', '', string.punctuation))
-            tokens = text.split(' ')
-            particle_no = int(tokens[1])
-            lst_file = tokens[0]
+            tokens = key.split("\', ")
+            particle_no = int(tokens[1].split(")")[0])
+            lst_file = tokens[0].split("\'")[1]
 
             matrix = value['xform.align3d']['matrix']
             jdict[particle_no] = matrix
@@ -727,7 +726,7 @@ def eman2_real_to_i3(i3_args):
     # -------------------------------------
     # Set up I3 project directory structure
     # -------------------------------------
-    print("Creating I3 project directories")
+    print("\nCreating I3 project directories")
     i3_root = i3_args["i3_dir"]
     if not os.path.exists(i3_root):
         os.mkdir(i3_root)
@@ -756,23 +755,27 @@ def eman2_real_to_i3(i3_args):
     # -------------------------------------
 
     # Extract individual particle maps from the stacks
+    print("\nExtracting individual particle maps...")
     for stack in stacks_info.keys():
-        basename = stack.split(".")[0]
-        extract_e2_particles(os.path.join(i3_args["eman2_dir"], "particles3d", stack), basename,
+        basename = os.path.basename(stack).split(".")[0]
+        extract_e2_particles(os.path.join(i3_args["eman2_dir"], stack), basename,
                              maps_path)
 
     # Extract individual particle maps into maps folder
+    num_particles = len(particles)
+    progress = 1
     for particle_no, transform in particles.items():
+        print("\nWorking on particle {:d} out of {:d}..".format(progress, num_particles))
         lst_entry = lst_entries[particle_no]
-        stack_base = lst_entry["stack"].split(".")[0]
+        stack_base = os.path.basename(lst_entry["stack"]).split(".")[0]
         local_particle_no = lst_entry["local_no"]
 
         num_particles_in_tomogram = stacks_info[lst_entry["stack"]]
-        particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no,
-                                               num_particles_in_tomogram)
+        num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
+        particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no, num_digits)
 
         print("Creating tlt file and updating the maps file...")
-        info_file = lst_entry["info"]
+        info_file = os.path.join(i3_args["eman2_dir"], lst_entry["info"])
         new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
         convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)
 
@@ -788,6 +791,8 @@ def eman2_real_to_i3(i3_args):
         print("Writing the .trf file...")
         trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
         write_trf_eman2(particle_map, transform, trf_filepath)
+
+        progress += 1
 
     maps_file.close()
     sets_file.close()
