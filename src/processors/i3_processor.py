@@ -286,7 +286,7 @@ def imod_processor_to_i3(root, name, i3_args):
     # -------------------------------------
     print("Creating I3 project directories")
     processed_data_dir = root + "/processed_data"
-    i3_root = processed_data_dir + "/I3"
+    i3_root = processed_data_dir + "/I3-from-IMOD"
     if not os.path.exists(i3_root):
         os.mkdir(i3_root)
 
@@ -456,6 +456,8 @@ def imod_real_to_i3(name, i3_args):
     trf_path = os.path.join(i3_root, "trf")
     if not os.path.exists(trf_path):
         os.mkdir(trf_path)
+
+    shutil.copyfile(i3_args["mraparam_path"], os.path.join(i3_root, "mraparam.sh"))
 
     # -------------------------------------
     # Retrieve parameters to write to files
@@ -685,7 +687,7 @@ def convert_tlt_eman2(info_file, map_file, output):
         f.writelines(lines)
 
 
-def write_trf_eman2(set_name, transformation_matrix, trf_file):
+def write_trf_eman2_extracted(set_name, transformation_matrix, trf_file):
     """
     Helper function to write out the .trf file for one extracted particle
 
@@ -711,6 +713,43 @@ def write_trf_eman2(set_name, transformation_matrix, trf_file):
         f.write("{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(a0, a1, a2, a3, a4, a5, a6))
         f.write("{0:.5f} {1:.5f} {2:.5f} {3:.5f} {4:.5f} ".format(a7, a8, a9, a10, a11))
         f.write("{0:.5f} {1:.5f} {2:.5f} {3:.5f}".format(a12, a13, a14, a15))
+
+
+def write_trf_eman2(set_name, trf_info, trf_file):
+    """
+    Helper function to write out the .trf file for a EMAN2 tomogram
+
+    Args:
+        set_name: The I3 set name to write (should be the basename of the extracted map file)
+        trf_info: List of objects with {"coords", "matrix"} for a omogram
+        trf_file: The output file path
+
+    Returns: None
+
+    """
+    with open(trf_file, "w") as f:
+        lines = []
+        for particle in trf_info:
+            coords = particle["coords"]
+            rot_matrix = particle["matrix"]
+
+            # Add data subset identifier first
+            new_line = "%s " % set_name
+
+            # Add the particle position
+            ints, displacements = split_coords(coords)
+            new_line += "%d %d %d " % (ints[0], ints[1], ints[2])
+            new_line += "%f %f %f " % (displacements[0], displacements[1], displacements[2])
+
+            # Add the rotation matrix
+            new_line += "%f %f %f %f %f %f %f %f %f\n" % \
+                        (rot_matrix[0], rot_matrix[1], rot_matrix[2],
+                         rot_matrix[3], rot_matrix[4], rot_matrix[5],
+                         rot_matrix[6], rot_matrix[7], rot_matrix[8])
+
+            lines.append(new_line)
+
+        f.writelines(lines)
 
 
 #############################
@@ -749,6 +788,8 @@ def eman2_real_to_i3(i3_args):
     trf_path = os.path.join(i3_root, "trf")
     if not os.path.exists(trf_path):
         os.mkdir(trf_path)
+
+    shutil.copyfile(i3_args["mraparam_path"], os.path.join(i3_root, "mraparam.sh"))
 
     # -------------------------------------
     # Set up I3 project directory contents
@@ -790,10 +831,142 @@ def eman2_real_to_i3(i3_args):
         # write to a .trf file in folder trf
         print("Writing the .trf file...")
         trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
-        write_trf_eman2(particle_map, transform, trf_filepath)
+        write_trf_eman2_extracted(particle_map, transform, trf_filepath)
 
         progress += 1
 
+    maps_file.close()
+    sets_file.close()
+
+
+def eman2_processor_to_i3(root, name, i3_args):
+
+    # -------------------------------------
+    # Set up I3 project directory structure
+    # -------------------------------------
+    print("Creating I3 project directories")
+    processed_data_dir = root + "/processed_data"
+    i3_root = processed_data_dir + "/I3-from-EMAN2"
+    if not os.path.exists(i3_root):
+        os.mkdir(i3_root)
+
+    # Make the maps folder if necessary
+    maps_path = os.path.join(i3_root, "maps")
+    if not os.path.exists(maps_path):
+        os.mkdir(maps_path)
+
+    # Make the defs folder if necessary
+    defs_path = os.path.join(i3_root, "defs")
+    maps_file_path = os.path.join(defs_path, "maps")
+    sets_file_path = os.path.join(defs_path, "sets")
+    if not os.path.exists(defs_path):
+        os.mkdir(defs_path)
+    maps_file = open(maps_file_path, "w")
+    sets_file = open(sets_file_path, "w")
+
+    # Make the trf folder if necessary
+    trf_path = os.path.join(i3_root, "trf")
+    if not os.path.exists(trf_path):
+        os.mkdir(trf_path)
+
+    # Iterate through the tomograms in the order they appear in the metadata file instead of just
+    # iterating through the processed IMOD directory like with the real data version of this
+    # function. This is faster since we avoid searching through the metadata dictionary to match up
+    # data directories to the original raw data metadata.
+
+    metadata_file = os.path.join(root, "sim_metadata.json")
+
+    shutil.copyfile(i3_args["mraparam_path"], os.path.join(i3_root, "mraparam.sh"))
+
+    # Load EMAN2 Processor info
+    processor_info_file = os.path.join(root, "processed_data/eman2_info.json")
+    processor_info = json.load(open(processor_info_file, "r"))["args"]
+
+    # -------------------------------------
+    # Set up I3 project directory contents
+    # -------------------------------------
+
+    with open(metadata_file, "r") as f:
+        metadata = json.loads(f.read())
+
+        # -------------------------------------
+        # Retrieve parameters to write to files
+        # -------------------------------------
+        total_num = len(metadata)
+        for num, tomogram in enumerate(metadata):
+            basename = "%s_%d" % (name, tomogram["global_stack_no"])
+
+            info_file = os.path.join(root, "processed_data/EMAN2/info",
+                                     "{:s}_info.json".format(basename))
+
+            print("")
+            print("Collecting information for %s" % basename)
+            print("This is tomogram %d out of %d" % (num + 1, total_num))
+
+            # Positions for TEM-Simulator are in nm, need to convert to pixels
+            positions = np.array(tomogram["positions"]) / tomogram["apix"]
+            # During reconstruction, there is a 90 degree rotation around the z-axis, so correct for
+            # that with the positions
+            positions = rotate_positions_around_z(positions)
+
+            raw_orientations = tomogram["orientations"]
+            matrices = []
+            for i, row in enumerate(raw_orientations):
+                # In ZXZ
+                # ETSimulations/TEM-Sim gives ref-to-part, external;
+                # rotate by z to account for reconstruction rotation
+                euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
+
+                # TEM-Simulator is in stationary zxz
+                rotation = R.from_euler('zxz', euler, degrees=True)
+
+                matrices.append(np.array(rotation.as_matrix()).flatten())
+
+            # Compile trf infos
+            trf_info = []
+            for i, coords in enumerate(positions):
+                matrix = matrices[i]
+                trf_info.append({"coords": coords, "matrices": matrix})
+
+            # Look for the necessary EMAN2 files
+            print("Looking for necessary EMAN2 files...")
+            # Compare the nx of the original tiltseries to the reconstruction parameters to
+            # determine the binning factor
+            original_tiltseries_size = get_mrc_size(tomogram["tiltseries_file"])[0] * 2
+            rec_size_string = processor_info["e2tomogram_parameters"]["outsize"]
+            rec_size = float(rec_size_string.replace("k", "")) * 1000
+            binning = round(original_tiltseries_size / rec_size)
+            # Tomogram expected path based on binning factor
+            rec = "{:s}__bin{:d}".format(basename, binning)
+            tomogram_dir = os.path.join(root, "processed_data/EMAN2/tomograms")
+
+            # Copy over the tomogram to the maps folder
+            if os.path.exists(os.path.join(tomogram_dir, rec)):
+                shutil.copyfile(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, rec))
+            else:
+                print("ERROR: Reconstruction not found: %s" % rec)
+                exit(1)
+
+            tlt = "%s.tlt" % basename
+            # Copy over the tlt file to the maps folder
+            convert_tlt_eman2(info_file, rec, os.path.join(maps_path, tlt))
+
+            # Add the tomogram info to the defs/maps file`
+            print("Updating the maps file...")
+            new_maps_line = "../maps %s ../maps/%s\n" % (rec, tlt)
+            maps_file.write(new_maps_line)
+
+            # Add the tomogram info to the defs/sets file
+            print("Updating the sets file...")
+            new_sets_line = "%s %s\n" % (rec, basename)
+            sets_file.write(new_sets_line)
+
+            # Write the trf file for this tomogram
+            print("Writing the .trf file...")
+            trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
+            write_trf_eman2(basename, trf_info, trf_filepath)
+
+    # Close files
     maps_file.close()
     sets_file.close()
 
@@ -807,6 +980,8 @@ def i3_main(root, name, i3_args):
     elif i3_args["source_type"] == "eman2":
         if i3_args["real_data_mode"]:
             eman2_real_to_i3(i3_args)
+        else:
+            eman2_processor_to_i3(root, name, i3_args)
     else:
         print("Error: Invalid I3 'source_type")
         exit(1)
