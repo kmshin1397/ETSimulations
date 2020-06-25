@@ -757,6 +757,31 @@ def write_trf_eman2(set_name, trf_info, trf_file):
         f.writelines(lines)
 
 
+def hdf_to_mrc(hdf_file, mrc_file):
+    """
+    Helper function to convert a .hdf map to a .mrc map using e2proc3d.py
+
+    Args:
+        hdf_file: The HDF file to convert
+        mrc_file: The MRC file to convert
+
+    Returns: None
+
+    """
+    command = "e2proc3d.py --outtype=mrc {:s} {:s}".format(hdf_file, mrc_file)
+    print(command)
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
 #############################
 #   EMAN2 Main Functions    #
 #############################
@@ -943,11 +968,12 @@ def eman2_processor_to_i3(root, name, i3_args):
             binning = round(original_tiltseries_size / rec_size)
             # Tomogram expected path based on binning factor
             rec = "{:s}__bin{:d}.hdf".format(basename, binning)
+            mrc_rec = "{:s}__bin{:d}.mrc".format(basename, binning)
             tomogram_dir = os.path.join(root, "processed_data/EMAN2/tomograms")
 
             # Copy over the tomogram to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, rec)):
-                shutil.copyfile(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, rec))
+                hdf_to_mrc(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, mrc_rec))
             else:
                 print("ERROR: Reconstruction not found: %s" % rec)
                 exit(1)
