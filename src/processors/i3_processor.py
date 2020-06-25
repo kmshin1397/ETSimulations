@@ -6,13 +6,13 @@ The module will create an I3 project directory.
 import os
 import struct
 import shutil
-import mrcfile
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import subprocess, shlex
 import string
 import json
 import math
+import warnings
 
 
 #################################
@@ -184,12 +184,17 @@ def get_mrc_size(rec):
     Returns: A tuple (x/2, y/2, z/2) of the half-lengths in each dimension
 
     """
-    with mrcfile.open(rec, header_only=True) as mrc:
-        x = mrc.header.nx
-        y = mrc.header.ny
-        z = mrc.header.nz
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import mrcfile
 
-        return float(x) / 2, float(y) / 2, float(z) / 2
+        data = np.array([])
+        with mrcfile.open(rec, mode='r', header_only=True, permissive=True) as mrc:
+            x = mrc.header.nx
+            y = mrc.header.ny
+            z = mrc.header.nz
+
+            return float(x) / 2, float(y) / 2, float(z) / 2
 
 
 def get_slicer_info(mod_file):
@@ -932,12 +937,12 @@ def eman2_processor_to_i3(root, name, i3_args):
             print("Looking for necessary EMAN2 files...")
             # Compare the nx of the original tiltseries to the reconstruction parameters to
             # determine the binning factor
-            original_tiltseries_size = get_mrc_size(tomogram["tiltseries_file"])[0] * 2
+            original_tiltseries_size = get_mrc_size(tomogram["output"])[0] * 2
             rec_size_string = processor_info["e2tomogram_parameters"]["outsize"]
             rec_size = float(rec_size_string.replace("k", "")) * 1000
             binning = round(original_tiltseries_size / rec_size)
             # Tomogram expected path based on binning factor
-            rec = "{:s}__bin{:d}".format(basename, binning)
+            rec = "{:s}__bin{:d}.hdf".format(basename, binning)
             tomogram_dir = os.path.join(root, "processed_data/EMAN2/tomograms")
 
             # Copy over the tomogram to the maps folder
