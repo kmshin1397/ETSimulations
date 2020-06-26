@@ -2,9 +2,9 @@ The I3 Processor
 ==================
 The I3 Processor, found in processors/i3\_processor.py, is implemented to facilitate processing of the generated simulation dataset with the `I3 software <i3link>`_. Specifically, a project directory is created and set up, along with necessary files, for running sub-tomogram averaging using I3.
 
-The previous steps of aligning, reconstructing, and particle-picking is not handled by I3 and must be done with another software. The I3 Processor can currently take the results of the :ref:`IMOD Processor <imod_processor>` to set up the I3 run, and support for the :ref:`EMAN2 Processor <eman2_processor>` output is planned for future work.
+The previous steps of aligning, reconstructing, and particle-picking is not handled by I3 and must be done with another software. The I3 Processor can currently take the results of the :ref:`IMOD Processor <imod_processor>` and the :ref:`EMAN2 Processor <eman2_processor>` to set up the I3 run.
 
-The IMOD Processor as well will take its inputs from the configuration YAML passed into ets\_process\_data.py. The following is an example of minimal I3 configurations: ::
+The I3 Processor as well will take its inputs from the configuration YAML passed into ets\_process\_data.py. The following is an example of minimal I3 configurations: ::
 
     processors: [
       {
@@ -12,7 +12,8 @@ The IMOD Processor as well will take its inputs from the configuration YAML pass
         args: {
           mraparam_path: "",
           real_data_mode: false,
-          tlt_angle: -90.0
+          tlt_angle: -90.0,
+          source_type: "imod"
         }
       }
     ]
@@ -31,7 +32,7 @@ Specifically, we have:
         Enable this to let the I3 Processor know that you are processing real data and to use the other parameters below rather than assuming the directory/file naming patterns used by IMOD Processor.
 
     * **tlt\_angle** : float
-        The tilt angle for the maps to record in the generated .tlt files for missing-wedge compensation
+        (Required only if **source\_type** is "imod") The tilt axis angle for the maps to record in the generated .tlt files for missing-wedge compensation. For EMAN2 source, the tilt axis angle will be taken from the tomogram info files (as the average across all tilt images) at the same time per-tilt angles are extracted from them for the .tlt file.
 
     * **source\_type** : string
         The source software from which to import into an I3 project. This should be "imod" or "eman2".
@@ -72,6 +73,7 @@ It is possible to use the I3 Processor to set up an I3 project on real data proc
           mraparam_path: "path/to/mraparam.sh",
           real_data_mode: true,
           tlt_angle: 85.7,
+          source_type: "imod",
           imod_dir: "path/to/imod/project/directory",
           i3_dir: "path/to/new/i3/project/directory",
           dir_contains: "project_name",
