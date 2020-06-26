@@ -27,3 +27,4 @@ custom_configs:
   rod: "/data/kshin/T4SS_sim/PDB/pdb_maps/rod_chimera.mrc"
   barrel: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"
   num_rods: 2
+  rod_distance_from_center: 125
