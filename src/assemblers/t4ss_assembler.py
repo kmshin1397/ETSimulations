@@ -388,7 +388,6 @@ class T4SSAssembler:
 
             # Assemble a new particle
             true_orientation, position, angles = self.__assemble_particle(new_particle)
-            orientation = true_orientation
 
             # If we want to add noise to orientations, do it here
             if "orientations_error" in self.custom_args:
@@ -404,12 +403,15 @@ class T4SSAssembler:
                                      true_orientation[1] + random.gauss(mu, sigma),
                                      true_orientation[2] + random.gauss(mu, sigma)]
 
-                orientation = noisy_orientation
                 # Update metadata records for changed orientations
                 custom_metadata["true_orientations"].append(true_orientation)
 
-            # Update the simulation parameters with the new particle
-            particle_set.add_orientation(orientation)
+                particle_set.add_orientation(true_orientation, noisy_version=noisy_orientation)
+
+            else:
+                particle_set.add_orientation(true_orientation)
+
+            # Update the other simulation parameters with the new particle
             particle_set.add_coordinate(coordinates[i])
             particle_set.add_source(new_particle)
             particle_set.num_particles += 1

@@ -27,6 +27,7 @@ class ParticleSet:
         self.source = None
         self.coordinates = []
         self.orientations = []
+        self.noisy_orientations = []
         self.num_particles = 0
 
         # Flag to indicate that this is part of the particles of interest (the one that will be
@@ -37,9 +38,21 @@ class ParticleSet:
         """ Append an XYZ coordinate to the list of particle coordinates """
         self.coordinates.append(coord)
 
-    def add_orientation(self, orientation):
-        """ Append an ZXZ Euler angle rotation to the list of particle orientations """
+    def add_orientation(self, orientation, noisy_version=None):
+        """
+        Append a ZXZ orientation to the list of particle orientations. A noisy version of the true
+            orientation can also be recorded.
+
+        Args:
+            orientation: The true orientation to pass along to the TEM-Simulator
+            noisy_version: A noisy version of the orientation to record for processing purposes
+
+        Returns: None
+
+        """
         self.orientations.append(orientation)
+        if noisy_version:
+            self.noisy_orientations.append(noisy_version)
 
     def add_source(self, source):
         """ Set the particle source file for the particle set """

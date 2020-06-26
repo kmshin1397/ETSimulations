@@ -164,7 +164,6 @@ class BasicAssembler:
             # Update the simulation parameters with the new particle
 
             true_orientation = self.get_new_orientation(self.custom_args["orientations_source"])
-            orientation = true_orientation
 
             # If we want to add noise to orientations, do it here
             if "orientations_error" in self.custom_args:
@@ -180,12 +179,13 @@ class BasicAssembler:
                                      true_orientation[1] + random.gauss(mu, sigma),
                                      true_orientation[2] + random.gauss(mu, sigma)]
 
-                orientation = noisy_orientation
-
                 # Update metadata records for changed orientations
                 custom_metadata["true_orientations"].append(true_orientation)
 
-            particle_set.add_orientation(orientation)
+                particle_set.add_orientation(true_orientation, noisy_version=noisy_orientation)
+
+            else:
+                particle_set.add_orientation(true_orientation)
 
             particle_set.add_coordinate(coordinates[i])
             particle_set.add_source(new_particle)

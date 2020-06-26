@@ -358,7 +358,13 @@ class Simulation:
 
             # If this is the main particle in the tilt stack, update simulation metadata
             if particle_set.key:
-                self.extend_orientations(particle_set.orientations)
+                # Record (for metadata) noisy versions of the orientations if they exist, otherwise
+                # the true ones
+                if particle_set.noisy_orientations:
+                    self.extend_positions(particle_set.noisy_orientations)
+                else:
+                    self.extend_orientations(particle_set.orientations)
+
                 self.extend_positions(particle_set.coordinates)
 
             self.__write_coord_file(new_coord_file, particle_set.coordinates,
