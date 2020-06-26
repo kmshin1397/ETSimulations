@@ -692,13 +692,13 @@ def convert_tlt_eman2(info_file, map_file, output):
         f.writelines(lines)
 
 
-def write_trf_eman2_extracted(set_name, transformation_matrix, trf_file):
+def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
     """
     Helper function to write out the .trf file for one extracted particle
 
     Args:
         set_name: The I3 set name to write (should be the basename of the extracted map file)
-        transformation_matrix: The transformation matrix for the particle
+        rot_matrix: The rotation matrix for the particle
         trf_file: The output file path
 
     Returns: None
@@ -709,15 +709,12 @@ def write_trf_eman2_extracted(set_name, transformation_matrix, trf_file):
         a1, a2, a3 = (0, 0, 0)
         a4, a5, a6 = (0.0, 0.0, 0.0)
 
-        a7, a8, a9 = tuple(transformation_matrix[0:3])
-
-        a10, a11, a12 = tuple(transformation_matrix[4:7])
-
-        a13, a14, a15 = tuple(transformation_matrix[8:11])
-
         f.write("{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(a0, a1, a2, a3, a4, a5, a6))
-        f.write("{0:.5f} {1:.5f} {2:.5f} {3:.5f} {4:.5f} ".format(a7, a8, a9, a10, a11))
-        f.write("{0:.5f} {1:.5f} {2:.5f} {3:.5f}".format(a12, a13, a14, a15))
+        f.write("%f %f %f %f %f %f %f %f %f" % \
+                    (rot_matrix[0], rot_matrix[1], rot_matrix[2],
+                     rot_matrix[3], rot_matrix[4], rot_matrix[5],
+                     rot_matrix[6], rot_matrix[7], rot_matrix[8]))
+
 
 
 def hdf_to_mrc(hdf_file, mrc_file):
@@ -832,7 +829,12 @@ def eman2_real_to_i3(i3_args):
         # write to a .trf file in folder trf
         print("Writing the .trf file...")
         trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
-        write_trf_eman2_extracted(particle_map, transform, trf_filepath)
+        # Convert EMAN2 transformation matrix to a rotation matrix
+        a1, a2, a3 = tuple(transformation_matrix[0:3])
+        a4, a5, a6 = tuple(transformation_matrix[4:7])
+        a7, a8, a9 = tuple(transformation_matrix[8:11])
+        rot_matrix = [a1, a2, a3, a4, a5, a6, a7, a8, a9]
+        write_trf_eman2_extracted(particle_map, rot_matrix, trf_filepath)
 
         progress += 1
 
@@ -935,6 +937,7 @@ def eman2_processor_to_i3(root, name, i3_args):
             rec_size_string = processor_info["e2tomogram_parameters"]["outsize"]
             rec_size = float(rec_size_string.replace("k", "")) * 1000
             binning = round(original_tiltseries_size / rec_size)
+
             # Tomogram expected path based on binning factor
             rec = "{:s}__bin{:d}.hdf".format(basename, binning)
 
@@ -948,14 +951,12 @@ def eman2_processor_to_i3(root, name, i3_args):
                 # Convert all the HDF files to MRCs
                 num_particles_in_tomogram = len(matrices)
                 num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
+                print("")
                 for i in range(num_particles_in_tomogram):
-                    print("Working on particle %d of %d for the tomogram..." %
+                    print("Updating I3 files for particle %d of %d for the tomogram..." %
                           (i + 1, num_particles_in_tomogram))
                     particle_num = i + 1
                     particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
-                    hdf_file = os.path.join(maps_path, "{:s}.hdf".format(particle_map))
-                    mrc_file = os.path.join(maps_path, "{:s}.mrc".format(particle_map))
-                    hdf_to_mrc(hdf_file, mrc_file)
 
                     new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
                     convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)
@@ -971,8 +972,8 @@ def eman2_processor_to_i3(root, name, i3_args):
 
                     # Write the trf file for this tomogram
                     trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
-                    transform = matrices[i]
-                    write_trf_eman2_extracted(particle_map, transform, trf_filepath)
+                    rot_matrix = matrices[i]
+                    write_trf_eman2_extracted(particle_map, rot_matrix, trf_filepath)
 
             else:
                 print("ERROR: Missing particle stack: particles3d/%s" %
