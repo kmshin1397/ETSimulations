@@ -720,43 +720,6 @@ def write_trf_eman2_extracted(set_name, transformation_matrix, trf_file):
         f.write("{0:.5f} {1:.5f} {2:.5f} {3:.5f}".format(a12, a13, a14, a15))
 
 
-def write_trf_eman2(set_name, trf_info, trf_file):
-    """
-    Helper function to write out the .trf file for a EMAN2 tomogram
-
-    Args:
-        set_name: The I3 set name to write (should be the basename of the extracted map file)
-        trf_info: List of objects with {"coords", "matrix"} for a omogram
-        trf_file: The output file path
-
-    Returns: None
-
-    """
-    with open(trf_file, "w") as f:
-        lines = []
-        for particle in trf_info:
-            coords = particle["coords"]
-            rot_matrix = particle["matrix"]
-
-            # Add data subset identifier first
-            new_line = "%s " % set_name
-
-            # Add the particle position
-            ints, displacements = split_coords(coords)
-            new_line += "%d %d %d " % (ints[0], ints[1], ints[2])
-            new_line += "%f %f %f " % (displacements[0], displacements[1], displacements[2])
-
-            # Add the rotation matrix
-            new_line += "%f %f %f %f %f %f %f %f %f\n" % \
-                        (rot_matrix[0], rot_matrix[1], rot_matrix[2],
-                         rot_matrix[3], rot_matrix[4], rot_matrix[5],
-                         rot_matrix[6], rot_matrix[7], rot_matrix[8])
-
-            lines.append(new_line)
-
-        f.writelines(lines)
-
-
 def hdf_to_mrc(hdf_file, mrc_file):
     """
     Helper function to convert a .hdf map to a .mrc map using e2proc3d.py
@@ -787,6 +750,14 @@ def hdf_to_mrc(hdf_file, mrc_file):
 #############################
 
 def eman2_real_to_i3(i3_args):
+    """
+    Implements the I3 processing of a real data set reconstructed/particle-picked with EMAN2
+
+    Args:
+        i3_args: The I3 Processor arguments
+
+    Returns: None
+    """
     json_file = i3_args["params_json"]
     lst, particles = read_particle_params(json_file)
     lst_file = os.path.join(i3_args["eman2_dir"], lst)
@@ -870,7 +841,17 @@ def eman2_real_to_i3(i3_args):
 
 
 def eman2_processor_to_i3(root, name, i3_args):
+    """
+    Implements the I3 processing of simulated data that was reconstructed using the EMAN2 Processor.
 
+    Args:
+        root: The ETSimulations project root directory
+        name: The particle name
+        i3_args: The I3 Processor arguments
+
+    Returns: None
+
+    """
     # -------------------------------------
     # Set up I3 project directory structure
     # -------------------------------------
@@ -930,14 +911,8 @@ def eman2_processor_to_i3(root, name, i3_args):
                                      "{:s}_info.json".format(basename))
 
             print("")
-            print("Collecting information for %s" % basename)
+            print("\nCollecting information for %s" % basename)
             print("This is tomogram %d out of %d" % (num + 1, total_num))
-
-            # Positions for TEM-Simulator are in nm, need to convert to pixels
-            positions = np.array(tomogram["positions"]) / tomogram["apix"]
-            # During reconstruction, there is a 90 degree rotation around the z-axis, so correct for
-            # that with the positions
-            positions = rotate_positions_around_z(positions)
 
             raw_orientations = tomogram["orientations"]
             matrices = []
@@ -952,12 +927,6 @@ def eman2_processor_to_i3(root, name, i3_args):
 
                 matrices.append(np.array(rotation.as_matrix()).flatten())
 
-            # Compile trf infos
-            trf_info = []
-            for i, coords in enumerate(positions):
-                matrix = matrices[i]
-                trf_info.append({"coords": coords, "matrices": matrix})
-
             # Look for the necessary EMAN2 files
             print("Looking for necessary EMAN2 files...")
             # Compare the nx of the original tiltseries to the reconstruction parameters to
@@ -968,34 +937,47 @@ def eman2_processor_to_i3(root, name, i3_args):
             binning = round(original_tiltseries_size / rec_size)
             # Tomogram expected path based on binning factor
             rec = "{:s}__bin{:d}.hdf".format(basename, binning)
-            mrc_rec = "{:s}__bin{:d}.mrc".format(basename, binning)
-            tomogram_dir = os.path.join(root, "processed_data/EMAN2/tomograms")
 
-            # Copy over the tomogram to the maps folder
-            if os.path.exists(os.path.join(tomogram_dir, rec)):
-                hdf_to_mrc(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, mrc_rec))
+            print("\nExtracting individual particle maps for the tomogram...")
+            expected_stack = os.path.join(i3_args["eman2_dir"], "particles3d",
+                                          "{:s}__{:s}.hdf".format(basename, name))
+
+            if os.path.exists(expected_stack):
+                extract_e2_particles(expected_stack, basename, maps_path)
+
+                # Convert all the HDF files to MRCs
+                num_particles_in_tomogram = len(matrices)
+                num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
+                for i in range(num_particles_in_tomogram):
+                    print("Working on particle %d of %d for the tomogram..." %
+                          (i + 1, num_particles_in_tomogram))
+                    particle_num = i + 1
+                    particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
+                    hdf_file = os.path.join(maps_path, "{:s}.hdf".format(particle_map))
+                    mrc_file = os.path.join(maps_path, "{:s}.mrc".format(particle_map))
+                    hdf_to_mrc(hdf_file, mrc_file)
+
+                    new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
+                    convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)
+
+                    # Add the tomogram info to the defs/maps file`
+                    new_maps_line = "../maps %s ../maps/%s\n" % (particle_map + ".mrc",
+                                                                 particle_map + ".tlt")
+                    maps_file.write(new_maps_line)
+
+                    # Add the tomogram info to the defs/sets file
+                    new_sets_line = "%s %s\n" % (particle_map + ".mrc", particle_map)
+                    sets_file.write(new_sets_line)
+
+                    # Write the trf file for this tomogram
+                    trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
+                    transform = matrices[i]
+                    write_trf_eman2_extracted(particle_map, transform, trf_filepath)
+
             else:
-                print("ERROR: Reconstruction not found: %s" % rec)
+                print("ERROR: Missing particle stack: particles3d/%s" %
+                      "{:s}__{:s}.hdf".format(basename, name))
                 exit(1)
-
-            tlt = "%s.tlt" % basename
-            # Copy over the tlt file to the maps folder
-            convert_tlt_eman2(info_file, rec, os.path.join(maps_path, tlt))
-
-            # Add the tomogram info to the defs/maps file`
-            print("Updating the maps file...")
-            new_maps_line = "../maps %s ../maps/%s\n" % (rec, tlt)
-            maps_file.write(new_maps_line)
-
-            # Add the tomogram info to the defs/sets file
-            print("Updating the sets file...")
-            new_sets_line = "%s %s\n" % (rec, basename)
-            sets_file.write(new_sets_line)
-
-            # Write the trf file for this tomogram
-            print("Writing the .trf file...")
-            trf_filepath = os.path.join(trf_path, "%s.trf" % basename)
-            write_trf_eman2(basename, trf_info, trf_filepath)
 
     # Close files
     maps_file.close()
