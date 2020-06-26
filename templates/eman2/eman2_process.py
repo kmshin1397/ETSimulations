@@ -12,6 +12,7 @@ import subprocess
 import shlex
 import numpy as np
 import json
+from scipy.spatial.transform import Rotation as R
 
 # ==================== Input parameters ====================
 # General parameters
@@ -75,6 +76,25 @@ def run_process_with_params(base_command, params_dict, get_command_without_runni
                 print(output.strip())
         rc = process.poll()
         return rc
+
+
+def rotate_positions_around_z(positions):
+    """
+    Given a list of coordinates, rotate them all by 90 degrees around the z-axis. This is used to
+        convert particle coordinates from the raw tiltseries to the final reconstruction's
+        coordinate system for simulated data.
+
+    Args:
+        positions: A list of [x, y, z] coordinates
+
+    Returns: None
+
+    """
+    rot = R.from_euler('zxz', (90, 0, 0), degrees=True)
+    for i, point in enumerate(positions):
+        positions[i] = np.dot(rot.as_matrix(), np.array(point))
+
+    return positions
 
 
 # ==================== Processing steps ====================
@@ -153,11 +173,11 @@ def estimate_ctf(get_command_without_running=False):
         return result
 
 
-def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
+def record_eman2_particle(particles_array, info_file, particle_name, boxsize):
     """ Write out particle coordinates to a EMAN2 tomogram info JSON file
 
     Args:
-        particles_file: The text file containing the converted particle coordinates
+        particles_array: A list/numpy array of particle coordinates
         info_file: The JSON file in the info directory of the EMAN2 project folder
             corresponding to the tomogram in question
         particle_name: The name to assign to the particle within the EMAN2 project
@@ -166,19 +186,17 @@ def record_eman2_particle(particles_file, info_file, particle_name, boxsize):
     Returns: None
 
     """
-    particles = np.loadtxt(particles_file)
-
     # If there was only one model point
-    if particles.ndim == 1:
+    if particles_array.ndim == 1:
         # Wrap in a new list to make it two-dimensional so next for loop will work
-        particles = [particles]
+        particles_array = [particles_array]
 
     with open(info_file, 'r') as f:
         tomogram_info = json.load(f)
 
         # Build up boxes
         boxes = []
-        for particle in particles:
+        for particle in particles_array:
             x, y, z = particle[0], particle[1], particle[2]
 
             box = [x, y, z]
@@ -210,7 +228,7 @@ def extract_particles(get_command_without_running=False):
         coordinates_file = ""
         if "coordinates_file" in particle_coordinates_parameters:
             coordinates_file = particle_coordinates_parameters["coordinates_file"]
-        else:
+        elif mode != "sim":
             print("Error - Missing 'coordinates_file' parameter in particle_coordinates_parameters")
             exit(1)
 
@@ -223,19 +241,36 @@ def extract_particles(get_command_without_running=False):
             for f in os.listdir(info_files):
                 info_file = os.fsdecode(f)
                 if info_file.startswith(name):
-                    record_eman2_particle(coordinates_file, info_files + "/" + info_file, name,
+                    particles = np.loadtxt(coordinates_file)
+                    record_eman2_particle(particles, info_files + "/" + info_file, name,
                                           unbinned_boxsize)
         elif mode == "multiple":
-            for subdir in os.scandir(raw_data_dir):
-                base_name = subdir.name
-                if base_name.startswith(name):
-                    coordinates = os.path.join(subdir.path, coordinates_file)
-                    info_file = os.path.join(eman2_root, "info", "%s_info.json" % base_name)
-                    record_eman2_particle(coordinates, info_file, name, unbinned_boxsize)
+            for subdir in os.listdir(raw_data_dir):
+                if subdir.startswith(name):
+                    coordinates = os.path.join(raw_data_dir, subdir, coordinates_file)
+                    info_file = os.path.join(eman2_root, "info", "%s_info.json" % subdir)
+                    particles = np.loadtxt(coordinates)
+                    record_eman2_particle(particles, info_file, name, unbinned_boxsize)
+
+        elif mode == "sim":
+            root_dir = os.path.dirname(raw_data_dir)
+            metadata_file = os.path.join(root_dir, "sim_metadata.json")
+            with open(metadata_file, "r") as f:
+                metadata = json.loads(f.read())
+                for num, tomogram in enumerate(metadata):
+                    basename = "%s_%d" % (name, tomogram["global_stack_no"])
+
+                    # Positions for TEM-Simulator are in nm, need to convert to pixels
+                    positions = np.array(tomogram["positions"]) / tomogram["apix"]
+                    # During reconstruction, there is a 90 degree rotation around the z-axis,
+                    # so correct for that with the positions
+                    positions = rotate_positions_around_z(positions)
+                    info_file = os.path.join(eman2_root, "info", "%s_info.json" % basename)
+                    record_eman2_particle(positions, info_file, name, unbinned_boxsize)
 
         else:
             print("Error - Invalid 'mode' for particle coordinates. Should be 'single' or "
-                  "'multiple'")
+                  "'multiple' or 'sim'")
             exit(1)
 
     # Extract particles
