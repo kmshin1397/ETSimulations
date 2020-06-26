@@ -18,8 +18,12 @@ The parameters available for the T4SS Assembler through the YAML custom\_configs
 
     * **membrane\_path** : string
         The file path to the membrane segment MRC representing the inner membrane
+
     * **orientations\_tbl** : string
         A Dynamo orientations table which contains particle orientations found from a real data set, used to approximate the real-life particle orientation distribution
+
+    * **orientations\_error** : object with keys "mu" and "sigma"
+        (Optional) Add Gaussian noise to the orientations samples from the orientations\_table file. Random error values are sampled from a Gaussian distribution with mean "mu" and "sigma" standard deviation to be added to the Euler angles sampled for each particle. For example, using { "mu": 0, "sigma": 1 } as the value will result in a standard normal distribution being used for errors.
 
     * **rod** : string
         The path to the MRC to use for the rods

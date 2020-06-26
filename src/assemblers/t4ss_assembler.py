@@ -249,6 +249,8 @@ class T4SSAssembler:
 
         # Draw random orientation and position
         random_orientation = self.__get_random_tbl_orientation()
+
+        # TODO: This doesn't actually do anything (the top view is still recorded)
         # The random orientation gives proper side views from TEM-Simulator when viewed, but gives
         # the top-view in terms of the recorded rotations because source is top-view, so rotate it
         # by -90 around the X
@@ -372,7 +374,8 @@ class T4SSAssembler:
         os.mkdir(truth_vols_dir)
 
         custom_metadata = {"shifts_from_membrane_center": [],
-                           "angles_from_membrane_perpendicular": []}
+                           "angles_from_membrane_perpendicular": [],
+                           "true_orientations": []}
 
         particle_sets = []
         for i in range(num_particles):
@@ -384,7 +387,26 @@ class T4SSAssembler:
             new_particle = truth_vols_dir + "/%d.mrc" % i
 
             # Assemble a new particle
-            orientation, position, angles = self.__assemble_particle(new_particle)
+            true_orientation, position, angles = self.__assemble_particle(new_particle)
+            orientation = true_orientation
+
+            # If we want to add noise to orientations, do it here
+            if "orientations_error" in self.custom_args:
+                error_params = self.custom_args["orientations_error"]
+                mu = error_params["mu"]
+                sigma = error_params["sigma"]
+
+                # Record the error parameters used
+                custom_metadata["orientations_error_distribution"] = \
+                    "gauss({:f}, {:f})".format(mu, sigma)
+
+                noisy_orientation = [true_orientation[0] + random.gauss(mu, sigma),
+                                     true_orientation[1] + random.gauss(mu, sigma),
+                                     true_orientation[2] + random.gauss(mu, sigma)]
+
+                orientation = noisy_orientation
+                # Update metadata records for changed orientations
+                custom_metadata["true_orientations"].append(true_orientation)
 
             # Update the simulation parameters with the new particle
             particle_set.add_orientation(orientation)

@@ -2,8 +2,11 @@
 import os
 from shutil import rmtree
 import logging
+import random
+import re
 
 # External packages
+import numpy as np
 
 # Custom modules
 from simulation.particle_set import ParticleSet
@@ -29,6 +32,7 @@ class BasicAssembler:
             particles assembled here to a TEM-Simulator run
 
     """
+
     def __init__(self, model, temp_dir, chimera_queue, ack_event, pid, custom_args):
         self.model = model
         self.temp_dir = temp_dir
@@ -44,6 +48,8 @@ class BasicAssembler:
 
         # The subprocess ID of the worker using this Assembler
         self.pid = pid
+
+        self.loaded_orientations = None
 
         self.custom_args = custom_args
 
@@ -78,6 +84,45 @@ class BasicAssembler:
         command_set = chimera.ChimeraCommandSet(self.commands, self.pid, self.ack_event)
         command_set.send_and_wait(self.chimera_queue)
 
+    def get_new_orientation(self, orientation_source):
+        """
+        Given a string for the orientation_source configuration option, return a new orientation for
+            a particle.
+
+        Args:
+            orientation_source: String of either "none", "gauss(<mu>, <sigma>)", or "<filepath>"
+
+        Returns: [x, y, z] representing a new particle orientation
+
+        """
+        # Just return the origin if "none"
+        if orientation_source == "none":
+            return [0, 0, 0]
+        # If gauss(), parse out the mu and sigma for the distribution and sample the angles
+        elif re.search(r"gauss\(([-+]?\d*\.\d*|\d+),\s*([-+]?\d*\.\d*|\d+)\)", orientation_source):
+            numbers = re.findall(r"[-+]?\d*\.\d*|\d+", orientation_source)
+            mu, sigma = float(numbers[0]), float(numbers[1])
+            return [random.gauss(mu, sigma), random.gauss(mu, sigma), random.gauss(mu, sigma)]
+        # If the source is a valid file, try to sample an orientation from it
+        elif os.path.exists(orientation_source):
+            # Load in the text file if it has not done yet
+            if not self.loaded_orientations:
+                self.loaded_orientations = np.loadtxt(orientation_source)
+                # If there was only one line, make it 2-D to make the random.choice work
+                if self.loaded_orientations.ndim == 1:
+                    self.loaded_orientations = [self.loaded_orientations]
+
+            orientation = random.choice(self.loaded_orientations).tolist()
+
+            if len(orientation) != 3:
+                print("Error: Orientation loaded from text file does not have exactly 3 angles!")
+                exit(1)
+
+            return orientation
+        else:
+            print("Error: Invalid orientation_source option!")
+            exit(1)
+
     def set_up_tiltseries(self, simulation):
         """
         Implements the basic tiltseries set-up procedure, which consists of:
@@ -101,7 +146,7 @@ class BasicAssembler:
         truth_vols_dir = self.temp_dir + "/truth_vols"
         os.mkdir(truth_vols_dir)
 
-        custom_metadata = {"your_custom_information_to_log": []}
+        custom_metadata = {"true_orientations": [], "your_custom_information_to_log": []}
 
         # Initialize a Particle Set instance to add individual particles to a stack
         particle_set = ParticleSet("BasicParticle", key=True)
@@ -118,8 +163,29 @@ class BasicAssembler:
 
             # Update the simulation parameters with the new particle
 
-            # These basic particles will all just get an orientation of zero rotations
-            particle_set.add_orientation([0, 0, 0])
+            true_orientation = self.get_new_orientation(self.custom_args["orientations_source"])
+            orientation = true_orientation
+
+            # If we want to add noise to orientations, do it here
+            if "orientations_error" in self.custom_args:
+                error_params = self.custom_args["orientations_error"]
+                mu = error_params["mu"]
+                sigma = error_params["sigma"]
+
+                # Record the error parameters used
+                custom_metadata["orientations_error_distribution"] = \
+                    "gauss({:f}, {:f})".format(mu, sigma)
+
+                noisy_orientation = [true_orientation[0] + random.gauss(mu, sigma),
+                                     true_orientation[1] + random.gauss(mu, sigma),
+                                     true_orientation[2] + random.gauss(mu, sigma)]
+
+                orientation = noisy_orientation
+
+                # Update metadata records for changed orientations
+                custom_metadata["true_orientations"].append(true_orientation)
+
+            particle_set.add_orientation(orientation)
 
             particle_set.add_coordinate(coordinates[i])
             particle_set.add_source(new_particle)
