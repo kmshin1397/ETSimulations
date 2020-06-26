@@ -895,6 +895,8 @@ def eman2_processor_to_i3(root, name, i3_args):
     processor_info_file = os.path.join(root, "processed_data/eman2_info.json")
     processor_info = json.load(open(processor_info_file, "r"))["args"]
 
+    eman2_dir = os.path.join(processed_data_dir, "EMAN2")
+
     # -------------------------------------
     # Set up I3 project directory contents
     # -------------------------------------
@@ -942,7 +944,7 @@ def eman2_processor_to_i3(root, name, i3_args):
             rec = "{:s}__bin{:d}.hdf".format(basename, binning)
 
             print("\nExtracting individual particle maps for the tomogram...")
-            expected_stack = os.path.join(i3_args["eman2_dir"], "particles3d",
+            expected_stack = os.path.join(eman2_dir, "particles3d",
                                           "{:s}__{:s}.hdf".format(basename, name))
 
             if os.path.exists(expected_stack):
