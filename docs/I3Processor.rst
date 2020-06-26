@@ -21,7 +21,7 @@ The I3 Processor as well will take its inputs from the configuration YAML passed
 ==========
 Parameters
 ==========
-The I3 Processor, like all others, have the **name** argument ("i3") and an **args** object filled with parameters. The only required parameters are a file path to the mraparam.sh file to use and the real\_data\_mode option. There are a number of further parameters that must be provided if enabling the real\_data\_mode, as we cannot assume specific directory/file naming patterns like we can with the simulated data known to have gone through the IMOD Processor or EMAN2 Processor. If processing simulated data, you must have all reconstructions complete with the IMOD Processor, or have gone through at least the "build_sets" step with the EMAN2 Processor. Starting from real IMOD data, you must have reconstructions complete and particles picked using 3dmod Slicer and saved in .mod files. Starting from real EMAN2 data, you must have at least gone through the workflow enough to have a particles_prams_*.json file from an spt iteration of some sorts.
+The I3 Processor, like all others, have the **name** argument ("i3") and an **args** object filled with parameters. The only required parameters are a file path to the mraparam.sh file to use and the real\_data\_mode option. There are a number of further parameters that must be provided if enabling the real\_data\_mode, as we cannot assume specific directory/file naming patterns like we can with the simulated data known to have gone through the IMOD Processor or EMAN2 Processor. If processing simulated data, you must have all reconstructions complete with the IMOD Processor, or have gone through at least the "build_sets" step with the EMAN2 Processor. Starting from real IMOD data, you must have reconstructions complete and particles picked using 3dmod Slicer and saved in .mod files. Starting from real EMAN2 data, you must have at least gone through the workflow enough to have a particles_parms_*.json file from an spt iteration of some sorts.
 Specifically, we have:
 
     * **mraparam\_path** : string
@@ -104,7 +104,7 @@ To transfer an EMAN2 project, something like the processor arguments below could
           source_type: "eman2",
           eman2_dir: "path/to/eman2/project/directory",
           i3_dir: "path/to/new/i3/project/directory",
-          params_json: "path/to/eman2/project/directory/spt_00/particle_prams_1.json"
+          params_json: "path/to/eman2/project/directory/spt_00/particle_parms_1.json"
         }
       }
     ]
