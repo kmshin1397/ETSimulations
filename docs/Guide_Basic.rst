@@ -26,10 +26,26 @@ Once you have a particle source file to use for your simulation, it is time to s
         Enable this option to just use the same particle model source file for every instance of the particle within the generated data set
 
     * **orientations\_source** : string
-        Use this option to specify how to determine the orientations for particles in the data set. There are three options accepted for this: **"none"**, **"gauss(<mu>, <sigma>)"**, or **"<filepath>"**. If "none", every particle will just be given an orientation (in the TEM-Simulator configurations) of (0, 0, 0). You can also choose to sample angles for the orientations from a Gaussian distribution with mean "mu" and standard deviation "sigma". For example, if you have custom\_configs with "orientations\_source: 'gauss(0, 1)'", each Euler angle in the particle orientations will be independently sampled from a standard normal deviation. Finally, if you instead provide a path to an existing file, that file will be assumed to be a text file which can be loaded in as a pool of orientations to sample particle orientations from. Each row of such a text file should define the three Euler angles (ZXZ, external) for one particle's orientation, separated by whitespace. These will be loaded in using the `numpy.loadtxt() <https://numpy.org/doc/stable/reference/generated/numpy.loadtxt.html>`_ function to serve as a list of potential orientations from which to sample particle orientations.
+        Use this option to specify how to determine the orientations for particles in the data set. There are three options accepted for this: **"none"**, **"gauss(<mu>, <sigma>)"**, or **"<filepath>"**. See the sub-section below for more details.
 
     * **orientations\_error** : object with keys "mu" and "sigma"
         (Optional) Add Gaussian noise to the orientations samples from the orientations\_table file. Random error values are sampled from a Gaussian distribution with mean "mu" and standard deviation "sigma" to be added to the Euler angles sampled for each particle. For example, using { "mu": 0, "sigma": 1 } as the value will result in a standard normal distribution being used for errors.
+
+orientations\_source
+````````````````````
+As mentioned above, the three options acceptable for this field are **"none"**, **"gauss(<mu>, <sigma>)"**, or **"<filepath>"**.
+
+If "none", every particle will just be given an orientation (in the TEM-Simulator configurations) of (0, 0, 0).
+
+You can also choose to sample angles for the orientations from a Gaussian distribution with mean "mu" and standard deviation "sigma". For example, if you have custom\_configs with "orientations\_source: 'gauss(0, 1)'", each Euler angle in the particle orientations will be independently sampled from a standard normal deviation.
+
+Finally, if you instead provide a path to an existing file, that file will be assumed to be a text file which can be loaded in as a pool of orientations to sample particle orientations from. Each row of such a text file should define the three Euler angles (ZXZ, external) for one particle's orientation, separated by whitespace. These will be loaded in using the `numpy.loadtxt() <https://numpy.org/doc/stable/reference/generated/numpy.loadtxt.html>`_ function to serve as a list of potential orientations from which to sample particle orientations. For example, you could chose to simulate particles with orientations chosen randomly from a set of four rotations given in some file "orientations.txt" that looks like: ::
+
+    # Orientations given in ZXZ, external rotations (Rotations about the old axis)
+    90 0 0
+    0 90 0
+    -90 0 0
+    45 45 0
 
 use\_common\_model
 ``````````````````
