@@ -716,7 +716,6 @@ def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
                      rot_matrix[6], rot_matrix[7], rot_matrix[8]))
 
 
-
 def hdf_to_mrc(hdf_file, mrc_file):
     """
     Helper function to convert a .hdf map to a .mrc map using e2proc3d.py
@@ -803,7 +802,7 @@ def eman2_real_to_i3(i3_args):
     # Extract individual particle maps into maps folder
     num_particles = len(particles)
     progress = 1
-    for particle_no, transform in particles.items():
+    for particle_no, transformation_matrix in particles.items():
         print("\nWorking on particle {:d} out of {:d}..".format(progress, num_particles))
         lst_entry = lst_entries[particle_no]
         stack_base = os.path.basename(lst_entry["stack"]).split(".")[0]
