@@ -114,7 +114,7 @@ def extract_tilt_range(tlt_file):
 
     angles = np.loadtxt(tlt_file)
 
-    return np.min(angles), np.max(angles)
+    return round(np.min(angles)), round(np.max(angles))
 
 ############################
 #   IMOD Main Functions    #
