@@ -230,7 +230,7 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
                 particle["angles"] = slicer_angles_to_dynamo_angles(particle["angles"])
 
                 row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
-                    num + 1, particle["angles"][0], particle["angles"][1], particle["angles"][2],
+                    global_particle_num, particle["angles"][0], particle["angles"][1], particle["angles"][2],
                     int(min_tilt), int(max_tilt), num + 1, particle["coords"][0], particle["coords"][1],
                     particle["coords"][2])
 
