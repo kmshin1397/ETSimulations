@@ -160,6 +160,7 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
         # Retrieve parameters to write to files
         # -------------------------------------
         total_num = len(metadata)
+        global_particle_num = 1
         for num, tomogram in enumerate(metadata):
             basename = "%s_%d" % (name, tomogram["global_stack_no"])
             tomogram_dir = os.path.join(root, "processed_data/IMOD", basename)
@@ -234,6 +235,7 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
                     particle["coords"][2])
 
                 table_file.write(row)
+                global_particle_num += 1
 
         table_file.close()
         tomograms_doc_file.close()
