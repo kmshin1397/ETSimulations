@@ -11,6 +11,7 @@ import warnings
 from scipy.spatial.transform import Rotation as R
 import shutil
 import numpy as np
+import re
 
 
 #################################
@@ -238,11 +239,13 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
         table_file.close()
         tomograms_doc_file.close()
 
+    return "tomgrams_noctf_included.doc", "table_to_crop_notcf.tbl", "table_to_crop_notcf"
+
 
 def dynamo_main(root, name, dynamo_args):
 
     # Generate .doc and .tbl files
-    imod_processor_to_dynamo(root, name, dynamo_args)
+    doc, tbl, basename = imod_processor_to_dynamo(root, name, dynamo_args)
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -253,3 +256,57 @@ def dynamo_main(root, name, dynamo_args):
     new_script = "%s/dynamo_process.py" % dynamo_root
     print("")
     print("Creating processing script at: %s" % new_script)
+
+    with open(new_script, "w") as new_file:
+        with open(template_path, "r") as base_file:
+            # First look for the input params section
+            while True:
+                line = base_file.readline()
+                if re.match(r"^%% Input parameters", line):
+                    break
+                else:
+                    new_file.write(line)
+
+            # Now start replacing input params
+            while True:
+                line = base_file.readline()
+                # Break once we reach the end of the segment
+                if re.match(r"^%% Process table", line):
+                    break
+
+                # If we are at an assignment line
+                elif re.match(r".+ =", line):
+                    line = line.strip()
+                    tokens = line.split(" ")
+                    variable_name = tokens[0]
+
+                    value_to_write_out = ""
+                    if variable_name == "basename":
+                        value_to_write_out = f"\'{basename}\'"
+                    elif variable_name == "doc_file":
+                        value_to_write_out = f"\'{doc}\'"
+                    elif variable_name == "tbl_file":
+                        value_to_write_out = f"\'{tbl}\'"
+                    elif variable_name == "particles_dir":
+                        value_to_write_out = "\'particles\''"
+                    elif variable_name in dynamo_args:
+                        value_to_write_out = str(dynamo_args[variable_name])
+                    else:
+                        print("Missing Dynamo processing parameter: %s!" % variable_name)
+                        exit(1)
+
+                    new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])
+
+                    new_file.write(new_line)
+
+                # Other lines - probably just comments
+                else:
+                    new_file.write(line)
+
+            # For the rest of the code, just write it out
+            while True:
+                line = base_file.readline()
+                if len(line) == 0:
+                    break
+                else:
+                    new_file.write(line)
