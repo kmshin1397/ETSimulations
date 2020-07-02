@@ -228,9 +228,9 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
                 # Convert the Slicer angles to Dynamo Euler angles
                 particle["angles"] = slicer_angles_to_dynamo_angles(particle["angles"])
 
-                row = "{:d} 1 1 0 0 0 {:.3f} {:.3f} {:.3f} 0 0 0 1 {:d} {:d} 0 0 0 0 {:d} 0 0 0 {:.3f} {:.3f} {:.3f} 0 0 0 0 0 0\n".format(
+                row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
                     num + 1, particle["angles"][0], particle["angles"][1], particle["angles"][2],
-                    min_tilt, max_tilt, num + 1, particle["coords"][0], particle["coords"][1],
+                    int(min_tilt), int(max_tilt), num + 1, particle["coords"][0], particle["coords"][1],
                     particle["coords"][2])
 
                 table_file.write(row)
@@ -252,7 +252,7 @@ def dynamo_main(root, name, dynamo_args):
     template_path = os.path.realpath(template)
     processed_data_dir = root + "/processed_data"
     dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
-    new_script = "%s/dynamo_process.py" % dynamo_root
+    new_script = "%s/dynamo_process.m" % dynamo_root
     print("")
     print("Creating processing script at: %s" % new_script)
 
@@ -281,15 +281,15 @@ def dynamo_main(root, name, dynamo_args):
 
                     value_to_write_out = ""
                     if variable_name == "basename":
-                        value_to_write_out = f"\'{basename}\'"
+                        value_to_write_out = f"\'{basename}\';"
                     elif variable_name == "doc_file":
-                        value_to_write_out = f"\'{doc}\'"
+                        value_to_write_out = f"\'{doc}\';"
                     elif variable_name == "tbl_file":
-                        value_to_write_out = f"\'{tbl}\'"
+                        value_to_write_out = f"\'{tbl}\';"
                     elif variable_name == "particles_dir":
-                        value_to_write_out = "\'particles\''"
+                        value_to_write_out = "\'particles\';'"
                     elif variable_name in dynamo_args:
-                        value_to_write_out = str(dynamo_args[variable_name])
+                        value_to_write_out = str(dynamo_args[variable_name]) + ";"
                     else:
                         print("Missing Dynamo processing parameter: %s!" % variable_name)
                         exit(1)

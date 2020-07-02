@@ -1,5 +1,5 @@
 ---
-root: "/Users/kshin/Documents/data/T4SS/cluster_041720/data_processors"
+root: "/data/kshin/T4SS_sim/PDB/test"
 name: "T4SS"
 processors: [
 #  {name: "eman2",
@@ -80,25 +80,25 @@ processors: [
 #    }
 #    }
 #  },
-  {
-    name: "imod",
-    args: {
-      start_step: 8.0,
-      end_step: 14.0,
-      num_fiducials: 10,
-      tilt_axis: -90,
-      apix: 0.283,
-      fiducial_method: "autofidseed",
-      data_dirs_start_with: "T4SS",
-      reconstruction_method: "imod-wbp",
-      rotx: true,
-      binvol: {
-        "binning": 2
-      },
-      tomo3d_path: "tomo3d.osx",
-      imod_tomogram_thickness: 500
-    }
-  }
+  # {
+  #   name: "imod",
+  #   args: {
+  #     start_step: 8.0,
+  #     end_step: 14.0,
+  #     num_fiducials: 10,
+  #     tilt_axis: -90,
+  #     apix: 0.283,
+  #     fiducial_method: "autofidseed",
+  #     data_dirs_start_with: "T4SS",
+  #     reconstruction_method: "imod-wbp",
+  #     rotx: true,
+  #     binvol: {
+  #       "binning": 2
+  #     },
+  #     tomo3d_path: "tomo3d.osx",
+  #     imod_tomogram_thickness: 500
+  #   }
+  # }
 #{
 #  name: "i3",
 #  args: {
@@ -107,4 +107,11 @@ processors: [
 #    tlt_angle: -90.0
 #  }
 #}
+{
+  name: "dynamo",
+  args: {
+    box_size: 72,
+    num_workers: 24
+  }
+}
 ]
