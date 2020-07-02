@@ -497,8 +497,8 @@ def imod_main(root, name, imod_args):
 
         # Now set it up to resume after the coarse alignment
         if end >= 4:
-            replace_batchtomo_start_and_end_steps(com_file, 4, end)
-            start = 4
+            replace_batchtomo_start_and_end_steps(com_file, max(4, start), end)
+            start = max(4, start)
 
         # Run remaining steps if there are any
         if end >= 1:
