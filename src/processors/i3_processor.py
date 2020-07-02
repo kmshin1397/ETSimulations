@@ -188,7 +188,6 @@ def get_mrc_size(rec):
         warnings.simplefilter("ignore")
         import mrcfile
 
-        data = np.array([])
         with mrcfile.open(rec, mode='r', header_only=True, permissive=True) as mrc:
             x = mrc.header.nx
             y = mrc.header.ny
