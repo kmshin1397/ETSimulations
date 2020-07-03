@@ -289,9 +289,12 @@ def dynamo_main(root, name, dynamo_args):
                     elif variable_name == "tbl_file":
                         value_to_write_out = f"\'{tbl}\';"
                     elif variable_name == "particles_dir":
-                        value_to_write_out = "\'particles\';'"
+                        value_to_write_out = "\'particles\';"
                     elif variable_name in dynamo_args:
-                        value_to_write_out = str(dynamo_args[variable_name]) + ";"
+                        if type(dynamo_args[variable_name]) == str:
+                            value_to_write_out = f"\'{dynamo_args[variable_name]}\';"
+                        else:
+                            value_to_write_out = str(dynamo_args[variable_name]) + ";"
                     else:
                         print("Missing Dynamo processing parameter: %s!" % variable_name)
                         exit(1)
@@ -300,7 +303,7 @@ def dynamo_main(root, name, dynamo_args):
 
                     new_file.write(new_line)
 
-                # Other lines - probably just comments
+                # Other lines in the segment - probably just comments
                 else:
                     new_file.write(line)
 
