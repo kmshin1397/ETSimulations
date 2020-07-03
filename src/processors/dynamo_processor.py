@@ -121,8 +121,18 @@ def extract_tilt_range(tlt_file):
 ############################
 
 
-def imod_processor_to_dynamo(root, name, dynamo_args):
+def imod_processor_to_dynamo(root, name):
+    """
+    Starting from simulated data processed with the IMOD Processor, generate the Dynamo .doc and
+        .tbl files necessary for particle extraction and STA project setup
 
+    Args:
+        root: The ETSimulations project root
+        name: The name used for naming the stacks
+
+    Returns: (the .doc file path, the .tbl file path, the table basename)
+
+    """
     # -----------------------------------------
     # Set up Dynamo project directory structure
     # -----------------------------------------
@@ -240,13 +250,31 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
         table_file.close()
         tomograms_doc_file.close()
 
-    return "tomgrams_noctf_included.doc", "table_to_crop_notcf.tbl", "table_to_crop_notcf"
+    return tomograms_doc_path,table_path, "table_to_crop_notcf"
 
 
 def dynamo_main(root, name, dynamo_args):
+    """
+    The main method to drive Dynamo project set up.
+
+    The steps taken are:
+        1. Make Dynamo dir
+        2. Generate the volume index .doc file and the data table .tbl file for Dynamo
+        3. Using the template script found at templates/dynamo/dynamo_process.m, generate a Matlab
+            script which will take in the generated input files and extract the particles and create
+            a Dynamo averaging project
+
+    Args:
+        root: The ETSimulations project root directory
+        name: ETSimulations project name
+        dynamo_args: Dynamo processor parameters
+
+    Returns: None
+
+    """
 
     # Generate .doc and .tbl files
-    doc, tbl, basename = imod_processor_to_dynamo(root, name, dynamo_args)
+    doc, tbl, basename = imod_processor_to_dynamo(root, name)
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))

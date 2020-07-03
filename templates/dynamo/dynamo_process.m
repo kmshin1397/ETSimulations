@@ -13,9 +13,10 @@ tbl_file = '';
 particles_dir = '';
 box_size = 72;
 num_workers = 12;
-num_cores = 1;
 project_name = '';
-mask_path = '';
+mask = '';
+cores = 1;
+mwa = '';
 ite_r1 = '';
 cr_r1 = '';
 cs_r1 = '';
@@ -61,9 +62,9 @@ dcp.new(project_name, 'd', particles_dir, 'template', avg_odd,'masks', ...
     'default', 't', odd_tbl_file);
 
 % Project settings
-dvput(project_name, 'd', 'mask', mask_path);
-dvput(project_name, 'd', 'cores', num_cores);
-dvput(project_name, 'd', 'mwa', num_workers);
+dvput(project_name, 'd', 'mask', mask);
+dvput(project_name, 'd', 'cores', cores);
+dvput(project_name, 'd', 'mwa', mwa);
 dvput(project_name, 'd', 'ite_r1', ite_r1);
 dvput(project_name, 'd', 'cr_r1', cr_r1);
 dvput(project_name, 'd', 'cs_r1', cs_r1);
