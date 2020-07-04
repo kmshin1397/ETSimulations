@@ -12,6 +12,7 @@ from scipy.spatial.transform import Rotation as R
 import shutil
 import numpy as np
 import re
+import struct
 
 
 #################################
@@ -82,6 +83,54 @@ def shift_coordinates_bottom_left(coords, size, binning=1):
            float(coords[2]) / binning + size[2]
 
 
+def get_slicer_info(mod_file):
+    """
+    Open an IMOD .mod file and retrieve the Slicer information
+
+    Args:
+        mod_file: The .mod file path
+
+    Returns: A list of Slicer point objects with keys {"angles", "coords"}
+
+    """
+    results = []
+    with open(mod_file, "rb") as file:
+        token = file.read(4)
+        if token != b'IMOD':
+            print("ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!")
+            exit(1)
+
+        # Read past rest of ID and file header
+        file.read(236)
+
+        while token != b'IEOF':
+            file.seek(-3, 1)
+            token = file.read(4)
+            if token == b'SLAN':
+                # Read past SLAN object size and time
+                file.read(8)
+
+                angles = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
+                xyz = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
+
+                results.append({"angles": list(angles), "coords": xyz})
+                file.read(32)
+
+                # Read forward a little so next iteration of while loop starts at end of SLAN object
+                file.read(3)
+            elif token == b'OBJT':
+                # Objects are 176 bytes; skip path to make reading faster
+                file.read(176)
+                # Read forward a little so next iteration of while loop starts at end of object
+                file.read(3)
+
+    if len(results) == 0:
+        print("Reached end of MOD file without finding slicer angles!")
+        exit(1)
+
+    return results
+
+
 def slicer_angles_to_dynamo_angles(angles):
     """
     Given a set of angles from IMOD's Slicer, convert those angles to Dynamo format Euler angles
@@ -119,6 +168,111 @@ def extract_tilt_range(tlt_file):
 ############################
 #   IMOD Main Functions    #
 ############################
+
+
+def imod_real_to_dynamo(root, name, dynamo_args):
+    """
+    Starting from real data processed with the IMOD Processor, generate the Dynamo .doc and
+        .tbl files necessary for particle extraction and STA project setup
+
+    Args:
+        root: The ETSimulations project root
+        name: The name used for naming the stacks
+
+    Returns: (the .doc file path, the .tbl file path, the table basename)
+
+    """
+    # -----------------------------------------
+    # Set up Dynamo project directory structure
+    # -----------------------------------------
+    print("Creating Dynamo project directories")
+    dynamo_root = dynamo_args["dynamo_dir"]
+    if not os.path.exists(dynamo_root):
+        os.mkdir(dynamo_root)
+
+    tomograms_path = dynamo_root + "/tomograms"
+    if not os.path.exists(tomograms_path):
+        os.mkdir(tomograms_path)
+
+    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_file = open(tomograms_doc_path, "w")
+
+    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_file = open(table_path, "w")
+
+    # -------------------------------------
+    # Retrieve parameters to write to files
+    # -------------------------------------
+    global_particle_num = 1
+    tomogram_num = 1
+    for subdir in os.listdir(root):
+        if subdir.startswith(dynamo_args["dir_contains"]):
+            print("")
+            print("Collecting information for directory: %s" % subdir)
+
+            # Look for the necessary IMOD files
+            mod = ""
+            tlt = ""
+            rec = ""
+            min_tilt = 0
+            max_tilt = 0
+            for file in os.listdir(os.path.join(root, subdir)):
+                if dynamo_args["mod_contains"] in file and file.endswith(".mod"):
+                    mod = file
+                elif dynamo_args["tlt_contains"] in file and file.endswith(".tlt"):
+                    tlt = file
+                elif dynamo_args["rec_contains"] in file and (file.endswith(".mrc") or
+                                                          file.endswith(".rec")):
+                    rec = file
+
+                # Break out of loop once all three relevant files have been found
+                if mod != "" and tlt != "" and rec != "":
+                    break
+
+            # Copy over the tomogram to the tomogram folder
+            if rec != "":
+                shutil.copyfile(os.path.join(root, subdir, rec),
+                                os.path.join(tomograms_path, rec))
+            else:
+                print("ERROR: No reconstruction was found for sub-directory: %s" % subdir)
+                exit(1)
+
+            # Copy over the tlt file to the maps folder
+            if tlt != "":
+                min_tilt, max_tilt = extract_tilt_range(os.path.join(root, subdir, tlt))
+            else:
+                print("WARNING: No tlt file was found for sub-directory: %s" % subdir)
+                exit(1)
+
+            if mod == "":
+                print("Error: No mod file was found for sub-directory: %s" % subdir)
+                exit(1)
+
+            # Read the .mod file info
+            print("Reading the .mod file for Slicer info...")
+            slicer_info = get_slicer_info(os.path.join(root, subdir, mod))
+
+            tomograms_doc_file.write("{:d} tomograms/{:s}\n".format(tomogram_num, rec))
+
+            print("Converting particle angles and writing .tbl file entry...")
+            for particle in slicer_info:
+                # Convert the Slicer angles to Dynamo Euler angles
+                particle["angles"] = slicer_angles_to_dynamo_angles(particle["angles"])
+
+                row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
+                    global_particle_num, particle["angles"][0], particle["angles"][1],
+                    particle["angles"][2], int(min_tilt), int(max_tilt), tomogram_num,
+                    particle["coords"][0], particle["coords"][1], particle["coords"][2])
+
+                table_file.write(row)
+                global_particle_num += 1
+
+            tomogram_num += 1
+
+        table_file.close()
+        tomograms_doc_file.close()
+
+    return tomograms_doc_path, table_path, "table_to_crop_notcf"
 
 
 def imod_processor_to_dynamo(root, name):
@@ -250,7 +404,7 @@ def imod_processor_to_dynamo(root, name):
         table_file.close()
         tomograms_doc_file.close()
 
-    return tomograms_doc_path,table_path, "table_to_crop_notcf"
+    return tomograms_doc_path, table_path, "table_to_crop_notcf"
 
 
 def dynamo_main(root, name, dynamo_args):
@@ -262,7 +416,7 @@ def dynamo_main(root, name, dynamo_args):
         2. Generate the volume index .doc file and the data table .tbl file for Dynamo
         3. Using the template script found at templates/dynamo/dynamo_process.m, generate a Matlab
             script which will take in the generated input files and extract the particles and create
-            a Dynamo averaging project
+            a Dynamo alignment project
 
     Args:
         root: The ETSimulations project root directory
@@ -274,7 +428,10 @@ def dynamo_main(root, name, dynamo_args):
     """
 
     # Generate .doc and .tbl files
-    doc, tbl, basename = imod_processor_to_dynamo(root, name)
+    if dynamo_args["real_data_mode"]:
+        doc, tbl, basename = imod_real_to_dynamo(root, name, dynamo_args)
+    else:
+        doc, tbl, basename = imod_processor_to_dynamo(root, name)
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
