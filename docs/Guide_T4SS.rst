@@ -35,7 +35,7 @@ The parameters available for the T4SS Assembler through the YAML custom\_configs
         The number of rods to place symmetrically around the central barrel
 
     * **rod_distance_from_center** : float
-        The distance away from the center of the barrel to place rods, i.e. the radius
+        The distance (in Angstroms) away from the center of the barrel to place rods, i.e. the radius
 
 ---------------
 Metadata output
