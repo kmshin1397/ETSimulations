@@ -709,10 +709,10 @@ def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
         a4, a5, a6 = (0.0, 0.0, 0.0)
 
         f.write("{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(a0, a1, a2, a3, a4, a5, a6))
-        f.write("%f %f %f %f %f %f %f %f %f" % \
-                    (rot_matrix[0], rot_matrix[1], rot_matrix[2],
-                     rot_matrix[3], rot_matrix[4], rot_matrix[5],
-                     rot_matrix[6], rot_matrix[7], rot_matrix[8]))
+        f.write("%f %f %f %f %f %f %f %f %f" %
+                (rot_matrix[0], rot_matrix[1], rot_matrix[2],
+                 rot_matrix[3], rot_matrix[4], rot_matrix[5],
+                 rot_matrix[6], rot_matrix[7], rot_matrix[8]))
 
 
 #############################

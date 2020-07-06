@@ -173,13 +173,12 @@ def extract_tilt_range(tlt_file):
 #   IMOD Main Functions    #
 ############################
 
-def imod_real_to_dynamo(root, dynamo_args):
+def imod_real_to_dynamo(dynamo_args):
     """
     Starting from real data processed with the IMOD Processor, generate the Dynamo .doc and
         .tbl files necessary for particle extraction and STA project setup
 
     Args:
-        root: The IMOD project root
         dynamo_args: The Dynamo Processor arguments
 
     Returns: (the .doc file path, the .tbl file path, the table basename)
@@ -208,6 +207,7 @@ def imod_real_to_dynamo(root, dynamo_args):
     # -------------------------------------
     global_particle_num = 1
     tomogram_num = 1
+    root = dynamo_args["imod_dir"]
     for subdir in os.listdir(root):
         if subdir.startswith(dynamo_args["dir_contains"]):
             print("")
@@ -457,6 +457,98 @@ def get_eman2_tilts(info_file):
         return round(np.min(tlt_angles)), round(np.max(tlt_angles))
 
 
+def parse_lst_file(filename):
+    """
+    Read EMAN2 .lst particle sets and extract a dictionary of particle numbers mapped to the
+        particle's tomogram info file, extracted stack file, and local particle number within that
+        tomogram
+
+    Args:
+        filename: The .lst file path
+
+    Returns: A tuple of
+        (
+            Dictionary of { particle number: {"info", "stack", "local_no"} } objects,
+            Dictionary of { stack: number of particles in stack }
+        )
+
+    """
+
+    # Dictionary mapping global particle numbers to info JSONs and stacks
+    ldict = {}
+
+    # Return just a set of the stacks as well for easier access later
+    stacks = {}
+
+    with open(filename) as f:
+        for i, line in enumerate(f):
+            # Skip first 3 lines which should be comments
+            if i >= 3 and line != "":
+                global_particle_no = i - 3
+                tokens = line.strip().split()
+                stack = tokens[1]
+                basename = os.path.basename(stack).split("__")[0]
+                info_file = "info/{:s}_info.json".format(basename)
+                num = int(tokens[0]) + 1
+                ldict[global_particle_no] = {"info": info_file, "stack": stack, "local_no": num}
+
+                # If this is the largest particle number encountered for this stack file so far
+                if stack not in stacks or stacks[stack] < num:
+                    stacks[stack] = num
+
+    return ldict, stacks
+
+
+def read_particle_params(json_file):
+    """
+    Given a particle_parms_*.json file from EMAN2 STA, extract the particle list and their
+        transformation matrices.
+
+    Args:
+        json_file: The particle_parms_*.json file path
+
+    Returns: A tuple of (.lst file name, dictionary of {particle number, transformation matrix})
+
+    """
+
+    lst_file = ""
+    jdict = {}
+
+    with open(json_file) as f:
+        data = json.load(f)
+
+        for key, value in data.items():
+            tokens = key.split("\', ")
+            particle_no = int(tokens[1].split(")")[0])
+            lst_file = tokens[0].split("\'")[1]
+
+            matrix = value['xform.align3d']['matrix']
+            jdict[particle_no] = matrix
+
+    return lst_file, jdict
+
+
+def transformation_matrix_to_euler(transformation_matrix):
+    """
+    Helper function to convert EMAN2 transformation matrix to Dynamo Euler angles
+
+    Args:
+        transformation_matrix: The EMAN2 transformation matrix
+
+    Returns: The Dynamo Euler angles
+
+    """
+    # Convert to standard rotation matrix
+    a1, a2, a3 = tuple(transformation_matrix[0:3])
+    a4, a5, a6 = tuple(transformation_matrix[4:7])
+    a7, a8, a9 = tuple(transformation_matrix[8:11])
+    rot_matrix = [a1, a2, a3, a4, a5, a6, a7, a8, a9]
+    rot = R.from_matrix(rot_matrix)
+    euler = rot.as_euler('zxz', degrees=True)
+
+    return [euler[0], euler[1], euler[2]]
+
+
 #############################
 #   EMAN2 Main Functions    #
 #############################
@@ -570,6 +662,83 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
     return tomograms_doc_path, table_path, "table_to_crop_notcf"
 
 
+def eman2_real_to_dynamo(dynamo_args):
+    """
+    Starting from real data processed with the EMAN2, generate the Dynamo .doc and
+        .tbl files necessary for particle extraction and STA project setup
+
+    Args:
+        dynamo_args: The Dynamo Processor arguments
+
+    Returns: (the .doc file path, the .tbl file path, the table basename)
+
+    """
+    eman2_dir = dynamo_args["eman2_dir"]
+    json_file = dynamo_args["params_json"]
+    lst, particles = read_particle_params(json_file)
+    lst_file = os.path.join(eman2_dir, lst)
+    lst_entries, stacks_info = parse_lst_file(lst_file)
+
+    # -----------------------------------------
+    # Set up Dynamo project directory structure
+    # -----------------------------------------
+    print("Creating Dynamo project directories")
+    processed_data_dir = eman2_dir + "/processed_data"
+    dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
+    if not os.path.exists(dynamo_root):
+        os.mkdir(dynamo_root)
+
+    tomograms_path = dynamo_root + "/tomograms"
+    if not os.path.exists(tomograms_path):
+        os.mkdir(tomograms_path)
+
+    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_file = open(tomograms_doc_path, "w")
+
+    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_file = open(table_path, "w")
+
+    # Extract individual particle maps from the stacks
+    print("\nExtracting individual particle maps...")
+    for stack in stacks_info.keys():
+        basename = os.path.basename(stack).split(".")[0]
+        extract_e2_particles(os.path.join(eman2_dir, stack), basename, tomograms_path)
+
+    # Extract individual particle maps into maps folder
+    num_particles = len(particles)
+    progress = 1
+    for particle_no, transformation_matrix in particles.items():
+        print("\nWorking on particle {:d} out of {:d}..".format(progress, num_particles))
+        lst_entry = lst_entries[particle_no]
+        stack_base = os.path.basename(lst_entry["stack"]).split(".")[0]
+        local_particle_no = lst_entry["local_no"]
+
+        num_particles_in_tomogram = stacks_info[lst_entry["stack"]]
+        num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
+        particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no, num_digits)
+
+        info_file = os.path.join(eman2_dir, lst_entry["info"])
+        min_tilt, max_tilt = get_eman2_tilts(info_file)
+
+        tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(particle_no + 1,
+                                                                    particle_map))
+
+        center = dynamo_args["box_size"] / 2
+
+        orientation = transformation_matrix_to_euler(transformation_matrix)
+
+        row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
+            particle_no + 1, orientation[0], orientation[1], orientation[2], int(min_tilt),
+            int(max_tilt), particle_no + 1, center, center, center)
+
+        table_file.write(row)
+
+    table_file.close()
+    tomograms_doc_file.close()
+
+    return tomograms_doc_path, table_path, "table_to_crop_notcf"
+
+
 def dynamo_main(root, name, dynamo_args):
     """
     The main method to drive Dynamo project set up.
@@ -594,15 +763,13 @@ def dynamo_main(root, name, dynamo_args):
     if dynamo_args["source_type"] == "imod":
         dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
         if dynamo_args["real_data_mode"]:
-            doc, tbl, basename = imod_real_to_dynamo(root, dynamo_args)
+            doc, tbl, basename = imod_real_to_dynamo(dynamo_args)
         else:
             doc, tbl, basename = imod_processor_to_dynamo(root, name)
     elif dynamo_args["source_type"] == "eman2":
         dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
         if dynamo_args["real_data_mode"]:
-            doc, tbl, basename = "", "", ""
-            print("Real data mode for EMAN2 not implemented yet!")
-            exit(1)
+            doc, tbl, basename = eman2_real_to_dynamo(dynamo_args)
         else:
             doc, tbl, basename = eman2_processor_to_dynamo(root, name, dynamo_args)
     else:

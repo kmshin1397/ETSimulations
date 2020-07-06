@@ -27,6 +27,9 @@ All these are parameters that should be placed in the **args** section of the Pr
     * **real\_data\_mode** : bool
         Enable this to let the Dynamo Processor know that you are processing real data and to use the other parameters below rather than assuming the directory/file naming patterns used by IMOD Processor.
 
+    * **imod\_dir** : string
+        (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") The IMOD project directory to transfer to an Dynamo project
+
     * **dynamo\_dir** : string
         (Required only if **real\_data\_mode** is set to true) The destination directory to create the Dynamo project in
 
