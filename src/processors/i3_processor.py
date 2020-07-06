@@ -715,31 +715,6 @@ def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
                      rot_matrix[6], rot_matrix[7], rot_matrix[8]))
 
 
-def hdf_to_mrc(hdf_file, mrc_file):
-    """
-    Helper function to convert a .hdf map to a .mrc map using e2proc3d.py
-
-    Args:
-        hdf_file: The HDF file to convert
-        mrc_file: The MRC file to convert
-
-    Returns: None
-
-    """
-    command = "e2proc3d.py --outtype=mrc {:s} {:s}".format(hdf_file, mrc_file)
-    print(command)
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while True:
-        output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    if rc != 0:
-        exit(1)
-
-
 #############################
 #   EMAN2 Main Functions    #
 #############################
@@ -928,18 +903,6 @@ def eman2_processor_to_i3(root, name, i3_args):
                 rotation = R.from_euler('zxz', euler, degrees=True)
 
                 matrices.append(np.array(rotation.as_matrix()).flatten())
-
-            # Look for the necessary EMAN2 files
-            print("Looking for necessary EMAN2 files...")
-            # Compare the nx of the original tiltseries to the reconstruction parameters to
-            # determine the binning factor
-            original_tiltseries_size = get_mrc_size(tomogram["output"])[0] * 2
-            rec_size_string = processor_info["e2tomogram_parameters"]["outsize"]
-            rec_size = float(rec_size_string.replace("k", "")) * 1000
-            binning = round(original_tiltseries_size / rec_size)
-
-            # Tomogram expected path based on binning factor
-            rec = "{:s}__bin{:d}.hdf".format(basename, binning)
 
             print("\nExtracting individual particle maps for the tomogram...")
             expected_stack = os.path.join(eman2_dir, "particles3d",

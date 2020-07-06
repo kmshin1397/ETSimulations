@@ -13,6 +13,9 @@ import shutil
 import numpy as np
 import re
 import struct
+import shlex
+import subprocess
+import math
 
 
 #################################
@@ -165,19 +168,19 @@ def extract_tilt_range(tlt_file):
 
     return round(np.min(angles)), round(np.max(angles))
 
+
 ############################
 #   IMOD Main Functions    #
 ############################
 
-
-def imod_real_to_dynamo(root, name, dynamo_args):
+def imod_real_to_dynamo(root, dynamo_args):
     """
     Starting from real data processed with the IMOD Processor, generate the Dynamo .doc and
         .tbl files necessary for particle extraction and STA project setup
 
     Args:
-        root: The ETSimulations project root
-        name: The name used for naming the stacks
+        root: The IMOD project root
+        dynamo_args: The Dynamo Processor arguments
 
     Returns: (the .doc file path, the .tbl file path, the table basename)
 
@@ -407,6 +410,166 @@ def imod_processor_to_dynamo(root, name):
     return tomograms_doc_path, table_path, "table_to_crop_notcf"
 
 
+#############################
+#   EMAN2 Helper Functions    #
+#############################
+
+def extract_e2_particles(stack_file, name, destination):
+    """
+    Unpack a stack of EMAN2 particles into individual sub-volume maps
+
+    Args:
+        stack_file: The EMAN2 particle stack file (either a .lst set or .hdf stack)
+        name: The basename to assign to extracted maps
+        destination: The destination folder to place the extracted particles in
+
+    Returns: None
+
+    """
+    command = "e2proc3d.py --unstacking %s %s/%s.mrc" % (stack_file, destination, name)
+    print(command)
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
+def get_eman2_tilts(info_file):
+    """
+    Given an EMAN2 tomogram info JSON file, extract the tilt range
+
+    Args:
+        info_file: The tomogram JSON info file path
+
+    Returns: A tuple of (min tilt angle, max tilt angle)
+    """
+    with open(info_file, "r") as f:
+        info = json.load(f)
+        tlt_params = np.array(info["tlt_params"])
+        tlt_angles = tlt_params[:, 3]
+
+        return round(np.min(tlt_angles)), round(np.max(tlt_angles))
+
+
+#############################
+#   EMAN2 Main Functions    #
+#############################
+
+def eman2_processor_to_dynamo(root, name, dynamo_args):
+    """
+    Starting from simulated data processed with the EMAN2 Processor, generate the Dynamo .doc and
+        .tbl files necessary for particle extraction and STA project setup
+
+    Args:
+        root: The ETSimulations project root
+        name: The name used for naming the stacks
+        dynamo_args: The Dynamo Processor arguments
+
+    Returns: (the .doc file path, the .tbl file path, the table basename)
+
+    """
+    # -----------------------------------------
+    # Set up Dynamo project directory structure
+    # -----------------------------------------
+    print("Creating Dynamo project directories")
+    processed_data_dir = root + "/processed_data"
+    dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
+    if not os.path.exists(dynamo_root):
+        os.mkdir(dynamo_root)
+
+    tomograms_path = dynamo_root + "/tomograms"
+    if not os.path.exists(tomograms_path):
+        os.mkdir(tomograms_path)
+
+    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_file = open(tomograms_doc_path, "w")
+
+    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_file = open(table_path, "w")
+
+    # Iterate through the tomograms in the order they appear in the metadata file instead of just
+    # iterating through the processed IMOD directory like with the real data version of this
+    # function. This is faster since we avoid searching through the metadata dictionary to match up
+    # data directories to the original raw data metadata.
+
+    metadata_file = os.path.join(root, "sim_metadata.json")
+
+    # Load IMOD Processor info
+    processor_info_file = os.path.join(root, "processed_data/eman2_info.json")
+    processor_info = json.load(open(processor_info_file, "r"))["args"]
+    eman2_dir = os.path.join(processed_data_dir, "EMAN2")
+
+    with open(metadata_file, "r") as f:
+        metadata = json.loads(f.read())
+
+        # -------------------------------------
+        # Retrieve parameters to write to files
+        # -------------------------------------
+        total_num = len(metadata)
+        global_particle_num = 1
+        for num, tomogram in enumerate(metadata):
+            basename = "%s_%d" % (name, tomogram["global_stack_no"])
+
+            info_file = os.path.join(root, "processed_data/EMAN2/info",
+                                     "{:s}_info.json".format(basename))
+
+            print("")
+            print("\nCollecting information for %s" % basename)
+            print("This is tomogram %d out of %d" % (num + 1, total_num))
+
+            raw_orientations = tomogram["orientations"]
+            orientations = []
+            for i, row in enumerate(raw_orientations):
+                # In ZXZ
+                # ETSimulations/TEM-Sim gives ref-to-part, external;
+                # rotate by z to account for reconstruction rotation
+                euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
+                orientations.append(euler)
+
+            print("\nExtracting individual particle maps for the tomogram...")
+            expected_stack = os.path.join(eman2_dir, "particles3d",
+                                          "{:s}__{:s}.hdf".format(basename, name))
+
+            min_tilt, max_tilt = get_eman2_tilts(info_file)
+
+            if os.path.exists(expected_stack):
+                extract_e2_particles(expected_stack, basename, tomograms_path)
+
+                # Convert all the HDF files to MRCs
+                num_particles_in_tomogram = len(orientations)
+                num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
+                print("")
+                for i in range(num_particles_in_tomogram):
+                    print("Updating Dynamo files for particle %d of %d for the tomogram..." %
+                          (i + 1, num_particles_in_tomogram))
+                    particle_num = i + 1
+                    particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
+
+                    tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(global_particle_num,
+                                                                                particle_map))
+
+                    center = dynamo_args["box_size"] / 2
+
+                    row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
+                        global_particle_num, orientations[i][0], orientations[i][1],
+                        orientations[i][2], int(min_tilt), int(max_tilt), global_particle_num,
+                        center, center, center)
+
+                    table_file.write(row)
+                    global_particle_num += 1
+
+        table_file.close()
+        tomograms_doc_file.close()
+
+    return tomograms_doc_path, table_path, "table_to_crop_notcf"
+
+
 def dynamo_main(root, name, dynamo_args):
     """
     The main method to drive Dynamo project set up.
@@ -426,19 +589,31 @@ def dynamo_main(root, name, dynamo_args):
     Returns: None
 
     """
-
+    processed_data_dir = root + "/processed_data"
     # Generate .doc and .tbl files
-    if dynamo_args["real_data_mode"]:
-        doc, tbl, basename = imod_real_to_dynamo(root, name, dynamo_args)
+    if dynamo_args["source_type"] == "imod":
+        dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
+        if dynamo_args["real_data_mode"]:
+            doc, tbl, basename = imod_real_to_dynamo(root, dynamo_args)
+        else:
+            doc, tbl, basename = imod_processor_to_dynamo(root, name)
+    elif dynamo_args["source_type"] == "eman2":
+        dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
+        if dynamo_args["real_data_mode"]:
+            doc, tbl, basename = "", "", ""
+            print("Real data mode for EMAN2 not implemented yet!")
+            exit(1)
+        else:
+            doc, tbl, basename = eman2_processor_to_dynamo(root, name, dynamo_args)
     else:
-        doc, tbl, basename = imod_processor_to_dynamo(root, name)
+        dynamo_root, doc, tbl, basename = "", "", "", ""
+        print("Error: Invalid Dynamo 'source_type")
+        exit(1)
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
     template = current_dir + "../../templates/dynamo/dynamo_process.m"
     template_path = os.path.realpath(template)
-    processed_data_dir = root + "/processed_data"
-    dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
     new_script = "%s/dynamo_process.m" % dynamo_root
     print("")
     print("Creating processing script at: %s" % new_script)
