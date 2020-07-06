@@ -13,7 +13,7 @@ Required arguments
 All these are parameters that should be placed in the **args** section of the Processor's YAML configurations.
 
     * **box_size** : int
-        The particle box size
+        The particle box size to crop out Dynamo particles for
 
     * **num_workers** : int
         The number of Matlab workers to spawn for the particle cropping and initial averaging functions (the 'mw' parameter for these)
@@ -91,9 +91,12 @@ The arguments below are used for the Dynamo alignment project specifically, and 
 
     * **gpus** : int
 
-===================================
+
+* A note on processing from EMAN2: The box\_size parameter specified here is for the Dynamo cropped particles. The EMAN2 extracted particles should have a slightly bigger box size set previously when doing the reconstruction/particle picking with EMAN2.
+
+=======================================
 Using the Dynamo Processor on real data
-===================================
+=======================================
 It is possible to use the Dynamo Processor to set up an Dynamo project on real data processed with either IMOD or EMAN2.
 
 Starting from IMOD
