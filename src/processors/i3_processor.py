@@ -864,10 +864,6 @@ def eman2_processor_to_i3(root, name, i3_args):
 
     shutil.copyfile(i3_args["mraparam_path"], os.path.join(i3_root, "mraparam.sh"))
 
-    # Load EMAN2 Processor info
-    processor_info_file = os.path.join(root, "processed_data/eman2_info.json")
-    processor_info = json.load(open(processor_info_file, "r"))["args"]
-
     eman2_dir = os.path.join(processed_data_dir, "EMAN2")
 
     # -------------------------------------

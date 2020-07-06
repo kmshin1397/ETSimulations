@@ -592,9 +592,6 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
 
     metadata_file = os.path.join(root, "sim_metadata.json")
 
-    # Load IMOD Processor info
-    processor_info_file = os.path.join(root, "processed_data/eman2_info.json")
-    processor_info = json.load(open(processor_info_file, "r"))["args"]
     eman2_dir = os.path.join(processed_data_dir, "EMAN2")
 
     with open(metadata_file, "r") as f:
@@ -622,7 +619,8 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
                 # ETSimulations/TEM-Sim gives ref-to-part, external;
                 # rotate by z to account for reconstruction rotation
                 euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
-                orientations.append(euler)
+                rot = R.from_euler("zxz", euler, degrees=True)
+                orientations.append(rot.as_euler("zxz", degrees=True))
 
             print("\nExtracting individual particle maps for the tomogram...")
             expected_stack = os.path.join(eman2_dir, "particles3d",
