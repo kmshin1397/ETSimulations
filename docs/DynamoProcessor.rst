@@ -92,7 +92,7 @@ The arguments below are used for the Dynamo alignment project specifically, and 
     * **gpus** : int
 
 
-* A note on processing from EMAN2: The box\_size parameter specified here is for the Dynamo cropped particles. The EMAN2 extracted particles should have a slightly bigger box size set previously when doing the reconstruction/particle picking with EMAN2.
+* A note on processing from EMAN2: The **box\_size** parameter specified here is for the Dynamo cropped particles. The EMAN2 extracted particles should have a slightly bigger box size set previously when doing the reconstruction/particle picking with EMAN2. This bigger EMAN2 box size will be automatically retrieved from the EMAN2 info JSON files.
 
 =======================================
 Using the Dynamo Processor on real data

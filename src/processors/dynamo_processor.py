@@ -440,21 +440,33 @@ def extract_e2_particles(stack_file, name, destination):
         exit(1)
 
 
-def get_eman2_tilts(info_file):
+def get_eman2_info(info_file, particle_name):
     """
-    Given an EMAN2 tomogram info JSON file, extract the tilt range
+    Given an EMAN2 tomogram info JSON file, extract the tilt range and the particle box size
 
     Args:
         info_file: The tomogram JSON info file path
+        particle_name: The Boxer particle label to look for for the box size
 
-    Returns: A tuple of (min tilt angle, max tilt angle)
+    Returns: A tuple of (min tilt angle, max tilt angle, box size)
     """
     with open(info_file, "r") as f:
         info = json.load(f)
         tlt_params = np.array(info["tlt_params"])
         tlt_angles = tlt_params[:, 3]
 
-        return round(np.min(tlt_angles)), round(np.max(tlt_angles))
+        box_classes = info["class_list"]
+        box_size = ""
+        for box_class in box_classes.items():
+            if box_class["name"] == particle_name:
+                box_size = box_class["boxsize"]
+                break
+
+        if box_size == "":
+            print("Error: Couldn't find particle label/class %s in info file: %s" % (particle_name,
+                                                                                     info_file))
+
+        return round(np.min(tlt_angles)), round(np.max(tlt_angles)), int(box_size)
 
 
 def parse_lst_file(filename):
@@ -626,7 +638,7 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
             expected_stack = os.path.join(eman2_dir, "particles3d",
                                           "{:s}__{:s}.hdf".format(basename, name))
 
-            min_tilt, max_tilt = get_eman2_tilts(info_file)
+            min_tilt, max_tilt, box_size = get_eman2_info(info_file)
 
             if os.path.exists(expected_stack):
                 extract_e2_particles(expected_stack, basename, tomograms_path)
@@ -644,7 +656,7 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
                     tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(global_particle_num,
                                                                                 particle_map))
 
-                    center = dynamo_args["box_size"] / 2
+                    center = box_size / 2
 
                     row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
                         global_particle_num, orientations[i][0], orientations[i][1],
@@ -716,7 +728,7 @@ def eman2_real_to_dynamo(dynamo_args):
         particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no, num_digits)
 
         info_file = os.path.join(eman2_dir, lst_entry["info"])
-        min_tilt, max_tilt = get_eman2_tilts(info_file)
+        min_tilt, max_tilt, box_size = get_eman2_info(info_file)
 
         tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(particle_no + 1,
                                                                     particle_map))
