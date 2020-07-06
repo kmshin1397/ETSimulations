@@ -457,7 +457,7 @@ def get_eman2_info(info_file, particle_name):
 
         box_classes = info["class_list"]
         box_size = ""
-        for box_class in box_classes.items():
+        for box_class in box_classes.values():
             if box_class["name"] == particle_name:
                 box_size = box_class["boxsize"]
                 break
@@ -554,7 +554,7 @@ def transformation_matrix_to_euler(transformation_matrix):
     a1, a2, a3 = tuple(transformation_matrix[0:3])
     a4, a5, a6 = tuple(transformation_matrix[4:7])
     a7, a8, a9 = tuple(transformation_matrix[8:11])
-    rot_matrix = [a1, a2, a3, a4, a5, a6, a7, a8, a9]
+    rot_matrix = np.array([[a1, a2, a3], [a4, a5, a6], [a7, a8, a9]])
     rot = R.from_matrix(rot_matrix)
     euler = rot.as_euler('zxz', degrees=True)
 
@@ -638,7 +638,7 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
             expected_stack = os.path.join(eman2_dir, "particles3d",
                                           "{:s}__{:s}.hdf".format(basename, name))
 
-            min_tilt, max_tilt, box_size = get_eman2_info(info_file)
+            min_tilt, max_tilt, box_size = get_eman2_info(info_file, name)
 
             if os.path.exists(expected_stack):
                 extract_e2_particles(expected_stack, basename, tomograms_path)
@@ -688,13 +688,13 @@ def eman2_real_to_dynamo(dynamo_args):
     lst, particles = read_particle_params(json_file)
     lst_file = os.path.join(eman2_dir, lst)
     lst_entries, stacks_info = parse_lst_file(lst_file)
+    boxer_class_name = os.path.basename(lst_file).split(".")[0]
 
     # -----------------------------------------
     # Set up Dynamo project directory structure
     # -----------------------------------------
     print("Creating Dynamo project directories")
-    processed_data_dir = eman2_dir + "/processed_data"
-    dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
+    dynamo_root = dynamo_args["dynamo_dir"]
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
 
@@ -718,7 +718,7 @@ def eman2_real_to_dynamo(dynamo_args):
     num_particles = len(particles)
     progress = 1
     for particle_no, transformation_matrix in particles.items():
-        print("\nWorking on particle {:d} out of {:d}..".format(progress, num_particles))
+        print("Working on particle {:d} out of {:d}...".format(progress, num_particles))
         lst_entry = lst_entries[particle_no]
         stack_base = os.path.basename(lst_entry["stack"]).split(".")[0]
         local_particle_no = lst_entry["local_no"]
@@ -728,7 +728,7 @@ def eman2_real_to_dynamo(dynamo_args):
         particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no, num_digits)
 
         info_file = os.path.join(eman2_dir, lst_entry["info"])
-        min_tilt, max_tilt, box_size = get_eman2_info(info_file)
+        min_tilt, max_tilt, box_size = get_eman2_info(info_file, boxer_class_name)
 
         tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(particle_no + 1,
                                                                     particle_map))
@@ -742,6 +742,8 @@ def eman2_real_to_dynamo(dynamo_args):
             int(max_tilt), particle_no + 1, center, center, center)
 
         table_file.write(row)
+
+        progress += 1
 
     table_file.close()
     tomograms_doc_file.close()
@@ -771,16 +773,18 @@ def dynamo_main(root, name, dynamo_args):
     processed_data_dir = root + "/processed_data"
     # Generate .doc and .tbl files
     if dynamo_args["source_type"] == "imod":
-        dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
         if dynamo_args["real_data_mode"]:
+            dynamo_root = dynamo_args["dynamo_dir"]
             doc, tbl, basename = imod_real_to_dynamo(dynamo_args)
         else:
+            dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
             doc, tbl, basename = imod_processor_to_dynamo(root, name)
     elif dynamo_args["source_type"] == "eman2":
-        dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
         if dynamo_args["real_data_mode"]:
+            dynamo_root = dynamo_args["dynamo_dir"]
             doc, tbl, basename = eman2_real_to_dynamo(dynamo_args)
         else:
+            dynamo_root = processed_data_dir + "/Dynamo-from-EMAN2"
             doc, tbl, basename = eman2_processor_to_dynamo(root, name, dynamo_args)
     else:
         dynamo_root, doc, tbl, basename = "", "", "", ""

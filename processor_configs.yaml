@@ -110,8 +110,33 @@ processors: [
 {
   name: "dynamo",
   args: {
-    box_size: 72,
-    num_workers: 24
+    box_size: 120,
+    num_workers: 12,
+    project_name: "demo",
+    real_data_mode: true,
+    source_type: "eman2",
+    eman2_dir: "/data/kshin/T4SS_sim/PDB/test/processed_data/EMAN2",
+    dynamo_dir: "/data/kshin/T4SS_sim/PDB/test/processed_data/Dynamo",
+    params_json: "/data/kshin/T4SS_sim/PDB/test/processed_data/EMAN2/sptsgd_00/particle_parms_01.json",
+    cores: 1,
+    mask: "path/to/mask",
+    mwa: 12,
+    ite_r1: 1,
+    cr_r1: 20,
+    cs_r1: 1,
+    ir_r1: 30,
+    is_r1: 1,
+    rff_r1: 2,
+    rf_r1: 5,
+    dim_r1: 72,
+    lim_r1: [10,10,10],
+    limm_r1: 1,
+    nref_r1: 1,
+    high_r1: 1,
+    low_r1: 18,
+    sym_r1: "c13",
+    dst: "matlab_gpu",
+    gpus: 0
   }
 }
 ]
