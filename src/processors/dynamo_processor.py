@@ -831,6 +831,11 @@ def dynamo_main(root, name, dynamo_args):
                         value_to_write_out = f"\'{tbl}\';"
                     elif variable_name == "particles_dir":
                         value_to_write_out = "\'particles\';"
+                    elif variable_name == "invert_particles":
+                        if dynamo_args["source_type"] == "eman2":
+                            value_to_write_out = "1;"
+                        else:
+                            value_to_write_out = "0;"
                     elif variable_name in dynamo_args:
                         if type(dynamo_args[variable_name]) == str:
                             value_to_write_out = f"\'{dynamo_args[variable_name]}\';"

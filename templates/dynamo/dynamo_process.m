@@ -33,10 +33,21 @@ low_r1 = '';
 sym_r1 = '';
 dst = '';
 gpus = '';
+invert_particles = 1;
 
 %% Process table
 % Crop out the particles
 dtcrop(doc_file, tbl_file, particles_dir, box_size, 'mw', num_workers);
+
+if invert_particles
+    new_table=dread([particles_dir, '/crop.tbl']);
+    parfor i=1:size(new_table,1)
+        particle_name = [particles_dir,'/particle_',sprintf('%06d',i),'.em'];
+        particle = dread(particle_name);
+        inverted_particle=dparticle(particle,'inv',1);
+        dwrite(inverted_particle,[particles_dir,'/particle_',sprintf('%06d',i),'.em']);
+    end
+end
 
 % Randomize the azimuth
 azrand=dynamo_table_randomize_azimuth(tbl_file);
