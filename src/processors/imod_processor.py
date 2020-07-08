@@ -386,6 +386,33 @@ def run_rotx(input_file, output):
         exit(1)
 
 
+def run_flip(input_file, output):
+    """
+    Helper function to run the IMOD clip flipy program to rotate a tomogram 90 degrees around the
+        x-axis
+
+    Args:
+        input_file: The path to tomogram to rotate
+        output: The path to write the rotated tomogram to
+
+    Returns: None
+
+    """
+    clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "clip")
+    command = "%s flipy %s %s" % (clip_path, input_file, output)
+    print(command)
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
 def run_binvol(input_file, output, options):
     """
     Helper function to run the IMOD binvol program to bin a tomogram
@@ -600,6 +627,9 @@ def imod_main(root, name, imod_args):
 
                     if "rotx" in imod_args and imod_args["rotx"]:
                         run_rotx(reconstruction_full_path, reconstruction_full_path)
+
+                    if "flipy" in imod_args and imod_args["flipy"]:
+                        run_flip(reconstruction_full_path, reconstruction_full_path)
 
                     if "binvol" in imod_args:
                         bin_path = os.path.join(imod_proj_dir, f, "%s_SIRT_bin%d.mrc" %
