@@ -523,6 +523,9 @@ def imod_main(root, name, imod_args):
                 # Now set main batchtomo com to resume from step 7, up to reconstruction
                 if end >= 7:
                     replace_batchtomo_start_and_end_steps(com_file, 7, min(end, 13))
+            # Make sure we don't run reconstruction step before we read what method we want
+            else:
+                replace_batchtomo_start_and_end_steps(com_file, start, min(end, 13))
 
             # Need to run remaining steps if not handled yet above
             if end != 6:
