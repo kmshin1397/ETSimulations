@@ -338,14 +338,15 @@ def run_tomo3d(tomo3d_path, tlt, tiltseries, output, other_args):
 
     """
     command = "%s -a %s -i %s -o %s" % (tomo3d_path, tlt, tiltseries, output)
-    print("Running command:")
-    print(command)
 
     for arg, value in other_args.items():
         if value == "enable":
             command += " -%s" % arg
         else:
             command += " -%s %s" % (arg, str(value))
+
+    print("Running command:")
+    print(command)
 
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
