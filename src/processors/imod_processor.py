@@ -331,21 +331,24 @@ def run_tomo3d(tomo3d_path, tlt, tiltseries, output, other_args):
 
     Args:
         tomo3d_path: The path to tomo3d executable
+        tlt: The tilt file
         tiltseries: The tiltseries to reconstruct
         output: The output reconstruction file path
+        other_args: Any other tomo3d options passed in
 
     Returns: None
 
     """
-    command = "%s -a %s -i %s -o %s" % (tomo3d_path, tlt, tiltseries, output)
-    print("Running command:")
-    print(command)
+    command = "%s -a %s -i %s -o %s -f" % (tomo3d_path, tlt, tiltseries, output)
 
     for arg, value in other_args.items():
         if value == "enable":
             command += " -%s" % arg
         else:
             command += " -%s %s" % (arg, str(value))
+
+    print("Running command:")
+    print(command)
 
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
@@ -359,10 +362,10 @@ def run_tomo3d(tomo3d_path, tlt, tiltseries, output, other_args):
         exit(1)
 
 
-def run_rotx(input_file, output):
+def run_flip(input_file, output):
     """
-    Helper function to run the IMOD clip rotx program to rotate a tomogram 90 degrees around the
-        x-axis
+    Helper function to run the IMOD clip flipyz program to rotate a tomogram 90 degrees around the
+        x-axis while maintaining consistent handedness with EMAN2 reconstructions
 
     Args:
         input_file: The path to tomogram to rotate
@@ -372,7 +375,7 @@ def run_rotx(input_file, output):
 
     """
     clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "clip")
-    command = "%s rotx %s %s" % (clip_path, input_file, output)
+    command = "%s flipyz %s %s" % (clip_path, input_file, output)
     print(command)
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
@@ -523,6 +526,9 @@ def imod_main(root, name, imod_args):
                 # Now set main batchtomo com to resume from step 7, up to reconstruction
                 if end >= 7:
                     replace_batchtomo_start_and_end_steps(com_file, 7, min(end, 13))
+            # Make sure we don't run reconstruction step before we read what method we want
+            else:
+                replace_batchtomo_start_and_end_steps(com_file, start, min(end, 13))
 
             # Need to run remaining steps if not handled yet above
             if end != 6:
@@ -560,8 +566,8 @@ def imod_main(root, name, imod_args):
                             print("ERROR: Couldn't find reconstruction for directory: %s" % f)
                             exit(1)
 
-                        if "rotx" in imod_args and imod_args["rotx"]:
-                            run_rotx(rec_path, rec_path)
+                        if "flipyz" in imod_args and imod_args["flipyz"]:
+                            run_flip(rec_path, rec_path)
 
                         if "binvol" in imod_args:
                             bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %
@@ -595,8 +601,8 @@ def imod_main(root, name, imod_args):
                     run_tomo3d(imod_args["tomo3d_path"], tlt, tiltseries, reconstruction_full_path,
                                imod_args["tomo3d_options"])
 
-                    if "rotx" in imod_args and imod_args["rotx"]:
-                        run_rotx(reconstruction_full_path, reconstruction_full_path)
+                    if "flipyz" in imod_args and imod_args["flipyz"]:
+                        run_flip(reconstruction_full_path, reconstruction_full_path)
 
                     if "binvol" in imod_args:
                         bin_path = os.path.join(imod_proj_dir, f, "%s_SIRT_bin%d.mrc" %

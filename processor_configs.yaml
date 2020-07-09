@@ -90,13 +90,17 @@ processors: [
       apix: 0.283,
       fiducial_method: "autofidseed",
       data_dirs_start_with: "T4SS",
-      reconstruction_method: "imod-wbp",
-      rotx: true,
+      reconstruction_method: "tomo3d",
+      rotx: false,
+      flipy: true,
       binvol: {
         "binning": 2
       },
       tomo3d_path: "tomo3d.osx",
-      imod_tomogram_thickness: 500
+      tomo3d_options: {
+        "S": "enable",
+        "z": 700
+      }
     }
   }
 #{
