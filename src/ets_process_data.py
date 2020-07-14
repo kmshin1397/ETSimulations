@@ -19,10 +19,11 @@ import yaml
 from processors.eman2_processor import eman2_main
 from processors.imod_processor import imod_main
 from processors.i3_processor import i3_main
+from processors.dynamo_processor import dynamo_main
 
 # This table maps the names of the various processors (cryo-ET softwares) to the functions which
 # implement the set-up logic for that software.
-processor_handlers = {"eman2": eman2_main, "imod": imod_main, "i3": i3_main}
+processor_handlers = {"eman2": eman2_main, "imod": imod_main, "i3": i3_main, "dynamo": dynamo_main}
 
 
 def parse_inputs():

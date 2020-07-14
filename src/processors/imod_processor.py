@@ -44,7 +44,7 @@ def retrieve_orientations(metadata_file, name, root):
                     # In ZXZ
                     # ETSimulations gives ref-to-part, external;
                     # rotate by z to account for reconstruction rotation
-                    euler = [-row[2] - 90, -row[1], -row[0]] # now at part-to-ref, ext
+                    euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
 
                     # TEM-Simulator is in stationary zxz
                     rotation = R.from_euler('zxz', euler, degrees=True)
@@ -546,7 +546,7 @@ def imod_main(root, name, imod_args):
             # If we need to apply rotations or binning to each tomogram, start iterating through the
             # data directories
             if ("rotx" in imod_args and imod_args["rotx"]) or \
-                ("binvol" in imod_args and imod_args["binvol"]):
+                    ("binvol" in imod_args and imod_args["binvol"]):
                 print("Running tomogram rotations and/or tomogram binning...")
                 imod_proj_dir = root + "/processed_data/IMOD"
                 for f in os.listdir(imod_proj_dir):
@@ -571,7 +571,7 @@ def imod_main(root, name, imod_args):
 
                         if "binvol" in imod_args:
                             bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %
-                                                (rec_basename, imod_args["binvol"]["binning"]))
+                                                    (rec_basename, imod_args["binvol"]["binning"]))
                             run_binvol(rec_basename, bin_path, imod_args["binvol"])
 
         elif imod_args["reconstruction_method"] == "tomo3d":

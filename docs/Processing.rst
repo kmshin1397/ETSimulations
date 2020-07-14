@@ -28,4 +28,5 @@ Available processors
 .. toctree::
     EMAN2Processor
     IMODProcessor
+    DynamoProcessor
     I3Processor
