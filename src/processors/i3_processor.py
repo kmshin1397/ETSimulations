@@ -187,7 +187,6 @@ def get_mrc_size(rec):
         warnings.simplefilter("ignore")
         import mrcfile
 
-        data = np.array([])
         with mrcfile.open(rec, mode='r', header_only=True, permissive=True) as mrc:
             x = mrc.header.nx
             y = mrc.header.ny
@@ -709,35 +708,10 @@ def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
         a4, a5, a6 = (0.0, 0.0, 0.0)
 
         f.write("{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(a0, a1, a2, a3, a4, a5, a6))
-        f.write("%f %f %f %f %f %f %f %f %f" % \
-                    (rot_matrix[0], rot_matrix[1], rot_matrix[2],
-                     rot_matrix[3], rot_matrix[4], rot_matrix[5],
-                     rot_matrix[6], rot_matrix[7], rot_matrix[8]))
-
-
-def hdf_to_mrc(hdf_file, mrc_file):
-    """
-    Helper function to convert a .hdf map to a .mrc map using e2proc3d.py
-
-    Args:
-        hdf_file: The HDF file to convert
-        mrc_file: The MRC file to convert
-
-    Returns: None
-
-    """
-    command = "e2proc3d.py --outtype=mrc {:s} {:s}".format(hdf_file, mrc_file)
-    print(command)
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while True:
-        output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    if rc != 0:
-        exit(1)
+        f.write("%f %f %f %f %f %f %f %f %f" %
+                (rot_matrix[0], rot_matrix[1], rot_matrix[2],
+                 rot_matrix[3], rot_matrix[4], rot_matrix[5],
+                 rot_matrix[6], rot_matrix[7], rot_matrix[8]))
 
 
 #############################
@@ -889,10 +863,6 @@ def eman2_processor_to_i3(root, name, i3_args):
 
     shutil.copyfile(i3_args["mraparam_path"], os.path.join(i3_root, "mraparam.sh"))
 
-    # Load EMAN2 Processor info
-    processor_info_file = os.path.join(root, "processed_data/eman2_info.json")
-    processor_info = json.load(open(processor_info_file, "r"))["args"]
-
     eman2_dir = os.path.join(processed_data_dir, "EMAN2")
 
     # -------------------------------------
@@ -928,18 +898,6 @@ def eman2_processor_to_i3(root, name, i3_args):
                 rotation = R.from_euler('zxz', euler, degrees=True)
 
                 matrices.append(np.array(rotation.as_matrix()).flatten())
-
-            # Look for the necessary EMAN2 files
-            print("Looking for necessary EMAN2 files...")
-            # Compare the nx of the original tiltseries to the reconstruction parameters to
-            # determine the binning factor
-            original_tiltseries_size = get_mrc_size(tomogram["output"])[0] * 2
-            rec_size_string = processor_info["e2tomogram_parameters"]["outsize"]
-            rec_size = float(rec_size_string.replace("k", "")) * 1000
-            binning = round(original_tiltseries_size / rec_size)
-
-            # Tomogram expected path based on binning factor
-            rec = "{:s}__bin{:d}.hdf".format(basename, binning)
 
             print("\nExtracting individual particle maps for the tomogram...")
             expected_stack = os.path.join(eman2_dir, "particles3d",

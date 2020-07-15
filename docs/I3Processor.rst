@@ -58,7 +58,7 @@ Specifically, we have:
         (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The EMAN2 project directory path.
 
     * **params\_json** : string
-        (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The particle_parms_*.json from a run of e2spt_align.py to retrieve pre-orientations and the particle list from.
+        (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The particle_parms_*.json from a run of EMAN2 spt to retrieve pre-orientations and the particle list from.
 
 ===================================
 Using the I3 Processor on real data
@@ -109,4 +109,4 @@ To transfer an EMAN2 project, something like the processor arguments below could
       }
     ]
 
-Note that some amount of sub-tomogram averaging should be done already using EMAN2 (at minimum the "generate initial reference" step) in order to have some initial orientation information to write out to the I3 .trf files. The I3 Processor also sets up I3 to average extracted sub-volumes from EMAN2 (treating each particle as one "tomogram") as EMAN2 reconstruction usually is 1) not CTF corrected 2) binned to 1k*1k for visualization 3) may contain artifacts because it's reconstructed piece by piece.
+Note that some amount of sub-tomogram averaging should be done already using EMAN2 (at minimum the "generate initial reference" step) in order to have some initial orientation information to write out to the I3 .trf files. The I3 Processor also sets up I3 to average extracted sub-volumes from EMAN2 (treating each particle as one "tomogram") as EMAN2 reconstruction usually is 1) not CTF corrected 2) binned to 1k*1k for visualization 3) may contain artifacts because it does the reconstruction piece by piece.
