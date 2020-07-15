@@ -18,8 +18,8 @@ project_root = '';
 dir_starts_with = '';
 template_config = '';
 output_suffix = '';
-base_motl = '';
-peet_motl = '';
+xyz_motl = '';
+eulers_motl = '';
 tomogram_size_x = '';
 tomogram_size_y = '';
 
@@ -38,7 +38,7 @@ for i = 3 : length(directoryNames)
         tlt_filename = erase(tlt_file_struct(1).name, "_fid");
         
         tlt_file = tlt_file_struct(1).folder + "/" + tlt_filename;
-        [filepath, basename, ext] = fileparts(tlt_file);
+        [~, basename, ~] = fileparts(tlt_file);
         current_full_path = tlt_file_struct(1).folder;
         imod_root = current_full_path + "/" + basename;
         marker_output = current_full_path + "/" + basename + '_markers.em';
@@ -88,13 +88,13 @@ for i = 3 : length(directoryNames)
         % Add one to tomonumber in filename to account for Matlab being
         % 1-indexed
         tomo_num = str2double(split_base(end)) + 1;
-        new_motl = artia.motl.tbl2motl(base_motl, tomo_num, 0);
+        new_motl = artia.motl.tbl2motl(xyz_motl, tomo_num, 0);
         
         % Add pre-orientations
-        peet_motl_table = readtable(peet_motl);
-        peet_motl = table2array(peet_motl_table);
-        for i = 1:size(peet_motl, 1)
-            new_motl(17:19, i) = peet_motl(i,17:19);
+        peet_motl_table = readtable(eulers_motl);
+        eulers_motl = table2array(peet_motl_table);
+        for i = 1:size(eulers_motl, 1)
+            new_motl(17:19, i) = eulers_motl(i,17:19);
         end        
         
         motl_out = current_full_path + "/" + basename + "_motl.em";
