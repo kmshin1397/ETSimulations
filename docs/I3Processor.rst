@@ -2,7 +2,7 @@ The I3 Processor
 ==================
 The I3 Processor, found in processors/i3\_processor.py, is implemented to facilitate processing of the generated simulation dataset with the `I3 software <i3link>`_. Specifically, a project directory is created and set up, along with necessary files, for running sub-tomogram averaging using I3.
 
-The previous steps of aligning, reconstructing, and particle-picking is not handled by I3 and must be done with another software. The I3 Processor can currently take the results of the :ref:`IMOD Processor <imod_processor>` and the :ref:`EMAN2 Processor <eman2_processor>` to set up the I3 run.
+The previous steps of aligning, reconstructing, and particle-picking is not handled by I3 and must be done with another software. The I3 Processor can currently take the results of the :ref:`IMOD Processor <imod_processor>` and the :ref:`EMAN2 Processor <eman2_processor>` (or real data from those softwares) to set up the I3 run.
 
 The I3 Processor as well will take its inputs from the configuration YAML passed into ets\_process\_data.py. The following is an example of minimal I3 configurations: ::
 
