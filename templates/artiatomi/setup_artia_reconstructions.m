@@ -16,7 +16,7 @@
 %% Input parameters
 project_root = '';
 dir_starts_with = '';
-template_config = '';
+reconstruction_template_config = '';
 output_suffix = '';
 xyz_motl = '';
 eulers_motl = '';
@@ -45,7 +45,7 @@ for i = 3 : length(directoryNames)
 
         %% Set up marker file
         % Convert IMOD alignment to Artia marker alignment
-        ali = artia.geo.imod2emsart(char(imod_root));
+        ali = artia.geo.imod2emsart(imod_root);
         
         % Set up default marker header
         [xdim, ydim, zdim] = size(ali);
@@ -70,9 +70,9 @@ for i = 3 : length(directoryNames)
         
         % Set up config file
         % Copy over base config file
-        [filepath, config_basename, ext] = fileparts(template_config);
+        [filepath, config_basename, ext] = fileparts(reconstruction_template_config);
         config_out = current_full_path + "/" + config_basename + ext;
-        copyfile(template_config, config_out);
+        copyfile(reconstruction_template_config, config_out);
 
         % Edit input/output file params
         input_stack = current_full_path + "/" + basename + ".st";
@@ -91,10 +91,10 @@ for i = 3 : length(directoryNames)
         new_motl = artia.motl.tbl2motl(xyz_motl, tomo_num, 0);
         
         % Add pre-orientations
-        peet_motl_table = readtable(eulers_motl);
-        eulers_motl = table2array(peet_motl_table);
-        for i = 1:size(eulers_motl, 1)
-            new_motl(17:19, i) = eulers_motl(i,17:19);
+        motl_table = readtable(eulers_motl);
+        eulers_array = table2array(motl_table);
+        for i = 1:size(eulers_array, 1)
+            new_motl(17:19, i) = eulers_array(i,1:3);
         end        
         
         motl_out = current_full_path + "/" + basename + "_motl.em";

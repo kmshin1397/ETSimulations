@@ -146,7 +146,25 @@ def imod_processor_setup_sta(root, name, artia_args):
     pass
 
 
-def write_out_motl_files_simulated(root, name, xyz_name, motl_name):
+def shift_coordinates_bottom_left(coords, size, binning=1):
+    """
+    Given an XYZ tuple of particle coordinates and the reconstruction they came from, shift the
+        coordinates so that the origin is at the bottom-left of the tomogram
+
+    Args:
+        coords: the (x, y, z) coordinates for the particle
+        size: the reconstruction MRC half-dimensions in (nx/2, ny/2, nz/2) form
+        binning: the bin factor from the original stack to the final reconstruction, to be used if
+            you are using coordinates based on the original unbinned coordinate system
+
+    Returns: the new coordinates as a (x, y, z) tuple
+
+    """
+    return float(coords[0]) / binning + size[0], float(coords[1]) / binning + size[1], \
+           float(coords[2]) / binning + size[2]
+
+
+def write_out_motl_files_simulated(root, name, xyz_name, motl_name, size, binning):
     """
     Iterate through an IMOD Processor project and set up text files for Artiatomi to read in for its marker files
 
@@ -155,6 +173,8 @@ def write_out_motl_files_simulated(root, name, xyz_name, motl_name):
         name: The project/particle name
         xyz_name: The file name to give each XYZ coordinates file
         motl_name: The file name to give each Euler angles file
+        size: Final tomogram size (for shifting origin of coordinates)
+        binning: The binning to apply to the raw coordinates
 
     Returns: None
     """
@@ -193,7 +213,7 @@ def write_out_motl_files_simulated(root, name, xyz_name, motl_name):
             xyz_motl_file = open(xyz_motl, "w")
             eulers_motl_file = open(eulers_motl, "w")
             for info in slicer_info:
-                coords = info["coords"]
+                coords = shift_coordinates_bottom_left(info["coords"], size, binning)
                 angles = info["angles"]
                 xyz_line = "{:f} {:f} {:f}\n".format(coords[0], coords[1], coords[2])
                 xyz_motl_file.write(xyz_line)
@@ -240,7 +260,7 @@ def write_out_motl_files_real(artia_root, xyz_name, motl_name):
             angles = info["angles"]
             xyz_line = "{:f} {:f} {:f}\n".format(coords[0], coords[1], coords[2])
             xyz_motl_file.write(xyz_line)
-            motl_line = "{:f} {:f} {:f}\n".format(angles[0], angles[1], angles[2])
+            motl_line = "{:f} {:f} {:f}\n".format(angles[0], angles[2], angles[1])
             eulers_motl_file.write(motl_line)
 
         xyz_motl_file.close()
@@ -263,7 +283,7 @@ def copy_over_imod_files(imod_root, artia_root, dir_starts_with, real_data_mode=
                     tlt = file
                 elif file.endswith(".st"):
                     stack = file
-                elif file.endswith(".xf"):
+                elif file.endswith(".xf") and not file.endswith("_fid.xf"):
                     xf = file
                 if real_data_mode and mod_contains in file and file.endswith(".mod"):
                     mod = file
@@ -333,17 +353,23 @@ def setup_reconstructions_script(root, name, artia_args):
     # -------------------------------------
     # Set up Artiatomi project directory structure
     # -------------------------------------
-    print("Creating Artiatomi project directories")
+    print("Creating Artiatomi project directories and copying over relevant IMOD files")
     if not os.path.exists(artia_root):
         os.mkdir(artia_root)
 
     copy_over_imod_files(imod_root, artia_root, dir_starts_with, real_data_mode=artia_args["real_data_mode"],
                          mod_contains=mod_contains)
 
+    print("Writing out MOTL-related files")
     if artia_args["real_data_mode"]:
         write_out_motl_files_real(artia_root, xyz_motl, eulers_motl)
     else:
-        write_out_motl_files_simulated(root, name, xyz_motl, eulers_motl)
+        binning = 1
+        if "position_binning" in artia_args:
+            binning = artia_args["position_binning"]
+
+        size = (artia_args["tomogram_size_x"] / 2, artia_args["tomogram_size_y"] / 2, artia_args["tomogram_size_z"] / 2)
+        write_out_motl_files_simulated(root, name, xyz_motl, eulers_motl, size, binning)
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -378,7 +404,7 @@ def setup_reconstructions_script(root, name, artia_args):
 
                     value_to_write_out = ""
                     if variable_name == "project_root":
-                        value_to_write_out = f"\'{imod_root}\';"
+                        value_to_write_out = f"\'{artia_root}\';"
                     elif variable_name == "dir_starts_with":
                         value_to_write_out = f"\'{dir_starts_with}\';"
                     elif variable_name == "xyz_motl":
@@ -386,7 +412,10 @@ def setup_reconstructions_script(root, name, artia_args):
                     elif variable_name == "eulers_motl":
                         value_to_write_out = f"\'{eulers_motl}\';"
                     elif variable_name in artia_args:
-                        value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                        if type(artia_args[variable_name]) == str:
+                            value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                        else:
+                            value_to_write_out = str(artia_args[variable_name]) + ";"
                     else:
                         print("Missing Artiatomi processing parameter: %s!" % variable_name)
                         exit(1)
