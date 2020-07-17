@@ -4,6 +4,16 @@
 % global motivelist out as *.em files. Also creates simple files for the
 % mask, wedge, and ccmask.
 
+%% Input parameters
+motls_txt = "";
+tomonrs_txt = "";
+maskFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/mask.em';
+wedgeFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/wedge.em';
+maskCCFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/maskCC_small.em';
+motlFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls/motl_1.em';
+particles_folder = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/parts';
+box_size = 0;
+
 %% Load motl:
 % Change the filenames to the motivelist you want to use and adjust the
 % tomonr according to your tomogram numbers and the amount of tomograms
@@ -12,10 +22,10 @@
 % and tomonums.txt files shown in example below
 
 % motl_filesnames = matrix of motl filenames
-motl_filenames = readcell("/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls.txt", 'Delimiter', ' ');
+motl_filenames = readcell(motls_txt, 'Delimiter', ' ');
 
 % tomonr = matrix of tomogram numbers
-tomonr = cell2mat(readcell("/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/tomonums.txt", 'Delimiter', ' '));
+tomonr = cell2mat(readcell(tomonrs_txt, 'Delimiter', ' '));
 
 %% Loop and write stuff into motls
 % Set up a global motivelist of all particles
@@ -41,7 +51,7 @@ for i = 1:numel(tomonr)
     % Append to global motivelist 
     global_motl = [global_motl motl];
 
-end;
+end
 
 %% Extract particles
 
@@ -63,7 +73,6 @@ end
 
 
 % Extract and write out the particles
-particles_folder = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/parts';
 particles_prefix = sprintf('%s/part_', particles_folder);
 
 % See documentation for artia.particle.extract_write for more details on 
@@ -77,7 +86,7 @@ particles_prefix = sprintf('%s/part_', particles_folder);
 % doTranslate = 0
 % doNormalize = 1
 % partPref = particles_prefix
-artia.particle.extract_write(global_motl, 1, tomo_filenames, 64, 0, 0, ...
+artia.particle.extract_write(global_motl, 1, tomo_filenames, box_size/2, 0, 0, ...
     1, particles_prefix);
 
 %% Set up other inputs to averaging
@@ -85,25 +94,21 @@ artia.particle.extract_write(global_motl, 1, tomo_filenames, 64, 0, 0, ...
 % filename according to your parameters
 % Below we create a spherical mask; the sphere function takes as input
 % sphere(dims, radius, sigma, center)
-maskFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/mask.em';
-mask = artia.mask.sphere([128 128 128], 60, 3, [64 64 64]);
+mask = artia.mask.sphere([box_size box_size box_size], box_size/2, 3, [box_size/2 box_size/2 box_size/2]);
 artia.em.write(mask, maskFile);
 
 % Wedge: Set the directory where your mask should be saved and change the
 % filename according to your parameters
 % We create a basic, binary missing wedge file here.
-wedgeFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/wedge.em';
-wedge = artia.wedge.primitive([128 128 128], -54, 54);
+wedge = artia.wedge.primitive([box_size box_size box_size], -54, 54);
 artia.em.write(wedge, wedgeFile);
 
 % CCMask: similar to mask, the cross-correlation mask is used to limit the 
 % transformation of the particles while aligning
-maskCCFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/maskCC_small.em';
-maskCC = artia.mask.sphere([128 128 128], 28, 0, [64 96 64]);
+maskCC = artia.mask.sphere([box_size box_size box_size], box_size/4, 0, [box_size/2 box_size/2 box_size/2]);
 artia.em.write(maskCC, maskCCFile);
 
 % Motl file
-motlFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls/motl_1.em';
 artia.em.write(global_motl, motlFile);
 
 

@@ -97,35 +97,33 @@ def get_slicer_info(mod_file):
 
     return results
 
+
 #######################
 #   IMOD Functions    #
 #######################
 
-def imod_real_setup_sta(artia_args):
+def imod_setup_sta(artia_root, dirs_start_with):
     """
-    Write out the files necessary to run the MATLAB import script for reconstructions in Artiatomi
+    Write out the files necessary to run the MATLAB set up script for sub-tomogram averaging in Artiatomi
     Args:
-        artia_args: The processor arguments
+        artia_root: The Artiatomi project directory
+        dirs_start_with: A prefix for the data subdirectories within the Artiatomi project
 
     Returns: Tuple of motive lists file and tomogram numbers file
 
     """
 
-    imod_project_dir = artia_args["imod_dir"]
-    look_for_dirs_starting_with = artia_args["dirs_start_with"]
-    artia_root = artia_args["artia_dir"]
     initMOTLs = []
     tomonumbers = []
-    for folder in os.listdir(os.fsencode(imod_project_dir)):
-        base = os.path.splitext(os.fsdecode(folder))[0]
-        if base.startswith(look_for_dirs_starting_with):
+    for subdir in os.listdir(artia_root):
+        if subdir.startswith(dirs_start_with):
             motl_name = ""
-            for file in os.listdir(os.fsencode(imod_project_dir + "/%s" % base)):
-                if os.fsdecode(file).endswith("_motl.em"):
-                    motl_name = os.path.basename(os.fsdecode(file))
+            for file in os.listdir(os.path.join(artia_root, subdir)):
+                if file.endswith("_motl.em"):
+                    motl_name = os.path.basename(file)
 
-            motl = imod_project_dir + "/%s/%s" % (base, motl_name)
-            tomo_num = int(base.split("_")[-1]) + 1
+            motl = os.path.join(artia_root, subdir, motl_name)
+            tomo_num = int(subdir.split("_")[-1]) + 1
 
             initMOTLs.append(motl)
             tomonumbers.append(tomo_num)
@@ -140,10 +138,6 @@ def imod_real_setup_sta(artia_args):
         f.write(' '.join(map(str, tomonumbers)))
 
     return motl_out, tomonums_out
-
-
-def imod_processor_setup_sta(root, name, artia_args):
-    pass
 
 
 def shift_coordinates_bottom_left(coords, size, binning=1):
@@ -437,7 +431,177 @@ def setup_reconstructions_script(root, name, artia_args):
                     new_file.write(line)
 
 
+def generate_reconstructions_script(root, name, artia_args):
+    """
+    Generate a bash script to run the reconstructions.
+    Args:
+        root: ETSimulations root (only used if coming from simulated data)
+        name: Project/particle name (only used if coming from simulated data)
+        artia_args: The Artiatomi processor arguments
+
+    Returns: None
+
+    """
+    if artia_args["real_data_mode"]:
+        artia_root = artia_args["artia_dir"]
+        dir_starts_with = artia_args["dir_starts_with"]
+    else:
+        artia_root = os.path.join(root, "processed_data", "Artiatomi")
+        dir_starts_with = name
+
+    # Use template file to create a bash script to run EmSART on a data set
+    current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    template = current_dir + "../../templates/artiatomi/emsart_reconstruct.sh"
+    template_path = os.path.realpath(template)
+    new_script = os.path.join(artia_root, "emsart_reconstruct.sh")
+    print("")
+    print("Creating processing script at: %s" % new_script)
+
+    with open(new_script, "w") as new_file:
+        with open(template_path, "r") as base_file:
+            while True:
+                line = base_file.readline()
+                if len(line) == 0:
+                    break
+                elif line.startswith("for f in"):
+                    dir_pattern = f"{artia_root}/{dir_starts_with}*"
+                    new_line = f"for f in {dir_pattern}\n"
+                    new_file.write(new_line)
+                else:
+                    new_file.write(line)
+
+
+def generate_sta_script(artia_root, motls_txt, tomonrs_txt, artia_args):
+    """
+    Generate the MATLAB script for setting up the Artiatomi sub-tomogram averaging
+    Args:
+        artia_root: Artiatomi project root directory
+        motls_txt: The text file listing the motivelist files for the averaging
+        tomonrs_txt: The text file listing the tomogram numbers for the tomograms in the averaging project
+        artia_args: The Artiatomi processor arguments
+
+    Returns: None
+
+    """
+
+    mask_file = os.path.join(artia_root, "other", "mask.em")
+    wedge_file = os.path.join(artia_root, "other", "wedge.em")
+    maskCC_file = os.path.join(artia_root, "other", "maskCC.em")
+    global_motl_file = os.path.join(artia_root, "motls", "motl_1.em")
+    particles_folder = os.path.join(artia_root, "parts")
+
+    # Use template file to create Matlab script to run the remaining steps
+    current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    template = current_dir + "../../templates/artiatomi/setup_artia_sta.m"
+    template_path = os.path.realpath(template)
+    new_script = os.path.join(artia_root, "setup_artia_sta.m")
+    print("")
+    print("Creating processing script at: %s" % new_script)
+
+    with open(new_script, "w") as new_file:
+        with open(template_path, "r") as base_file:
+            # First look for the input params section
+            while True:
+                line = base_file.readline()
+                if re.match(r"^%% Input parameters", line):
+                    break
+                else:
+                    new_file.write(line)
+
+            # Now start replacing input params
+            while True:
+                line = base_file.readline()
+                # Break once we reach the end of the segment
+                if re.match(r"^%% Load motl", line):
+                    break
+
+                # If we are at an assignment line
+                elif re.match(r".+ =", line):
+                    line = line.strip()
+                    tokens = line.split(" ")
+                    variable_name = tokens[0]
+
+                    value_to_write_out = ""
+                    if variable_name == "motls_txt":
+                        value_to_write_out = f"\'{motls_txt}\';"
+                    elif variable_name == "tomonrs_txt":
+                        value_to_write_out = f"\'{tomonrs_txt}\';"
+                    elif variable_name == "maskFile":
+                        value_to_write_out = f"\'{mask_file}\';"
+                    elif variable_name == "wedgeFile":
+                        value_to_write_out = f"\'{wedge_file}\';"
+                    elif variable_name == "maskCCFile":
+                        value_to_write_out = f"\'{maskCC_file}\';"
+                    elif variable_name == "motlFile":
+                        value_to_write_out = f"\'{global_motl_file}\';"
+                    elif value_to_write_out == "particles_folder":
+                        value_to_write_out = f"\'{particles_folder}\';"
+                    elif variable_name in artia_args:
+                        if type(artia_args[variable_name]) == str:
+                            value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                        else:
+                            value_to_write_out = str(artia_args[variable_name]) + ";"
+                    else:
+                        print("Missing Artiatomi processing parameter: %s!" % variable_name)
+                        exit(1)
+
+                    new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])
+
+                    new_file.write(new_line)
+
+                # Other lines in the segment - probably just comments
+                else:
+                    new_file.write(line)
+
+            # For the rest of the code, just write it out
+            while True:
+                line = base_file.readline()
+                if len(line) == 0:
+                    break
+                else:
+                    new_file.write(line)
+                    new_file.write(line)
+
+
 def artiatomi_main(root, name, artia_args):
 
     if "setup_reconstructions_and_motls" in artia_args and artia_args["setup_reconstructions_and_motls"]:
         setup_reconstructions_script(root, name, artia_args)
+
+        generate_reconstructions_script(root, name, artia_args)
+
+    if "setup_averaging" in artia_args and artia_args["setup_averaging"]:
+
+        # Get input parameters based on mode
+        if artia_args["real_data_mode"]:
+            artia_root = artia_args["artia_dir"]
+            dir_starts_with = artia_args["dir_starts_with"]
+        else:
+            artia_root = os.path.join(root, "processed_data", "Artiatomi")
+            dir_starts_with = name
+
+        # Set up averaging directory structure
+        print("Creating Artiatomi averaging directories")
+        sta_dir = os.path.join(artia_root, "sta")
+        if not os.path.exists(sta_dir):
+            os.mkdir(sta_dir)
+
+        parts_dir = os.path.join(sta_dir, "parts")
+        if not os.path.exists(parts_dir):
+            os.mkdir(parts_dir)
+
+        motls_dir = os.path.join(sta_dir, "motls")
+        if not os.path.exists(motls_dir):
+            os.mkdir(motls_dir)
+
+        refs_dir = os.path.join(sta_dir, "refs")
+        if not os.path.exists(refs_dir):
+            os.mkdir(refs_dir)
+
+        others_dir = os.path.join(sta_dir, "other")
+        if not os.path.exists(others_dir):
+            os.mkdir(others_dir)
+
+        motls_file, tomonrs_file = imod_setup_sta(artia_root, dir_starts_with)
+
+        generate_sta_script(artia_root, motls_file, tomonrs_file, artia_args)
