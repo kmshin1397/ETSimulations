@@ -3,11 +3,11 @@
 
 T="$(date +%s%N)"
 emsart_path="EmSART"
+config_file="EmSART_HR.cfg"
 for f in /data/kshin/T4SS_sim/PDB/c4/IMOD/T4SS_*
 do
 	echo "==================================================="
 	cd $f
-	config_file="EmSART_HR.cfg"
 	$emsart_path -u $config_file 
 	echo "==================================================="
 done

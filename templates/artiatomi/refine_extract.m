@@ -2,8 +2,8 @@
 % data set to extract the particles based on local refinement values so
 % that they can be averaged again.
 
-%% Input paramaters
-EmSARTSubVols = '/home/kshin/Documents/repositories/Artiatomi/build/EmSARTSubVols';
+%% Input parameters
+emsart_subvols_path = '/home/kshin/Documents/repositories/Artiatomi/build/EmSARTSubVols';
 refineDir = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/refine';
 subVolPre = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/refine/subvols/';
 latestStaMotl = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls/motl_2.em';
@@ -47,7 +47,7 @@ for i = 3 : length(directoryNames)
         config.NamingConvention = 'TomoParticle';
         artia.cfg.write(config, subVolCfgFile);
         
-        artia.mpi.run(EmSARTSubVols, 1, subVolCfgFile, 'runRemote', true, 'remoteHost', 'Artiatomi@localhost', 'remotePort','portnumber','suppressOutput', false);
+        artia.mpi.run(emsart_subvols_path, 1, subVolCfgFile, 'runRemote', true, 'remoteHost', 'Artiatomi@localhost', 'remotePort','portnumber','suppressOutput', false);
     end
 end
 m = artia.em.read(latestStaMotl);

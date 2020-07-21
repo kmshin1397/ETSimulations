@@ -42,9 +42,9 @@ def convert_slicer_to_motl(orientations):
     """
     for i, point in enumerate(orientations):
         slicer = orientations[i]
-        rot = R.from_euler("zyx", [slicer[2], slicer[1], slicer[0]], degrees=True)
-        ref_to_part = rot.inv()
-        eulers = ref_to_part.as_euler("zxz", degrees=True)
+        rot = R.from_euler("zyx", [-slicer[0], -slicer[1], -slicer[2]], degrees=True)
+        # ref_to_part = rot.inv()
+        eulers = rot.as_euler("ZXZ", degrees=True)
         orientations[i] = eulers
 
     return orientations
@@ -464,6 +464,14 @@ def generate_reconstructions_script(root, name, artia_args):
                     dir_pattern = f"{artia_root}/{dir_starts_with}*"
                     new_line = f"for f in {dir_pattern}\n"
                     new_file.write(new_line)
+                elif line.startswith("config_file"):
+                    config_file = artia_args["reconstruction_template_config"]
+                    new_line = f"config_file=\"{config_file}\"\n"
+                    new_file.write(new_line)
+                elif line.startswith("emsart_path"):
+                    emsart = artia_args["emsart_path"]
+                    new_line = f"emsart_path=\"{emsart}\"\n"
+                    new_file.write(new_line)
                 else:
                     new_file.write(line)
 
@@ -479,12 +487,15 @@ def generate_sta_script(artia_root, info_file, artia_args):
     Returns: None
 
     """
-
-    mask_file = os.path.join(artia_root, "sta", "other", "mask.em")
-    wedge_file = os.path.join(artia_root, "sta", "other", "wedge.em")
-    maskCC_file = os.path.join(artia_root, "sta", "other", "maskCC.em")
-    global_motl_file = os.path.join(artia_root, "sta", "motls", "motl_1.em")
-    particles_folder = os.path.join(artia_root, "sta", "parts")
+    sta_folder = os.path.join(artia_root, "sta")
+    mask_file = os.path.join(sta_folder, "other", "mask.em")
+    wedge_file = os.path.join(sta_folder, "other", "wedge.em")
+    maskCC_file = os.path.join(sta_folder, "other", "maskCC.em")
+    global_motl_file = os.path.join(sta_folder, "motls", "motl_1.em")
+    motl_file_pre = os.path.join(sta_folder, "motls", "motl_")
+    particles_folder = os.path.join(sta_folder, "parts")
+    part_file_pre = os.path.join(sta_folder, "parts", "part_")
+    cfg_file = os.path.join(sta_folder, "sta.cfg")
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -508,7 +519,7 @@ def generate_sta_script(artia_root, info_file, artia_args):
             while True:
                 line = base_file.readline()
                 # Break once we reach the end of the segment
-                if re.match(r"^%% Load motl:", line):
+                if re.match(r"^%% Load motl", line):
                     break
 
                 # If we are at an assignment line
@@ -520,6 +531,8 @@ def generate_sta_script(artia_root, info_file, artia_args):
                     value_to_write_out = ""
                     if variable_name == "info_file":
                         value_to_write_out = f"\'{info_file}\';"
+                    elif variable_name == "sta_folder":
+                        value_to_write_out = f"\'{sta_folder}\';"
                     elif variable_name == "maskFile":
                         value_to_write_out = f"\'{mask_file}\';"
                     elif variable_name == "wedgeFile":
@@ -528,8 +541,14 @@ def generate_sta_script(artia_root, info_file, artia_args):
                         value_to_write_out = f"\'{maskCC_file}\';"
                     elif variable_name == "motlFile":
                         value_to_write_out = f"\'{global_motl_file}\';"
+                    elif variable_name == "motlFilePre":
+                        value_to_write_out = f"\'{motl_file_pre}\';"
                     elif variable_name == "particles_folder":
                         value_to_write_out = f"\'{particles_folder}\';"
+                    elif variable_name == "partFilePre":
+                        value_to_write_out = f"\'{part_file_pre}\';"
+                    elif variable_name == "avgCfgFile":
+                        value_to_write_out = f"\'{cfg_file}\';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
                             value_to_write_out = f"\'{artia_args[variable_name]}\';"
@@ -577,6 +596,27 @@ def get_latest_ref(sta_dir):
     return latest_ref
 
 
+def get_latest_motl(sta_dir):
+    """
+    Find the latest motl from an Artiatomi STA run
+    Args:
+        sta_dir: The sub-tomogram averaging directory, where we expect to find a ref folder
+
+    Returns: The latest motl file path
+
+    """
+    motls_dir = os.path.join(sta_dir, "motls")
+    max_num = 0
+    latest_motl = None
+    for motl in os.listdir(motls_dir):
+        if re.match("motl_[0-9]+.em", motl):
+            num = int(motl.split("_")[1].split(".")[0])
+            if num > max_num:
+                latest_motl = os.path.join(motls_dir, motl)
+
+    return latest_motl
+
+
 def generate_refinement_script(artia_root, info_file, artia_args):
     """
     Generate the MATLAB script for setting up the Artiatomi tilt refinement
@@ -597,6 +637,7 @@ def generate_refinement_script(artia_root, info_file, artia_args):
     refine_motls_dir = os.path.join(refine_dir, "motls")
 
     latest_ref = get_latest_ref(os.path.join(artia_root, "sta"))
+    latest_motl = get_latest_motl(os.path.join(artia_root, "sta"))
 
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -620,7 +661,7 @@ def generate_refinement_script(artia_root, info_file, artia_args):
             while True:
                 line = base_file.readline()
                 # Break once we reach the end of the segment
-                if re.match(r"^%% Load motl:", line):
+                if re.match(r"^%% Split latest", line):
                     break
 
                 # If we are at an assignment line
@@ -632,11 +673,11 @@ def generate_refinement_script(artia_root, info_file, artia_args):
                     value_to_write_out = ""
                     if variable_name == "info_file":
                         value_to_write_out = f"\'{info_file}\';"
-                    elif variable_name == "maskFile":
+                    elif variable_name == "mask_file":
                         value_to_write_out = f"\'{mask_file}\';"
-                    elif variable_name == "wedgeFile":
+                    elif variable_name == "wedge_file":
                         value_to_write_out = f"\'{wedge_file}\';"
-                    elif variable_name == "maskCCFile":
+                    elif variable_name == "maskCC_file":
                         value_to_write_out = f"\'{maskCC_file}\';"
                     elif variable_name == "main_root":
                         value_to_write_out = f"\'{refine_dir}\';"
@@ -644,6 +685,8 @@ def generate_refinement_script(artia_root, info_file, artia_args):
                         value_to_write_out = f"\'{refine_motls_dir}\';"
                     elif variable_name == "latest_ref":
                         value_to_write_out = f"\'{latest_ref}\';"
+                    elif variable_name == "latest_motl":
+                        value_to_write_out = f"\'{latest_motl}\';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
                             value_to_write_out = f"\'{artia_args[variable_name]}\';"
@@ -668,27 +711,6 @@ def generate_refinement_script(artia_root, info_file, artia_args):
                     break
                 else:
                     new_file.write(line)
-
-
-def get_latest_motl(sta_dir):
-    """
-    Find the latest motl from an Artiatomi STA run
-    Args:
-        sta_dir: The sub-tomogram averaging directory, where we expect to find a ref folder
-
-    Returns: The latest motl file path
-
-    """
-    motls_dir = os.path.join(sta_dir, "motls")
-    max_num = 0
-    latest_motl = None
-    for motl in os.listdir(motls_dir):
-        if re.match("motl_[0-9]+.em", motl):
-            num = int(motl.split("_")[1].split(".")[0])
-            if num > max_num:
-                latest_motl = os.path.join(motls_dir, motl)
-
-    return latest_motl
 
 
 def generate_extract_script(artia_root, artia_args):
@@ -727,7 +749,7 @@ def generate_extract_script(artia_root, artia_args):
             while True:
                 line = base_file.readline()
                 # Break once we reach the end of the segment
-                if re.match(r"^%% Run extractions:", line):
+                if re.match(r"^%% Run extractions", line):
                     break
 
                 # If we are at an assignment line

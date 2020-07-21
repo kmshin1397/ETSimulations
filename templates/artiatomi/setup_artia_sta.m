@@ -5,16 +5,27 @@
 % mask, wedge, and ccmask.
 
 %% Input parameters
-info_file = "";
-maskFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/mask.em';
-wedgeFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/wedge.em';
-maskCCFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/maskCC_small.em';
-motlFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls/motl_1.em';
-particles_folder = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/parts';
-box_size = 0;
-output_suffix = '';
+sta_folder = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta';
+info_file = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/tomo_motls.txt'; 
+maskFile = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/other/mask.em'; 
+wedgeFile = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/other/wedge.em'; 
+maskCCFile = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/other/maskCC.em'; 
+motlFile = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/motls/motl_1.em'; 
+motlFilePre = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/motls/motl_';
+particles_folder = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/parts'; 
+partFilePre = '/data/kshin/T4SS_sim/PDB/test_depths/processed_data/Artiatomi/sta/parts/part_';
+box_size = 128; 
+output_suffix = ''; 
+avgCfgFile = '';
+angIter = 10;
+angIncr = 0.1;
+phiAngIter = 10;
+phiAngIncr = 0.1;
+avgLowPass = 12;
+avgHighPass = 0;
+avgSigma = 3;
 
-%% Load motl:
+%% Load motl
 % Change the filenames to the motivelist you want to use and adjust the
 % tomonr according to your tomogram numbers and the amount of tomograms
 
@@ -113,3 +124,34 @@ artia.em.write(maskCC, maskCCFile);
 
 % Motl file
 artia.em.write(global_motl, motlFile);
+
+% Averaging parameters
+avg = struct();
+avg.CudaDeviceID = '0 1 2 3';
+avg.WedgeIndices = '';
+avg.Classes = '';
+avg.MultiReference = 'false';
+avg.PathWin = '';
+avg.PathLinux = '';
+avg.NamingConvention = 'TomoParticle';
+avg.ClearAngles = 'false';
+avg.BestParticleRatio = '1';
+avg.ApplySymmetry = 'transform';
+avg.CouplePhiToPsi = 'true';
+avg.MotiveList = motlFilePre;
+avg.WedgeFile = wedgeFile;
+avg.Particles = partFilePre;
+avg.Reference = sprintf('%s/ref/ref', sta_folder);
+avg.Mask = maskFile;
+avg.MaskCC = maskCCFile;
+avg.NamingConvention = 'TomoParticle';
+avg.StartIteration = '1';
+avg.EndIteration = '2';
+avg.AngIter = num2str(angIter);
+avg.AngIncr = num2str(angIncr);
+avg.PhiAngIter = num2str(phiAngIter);
+avg.PhiAngIncr = num2str(phiAngIncr);
+avg.LowPass = num2str(avgLowPass);
+avg.HighPass = num2str(avgHighPass);
+avg.Sigma = num2str(avgSigma);
+artia.cfg.write(avg, avgCfgFile);
