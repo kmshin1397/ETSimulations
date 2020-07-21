@@ -5,14 +5,14 @@
 % mask, wedge, and ccmask.
 
 %% Input parameters
-motls_txt = "";
-tomonrs_txt = "";
+info_file = "";
 maskFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/mask.em';
 wedgeFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/wedge.em';
 maskCCFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/other/maskCC_small.em';
 motlFile = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls/motl_1.em';
 particles_folder = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/parts';
 box_size = 0;
+output_suffix = '';
 
 %% Load motl:
 % Change the filenames to the motivelist you want to use and adjust the
@@ -21,11 +21,14 @@ box_size = 0;
 % Use the get_motl_names_and_tomonrs.py script to write out the motls.txt 
 % and tomonums.txt files shown in example below
 
+tomo_info = readtable(info_file, 'Delimiter', ' ');
+
+
 % motl_filesnames = matrix of motl filenames
-motl_filenames = readcell(motls_txt, 'Delimiter', ' ');
+motl_filenames = tomo_info.Motl;
 
 % tomonr = matrix of tomogram numbers
-tomonr = cell2mat(readcell(tomonrs_txt, 'Delimiter', ' '));
+tomonr = tomo_info.Tomonum;
 
 %% Loop and write stuff into motls
 % Set up a global motivelist of all particles
@@ -67,7 +70,7 @@ for i = 1 : numel(tomonr)
     base = split_base(1);
     % Add 1 for 0 indexed for my sims
     tomo_filenames{tomo_no} = ...
-        sprintf(convertStringsToChars(folder + "/" + base + "_SART_HR_1k.em"));
+        sprintf('%s/%s%s',folder, base, output_suffix);
 end
 
 
@@ -110,8 +113,3 @@ artia.em.write(maskCC, maskCCFile);
 
 % Motl file
 artia.em.write(global_motl, motlFile);
-
-
-
-
-
