@@ -15,7 +15,7 @@ The IMOD Processor, found in processors/imod\_processor.py, is implemented to fa
           apix: 0.283,
           fiducial_method: "autofidseed",
           reconstruction_method: "tomo3d",
-          flipyz: true,
+          rotx: true,
           binvol: {
             "binning": 2
           },
@@ -69,6 +69,9 @@ The IMOD Processor, like all others, have the **name** argument ("imod") and an 
 
     * **reconstruction\_method**: string
         (Optional) This parameter can be set to either "imod-wbp", "imod-sirt", or "tomo3d" and is only relevant if the batchruntomo **end\_step** is set to 14 or higher (the step for reconstruction). Using the "imod" option will run the reconstruction with the built-in IMOD WBP or SIRT reconstruction method, while "tomo3d" will use the WBP or SIRT implemented (specified in the **tomo3d\_options**) by `tomo3d <https://sites.google.com/site/3demimageprocessing/tomo3d>`_, assuming you have tomo3d installed.
+
+    * **rotx** : bool
+        (Optional) Set this parameter to true if you wish to apply the common step of running "clip rotx" IMOD program on the reconstructed tomogram. This is run before the flipyz program if both are enabled for some reason.
 
     * **flipyz** : bool
         (Optional) Set this parameter to true if you wish to apply the common step of running "clip flipyz" IMOD program on the reconstructed tomogram.

@@ -389,6 +389,33 @@ def run_flip(input_file, output):
         exit(1)
 
 
+def run_rotx(input_file, output):
+    """
+    Helper function to run the IMOD clip rotx program to rotate a tomogram 90 degrees around the
+        x-axis while maintaining handedness
+
+    Args:
+        input_file: The path to tomogram to rotate
+        output: The path to write the rotated tomogram to
+
+    Returns: None
+
+    """
+    clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "clip")
+    command = "%s rotx %s %s" % (clip_path, input_file, output)
+    print(command)
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while True:
+        output = os.fsdecode(process.stdout.readline())
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+    rc = process.poll()
+    if rc != 0:
+        exit(1)
+
+
 def run_binvol(input_file, output, options):
     """
     Helper function to run the IMOD binvol program to bin a tomogram
@@ -566,6 +593,9 @@ def imod_main(root, name, imod_args):
                             print("ERROR: Couldn't find reconstruction for directory: %s" % f)
                             exit(1)
 
+                        if "rotx" in imod_args and imod_args["rotx"]:
+                            run_rotx(rec_path, rec_path)
+
                         if "flipyz" in imod_args and imod_args["flipyz"]:
                             run_flip(rec_path, rec_path)
 
@@ -600,6 +630,9 @@ def imod_main(root, name, imod_args):
                     reconstruction_full_path = os.path.join(imod_proj_dir, f, reconstruction_name)
                     run_tomo3d(imod_args["tomo3d_path"], tlt, tiltseries, reconstruction_full_path,
                                imod_args["tomo3d_options"])
+
+                    if "rotx" in imod_args and imod_args["rotx"]:
+                        run_rotx(rec_path, rec_path)
 
                     if "flipyz" in imod_args and imod_args["flipyz"]:
                         run_flip(reconstruction_full_path, reconstruction_full_path)
