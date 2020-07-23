@@ -42,10 +42,11 @@ def convert_slicer_to_motl(orientations):
     """
     for i, point in enumerate(orientations):
         slicer = orientations[i]
-        rot = R.from_euler("zyx", [-slicer[0], -slicer[1], -slicer[2]], degrees=True)
-        # ref_to_part = rot.inv()
-        eulers = rot.as_euler("ZXZ", degrees=True)
-        orientations[i] = eulers
+        rot = R.from_euler("zyx", [slicer[2], slicer[1], slicer[0]], degrees=True)
+        ref_to_part = rot.inv()
+        eulers = ref_to_part.as_euler("ZXZ", degrees=True)
+        # Like PEET, Artiatomi takes Z1, Z2, X
+        orientations[i] = [eulers[0], eulers[2], eulers[1]]
 
     return orientations
 
@@ -465,7 +466,7 @@ def generate_reconstructions_script(root, name, artia_args):
                     new_line = f"for f in {dir_pattern}\n"
                     new_file.write(new_line)
                 elif line.startswith("config_file"):
-                    config_file = artia_args["reconstruction_template_config"]
+                    config_file = os.path.basename(artia_args["reconstruction_template_config"])
                     new_line = f"config_file=\"{config_file}\"\n"
                     new_file.write(new_line)
                 elif line.startswith("emsart_path"):

@@ -7,8 +7,20 @@ emsart_subvols_path = '/home/kshin/Documents/repositories/Artiatomi/build/EmSART
 refineDir = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/refine';
 subVolPre = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/refine/subvols/';
 latestStaMotl = '/data/kshin/T4SS_sim/PDB/c4/IMOD/Artia/motls/motl_2.em';
+maskFile = '/data/kshin/T4SS_sim/PDB/test_depths2/processed_data/Artiatomi/sta/other/mask.em'; 
+wedgeFile = '/data/kshin/T4SS_sim/PDB/test_depths2/processed_data/Artiatomi/sta/other/wedge.em'; 
+maskCCFile = '/data/kshin/T4SS_sim/PDB/test_depths2/processed_data/Artiatomi/sta/other/maskCC.em'; 
+angIter = 3; 
+angIncr = 2; 
+phiAngIter = 3; 
+phiAngIncr = 2; 
+avgLowPass = 12; 
+avgHighPass = 0; 
+avgSigma = 3; 
 
 %% Run extractions
+motlFilePre = sprintf('%s/average/motls/motl_', refineDir); 
+partFilePre = sprintf('%s/part_', subVolPre); 
 subVolCfgs = sprintf('%scfgs', subVolPre);
 mkdir(subVolPre);
 mkdir(subVolCfgs);

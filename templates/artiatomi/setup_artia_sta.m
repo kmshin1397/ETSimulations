@@ -127,7 +127,7 @@ artia.em.write(global_motl, motlFile);
 
 % Averaging parameters
 avg = struct();
-avg.CudaDeviceID = '0 1 2 3';
+avg.CudaDeviceID = '0';
 avg.WedgeIndices = '';
 avg.Classes = '';
 avg.MultiReference = 'false';
