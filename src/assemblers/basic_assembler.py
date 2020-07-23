@@ -182,10 +182,10 @@ class BasicAssembler:
                 # Update metadata records for changed orientations
                 custom_metadata["true_orientations"].append(true_orientation)
 
-                particle_set.add_orientation(true_orientation, noisy_version=noisy_orientation)
-
+                particle_set.add_orientation_to_simulate(true_orientation, noisy_version=noisy_orientation)
             else:
-                particle_set.add_orientation(true_orientation)
+                particle_set.add_orientation_to_simulate(true_orientation)
+                particle_set.add_orientation_to_save(true_orientation)
 
             particle_set.add_coordinate(coordinates[i])
             particle_set.add_source(new_particle)

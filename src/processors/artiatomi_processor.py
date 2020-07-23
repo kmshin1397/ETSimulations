@@ -191,6 +191,17 @@ def write_out_motl_files_simulated(root, name, xyz_name, motl_name, size, binnin
 
             slicer_angles_csv = os.path.join(tomogram_dir, "%s_slicerAngles.csv" % name)
             orientations = np.loadtxt(slicer_angles_csv, delimiter=",")
+            for i, euler in enumerate(orientations):
+                rotation = R.from_euler('zyx', [euler[2], euler[1], euler[0]])
+                orientation_mat = np.dot(R.from_euler('zxz', [0, -90, 0],
+                                                      degrees=True).as_matrix(),
+                                         rotation.as_matrix())
+
+                rotation = R.from_matrix(orientation_mat)
+                euler = rotation.as_euler('zyx', degrees=True)
+                new_row = [euler[2], euler[1], euler[0]]
+                orientations[i] = new_row
+
             eulers = convert_slicer_to_motl(orientations)
             # Compile Slicer infos
             slicer_info = []

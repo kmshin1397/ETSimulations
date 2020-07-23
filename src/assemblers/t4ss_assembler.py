@@ -250,15 +250,15 @@ class T4SSAssembler:
         # Draw random orientation and position
         random_orientation = self.__get_random_tbl_orientation()
 
-        # TODO: This doesn't actually do anything (the top view is still recorded)
         # The random orientation gives proper side views from TEM-Simulator when viewed, but gives
         # the top-view in terms of the recorded rotations because source is top-view, so rotate it
-        # by -90 around the X
-        orientation = R.from_euler("zxz", random_orientation, degrees=True)
+        # by 90 around the X
+        euler = [-random_orientation[2], -random_orientation[1], -random_orientation[0]]
+        orientation = R.from_euler("zxz", euler, degrees=True)
         orientation_mat = np.dot(R.from_euler("zxz", [0, -90, 0], degrees=True).as_matrix(),
                                  orientation.as_matrix())
-        corrected_orientation = R.from_matrix(orientation_mat)
-        corrected_orientation = corrected_orientation.as_euler("zxz", degrees=True)
+        corrected_orientation = R.from_matrix(orientation_mat).inv()
+        corrected_orientation = corrected_orientation.as_euler("zxz", degrees=True).tolist()
         self.chosen_orientations.append(corrected_orientation)
 
         # Random position is with respect to center of membrane segment, not in entire tiltseries
@@ -333,7 +333,7 @@ class T4SSAssembler:
         # Clear for the next particle
         self.commands.append("close session")
 
-        return random_orientation, random_position, random_angles
+        return random_orientation, random_position, random_angles, corrected_orientation
 
     def __send_commands_to_chimera(self):
         """
@@ -387,7 +387,7 @@ class T4SSAssembler:
             new_particle = truth_vols_dir + "/%d.mrc" % i
 
             # Assemble a new particle
-            true_orientation, position, angles = self.__assemble_particle(new_particle)
+            true_orientation, position, angles, side_view_orientation = self.__assemble_particle(new_particle)
 
             # If we want to add noise to orientations, do it here
             if "orientations_error" in self.custom_args:
@@ -398,18 +398,22 @@ class T4SSAssembler:
                 # Record the error parameters used
                 custom_metadata["orientations_error_distribution"] = \
                     "gauss({:f}, {:f})".format(mu, sigma)
-
-                noisy_orientation = [true_orientation[0] + random.gauss(mu, sigma),
-                                     true_orientation[1] + random.gauss(mu, sigma),
-                                     true_orientation[2] + random.gauss(mu, sigma)]
+                noise_z1, noise_x, noise_z2 = (random.gauss(mu, sigma), random.gauss(mu, sigma),
+                                               random.gauss(mu, sigma))
+                # Save a noisy, side-view orientation
+                noisy_orientation = [side_view_orientation[0] + noise_z1,
+                                     side_view_orientation[1] + noise_x,
+                                     side_view_orientation[2] + noise_z2]
 
                 # Update metadata records for changed orientations
                 custom_metadata["true_orientations"].append(true_orientation)
 
-                particle_set.add_orientation(true_orientation, noisy_version=noisy_orientation)
-
+                # Pass along to TEM-Simulator the noisy top-view orientation, but record the side view
+                particle_set.add_orientation_to_simulate(true_orientation, noisy_version=noisy_orientation)
             else:
-                particle_set.add_orientation(true_orientation)
+                # Pass along to TEM-Simulator the true top-view orientation, but record the side view
+                particle_set.add_orientation_to_simulate(true_orientation)
+                particle_set.add_orientation_to_save(side_view_orientation)
 
             # Update the other simulation parameters with the new particle
             particle_set.add_coordinate(coordinates[i])
