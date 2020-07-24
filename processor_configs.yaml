@@ -1,5 +1,5 @@
 ---
-root: "/data/kshin/T4SS_sim/PDB/test"
+root: "/data/kshin/T4SS_sim/PDB/test_depths2"
 name: "T4SS"
 processors: [
 #  {name: "eman2",
@@ -80,29 +80,28 @@ processors: [
 #    }
 #    }
 #  },
-#  {
-#    name: "imod",
-#    args: {
-#      start_step: 8.0,
-#      end_step: 14.0,
-#      num_fiducials: 10,
-#      tilt_axis: -90,
-#      apix: 0.283,
-#      fiducial_method: "autofidseed",
-#      data_dirs_start_with: "T4SS",
-#      reconstruction_method: "tomo3d",
-#      rotx: false,
-#      flipy: true,
-#      binvol: {
-#        "binning": 2
-#      },
-#      tomo3d_path: "tomo3d.osx",
-#      tomo3d_options: {
-#        "S": "enable",
-#        "z": 700
-#      }
-#    }
-#  },
+#{
+# name: "imod",
+# args: {
+#   start_step: 0.0,
+#   end_step: 8.0,
+#   num_fiducials: 10,
+#   tilt_axis: -90,
+#   apix: 0.283,
+#   fiducial_method: "autofidseed",
+#   data_dirs_start_with: "T4SS",
+#   reconstruction_method: "tomo3d",
+#   flipyz: true,
+#   binvol: {
+#     "binning": 2
+#   },
+#   tomo3d_path: "tomo3d",
+#   tomo3d_options: {
+#     "S": "enable",
+#     "z": 700
+#   }
+# }
+#},
 #{
 #  name: "i3",
 #  args: {
@@ -111,36 +110,58 @@ processors: [
 #    tlt_angle: -90.0
 #  }
 #},
+#{
+# name: "dynamo",
+# args: {
+#   box_size: 64,
+#   num_workers: 12,
+#   project_name: "t4ss",
+#   real_data_mode: false,
+#   source_type: "imod",
+#   cores: 1,
+#   mask: "path/to/mask",
+#   mwa: 12,
+#   ite_r1: 1,
+#   cr_r1: 20,
+#   cs_r1: 1,
+#   ir_r1: 30,
+#   is_r1: 1,
+#   rff_r1: 2,
+#   rf_r1: 5,
+#   dim_r1: 64,
+#   lim_r1: [10,10,10],
+#   limm_r1: 1,
+#   nref_r1: 1,
+#   high_r1: 1,
+#   low_r1: 18,
+#   sym_r1: "c13",
+#   dst: "matlab_gpu",
+#   gpus: 0
+# }
+#}
 {
-  name: "dynamo",
-  args: {
-    box_size: 120,
-    num_workers: 12,
-    project_name: "demo",
-    real_data_mode: true,
-    source_type: "eman2",
-    eman2_dir: "/data/kshin/T4SS_sim/PDB/test/processed_data/EMAN2",
-    dynamo_dir: "/data/kshin/T4SS_sim/PDB/test/processed_data/Dynamo",
-    params_json: "/data/kshin/T4SS_sim/PDB/test/processed_data/EMAN2/sptsgd_00/particle_parms_01.json",
-    cores: 1,
-    mask: "path/to/mask",
-    mwa: 12,
-    ite_r1: 1,
-    cr_r1: 20,
-    cs_r1: 1,
-    ir_r1: 30,
-    is_r1: 1,
-    rff_r1: 2,
-    rf_r1: 5,
-    dim_r1: 72,
-    lim_r1: [10,10,10],
-    limm_r1: 1,
-    nref_r1: 1,
-    high_r1: 1,
-    low_r1: 18,
-    sym_r1: "c13",
-    dst: "matlab_gpu",
-    gpus: 0
-  }
+ name: "artiatomi",
+ args: {
+   emsart_path: "/home/kshin/Documents/repositories/Artiatomi/build/EmSART",
+   emsart_subvols_path: "/home/kshin/Documents/repositories/Artiatomi/build/EmSARTSubVols",
+   real_data_mode: false,
+   setup_reconstructions_and_motls: true,
+   setup_averaging: true,
+   setup_refinement: true,
+   reconstruction_template_config: "/home/kshin/Documents/repositories/ETSimulations/templates/artiatomi/EmSART_HR.cfg",
+   output_suffix: "_SART_HR_1k.em",
+   tomogram_size_x: 1000,
+   tomogram_size_y: 1000,
+   tomogram_size_z: 350,
+   position_binning: 2,
+   box_size: 128,
+   angIter: 10,
+   angIncr: 0.1,
+   phiAngIter: 10,
+   phiAngIncr: 0.1,
+   lowPass: 12,
+   highPass: 0,
+   sigma: 3
+ }
 }
 ]
