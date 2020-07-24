@@ -19,4 +19,4 @@ S="$((T/1000000000))"
 # Milliseconds
 M="$((T/1000000))"
 
-printf "Completed tomogram reconstructions in %02d days %02d hrs %02d min %02d.%03d sec\n" "$((S/86400))" "$((S/3600%24))" "$((S/60%60))" "$((S%60))" "${M}" | mail -s "EmSART Status" kshin@caltech.edu
+printf "Completed tomogram reconstructions in %02d days %02d hrs %02d min %02d.%03d sec\n" "$((S/86400))" "$((S/3600%24))" "$((S/60%60))" "$((S%60))" "${M}"

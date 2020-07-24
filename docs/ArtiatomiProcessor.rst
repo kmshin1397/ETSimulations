@@ -102,6 +102,30 @@ Real data mode parameters
         (Required only if **real\_data\_mode** is set to true) When looking for the particle MOD file in a directory, look for .mod files containing this string
 
 
+Further details by step
+-----------------------
+
+Reconstruction and Motivelist
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Tied to the **setup_reconstructions_and_motls** option, the reconstruction and motivelist step works by generating a Matlab script called *setup_artia_reconstructions.m* and a bash script called *emsart_reconstruct.sh* in your Artiatomi project folder. Additionally, the Artiatomi Processor will copy over each tiltseries, .tlt file, and .xf file from the IMOD data directories into a newly created Artiatomi project directory.
+
+The *setup_artia_reconstructions.m* will iterate through all of your tiltseries and import them into Artiatomi format by generating `Artiatomi Marker files <https://github.com/uermel/Artiatomi/wiki/Marker-file>`_ out of the IMOD alignment files. Additionally, the script will create `Artiatomi motivelist files <https://github.com/uermel/Artiatomi/wiki/Motivelist>`_ based on information parsed from either your .mod IMOD files (if using real data) or from metadata recorded during the simulation (for simulated data).
+
+Once the Artiatomi Processor has completed generating the *setup_artia_reconstructions.m* script, you should open it in Matlab and run it. Before you do so, you must add the Artiatomi *matlab* folder to your Matlab path in order for Matlab to recognize the Matlab functions packaged in the Artiatomi software. See the screenshot below showing the "Add to path" step.
+
+.. figure:: _static/MatlabAddToPath.png
+    :width: 65%
+    :alt: Matlab Adding to Path example
+
+    Adding Artiatomi's matlab functions to the Matlab path
+
+After you successfully run the Matlab script, you should run ::
+
+    chmod +x emsart_reconstruct.sh
+
+after you *cd* to your Artiatomi project directory in order to enable running the bash script. This bash script will iterate through the data directories and actually run EmSART in order to reconstruct the tomograms. If you are using the Artiatomi Docker, remember that you must run this script from inside the container, where the EmSART program actually resides.
+
+
 Example
 -------
 
