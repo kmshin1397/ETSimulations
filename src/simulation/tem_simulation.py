@@ -363,12 +363,12 @@ class Simulation:
                 if particle_set.noisy_orientations:
                     self.extend_positions(particle_set.noisy_orientations)
                 else:
-                    self.extend_orientations(particle_set.orientations)
+                    self.extend_orientations(particle_set.orientations_to_save)
 
                 self.extend_positions(particle_set.coordinates)
 
             self.__write_coord_file(new_coord_file, particle_set.coordinates,
-                                    particle_set.orientations)
+                                    particle_set.orientations_to_simulate)
 
             # Add Particle and ParticleSet segments to config file
             self.__write_particle_section(particle, particle_set.source, self.apix)
