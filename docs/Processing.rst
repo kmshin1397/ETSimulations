@@ -30,3 +30,4 @@ Available processors
     IMODProcessor
     DynamoProcessor
     I3Processor
+    ArtiatomiProcessor

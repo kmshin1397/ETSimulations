@@ -14,9 +14,9 @@ angIter = 3;
 angIncr = 2; 
 phiAngIter = 3; 
 phiAngIncr = 2; 
-avgLowPass = 12; 
-avgHighPass = 0; 
-avgSigma = 3; 
+lowPass = 12;
+highPass = 0;
+sigma = 3;
 
 %% Run extractions
 motlFilePre = sprintf('%s/average/motls/motl_', refineDir); 
@@ -97,7 +97,7 @@ avg.AngIter = num2str(angIter);
 avg.AngIncr = num2str(angIncr);
 avg.PhiAngIter = num2str(phiAngIter);
 avg.PhiAngIncr = num2str(phiAngIncr);
-avg.LowPass = num2str(avgLowPass);
-avg.HighPass = num2str(avgHighPass);
-avg.Sigma = num2str(avgSigma);
+avg.LowPass = num2str(lowPass);
+avg.HighPass = num2str(highPass);
+avg.Sigma = num2str(sigma);
 artia.cfg.write(avg, avgCfgFile);
