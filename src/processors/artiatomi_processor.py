@@ -727,7 +727,11 @@ def generate_extract_script(artia_root, artia_args):
     refine_dir = os.path.join(artia_root, "refine")
     subvol_pre = refine_dir + "/subvols/"
     latest_motl = get_latest_motl(os.path.join(artia_root, "sta"))
-    
+
+    mask_file = os.path.join(artia_root, "sta", "other", "mask.em")
+    wedge_file = os.path.join(artia_root, "sta", "other", "wedge.em")
+    maskCC_file = os.path.join(artia_root, "sta", "other", "maskCC.em")
+
     # Use template file to create Matlab script to run the remaining steps
     current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
     template = current_dir + "../../templates/artiatomi/refine_extract.m"
@@ -766,6 +770,12 @@ def generate_extract_script(artia_root, artia_args):
                         value_to_write_out = f"\'{subvol_pre}\';"
                     elif variable_name == "latestStaMotl":
                         value_to_write_out = f"\'{latest_motl}\';"
+                    elif variable_name == "mask_file":
+                        value_to_write_out = f"\'{mask_file}\';"
+                    elif variable_name == "wedge_file":
+                        value_to_write_out = f"\'{wedge_file}\';"
+                    elif variable_name == "maskCC_file":
+                        value_to_write_out = f"\'{maskCC_file}\';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
                             value_to_write_out = f"\'{artia_args[variable_name]}\';"

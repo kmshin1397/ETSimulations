@@ -66,5 +66,38 @@ m = artia.em.read(latestStaMotl);
 m(11:13, :) = 0;
 mkdir(sprintf('%s/average', refineDir));
 mkdir(sprintf('%s/average/motls', refineDir));
+mkdir(sprintf('%s/average/ref', refineDir));
 artia.em.write(m, sprintf('%s/average/motls/motl_1.em', refineDir));
 
+avgCfgFile = sprintf('%s/average/sta.cfg', refineDir)
+
+% Averaging parameters
+avg = struct();
+avg.CudaDeviceID = '0';
+avg.WedgeIndices = '';
+avg.Classes = '';
+avg.MultiReference = 'false';
+avg.PathWin = '';
+avg.PathLinux = '';
+avg.NamingConvention = 'TomoParticle';
+avg.ClearAngles = 'false';
+avg.BestParticleRatio = '1';
+avg.ApplySymmetry = 'transform';
+avg.CouplePhiToPsi = 'true';
+avg.MotiveList = motlFilePre;
+avg.WedgeFile = wedgeFile;
+avg.Particles = partFilePre;
+avg.Reference = sprintf('%s/average/ref/ref', refineDir);
+avg.Mask = maskFile;
+avg.MaskCC = maskCCFile;
+avg.NamingConvention = 'TomoParticle';
+avg.StartIteration = '1';
+avg.EndIteration = '2';
+avg.AngIter = num2str(angIter);
+avg.AngIncr = num2str(angIncr);
+avg.PhiAngIter = num2str(phiAngIter);
+avg.PhiAngIncr = num2str(phiAngIncr);
+avg.LowPass = num2str(avgLowPass);
+avg.HighPass = num2str(avgHighPass);
+avg.Sigma = num2str(avgSigma);
+artia.cfg.write(avg, avgCfgFile);
