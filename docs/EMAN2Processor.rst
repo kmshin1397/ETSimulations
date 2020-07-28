@@ -8,8 +8,11 @@ The EMAN2 Processor, found in processors/eman2\_processor.py, is implemented to 
       {name: "eman2",
        args:
       {
-         particle_coordinates_file: "/Users/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
-         unbinned_boxsize: 128,
+         particle_coordinates_parameters: {
+          "mode": "single",
+          "coordinates_file": "/Users/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
+          "unbinned_boxsize": 128
+         },
          steps_to_run: ["import", "reconstruct"],
          e2import_parameters : {
           "import_tiltseries": "enable",

@@ -7,11 +7,13 @@ Simulation
 ============
 Introduction
 ============
-The **ets\_generate\_data.py** program is the main entrypoint to creating simulated data sets.
+The **ets\_generate\_data.py** program is the main entry point to creating simulated data sets.
 
-Most all general parameter set up is done through a YAML file which is passed in as an argument to the **ets\_generate\_data.py** program. An example such YAML file is provided in the ETSimulations directory as **configs.yaml**.
+Most general parameter set up is done through a YAML file which is passed in as an argument to the **ets\_generate\_data.py** program. An example such YAML file is provided in the ETSimulations directory as **configs.yaml**.
 
-Detailed set-up with regards to the characteristics of the particles simulated are controlled through custom **"Assembler"** Python classes which can define a series of Chimera commands to open, manipulate, and combine one or more source maps, i.e. various proteins, into a fake particle source. By default, the example T4SS simulations in the src/assemblers/t4ss\_assembler.py file is set up to be used as the Assembler. Custom arguments to pass along to your custom particle Assemblers can also be defined in the configuration YAML file, as shown in the example. You can refer to the `custom Assembler tutorial (to be written)` for guidance on replacing the T4SS simulations with your own particles.
+Detailed set-up with regards to the characteristics of the particles simulated are controlled through custom **"Assembler"** Python classes which can define a series of Chimera commands to open, manipulate, and combine one or more source maps, i.e. various proteins, into a fake particle source. By default, the example T4SS simulations in the src/assemblers/t4ss\_assembler.py file is set up to be used as the Assembler. Custom arguments to pass along to your custom particle Assemblers can also be defined in the configuration YAML file, as shown in the example.
+
+You can refer to the :ref:`Basic Assembler guide <tutorial-basic-assembler>` or the :ref:`custom Assembler guide <guide-custom-assembler>` for guidance on replacing the T4SS simulations with your own particles.
 
 To actually run a set of simulations, run (assuming you've activated the virtual environment as indicated above - the **source ..** command)::
 
