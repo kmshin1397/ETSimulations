@@ -27,6 +27,9 @@ All these are parameters that should be placed in the **args** section of the Pr
     * **real\_data\_mode** : bool
         Enable this to let the Dynamo Processor know that you are processing real data and to use the other parameters below rather than assuming the directory/file naming patterns used by IMOD Processor.
 
+    * **rotx** : bool
+        (Should be set to True if converting EMAN2 project with data from the T4SS Assembler) The EMAN2 Processor to Dynamo conversion takes the orientations directly from the simulation metadata. The T4SS Assembler stores its orientations as rotated -90 degrees around the x-axis from what is taken from Dynamo and put into the TEM-Simulator due to the fact that 3dmod has a different symmetry axis and we want side-views of the particles in Slicer; so we reverse it by enabling this option. This is unnecessary for IMOD to Dynamo conversion as we take the orientations from the Slicer angles and can assume the difference in symmetry axis.
+
     * **imod\_dir** : string
         (Required only if **real\_data\_mode** is set to true and **source\_type** is "imod") The IMOD project directory to transfer to an Dynamo project
 

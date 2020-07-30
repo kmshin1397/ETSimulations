@@ -148,9 +148,16 @@ def slicer_angles_to_dynamo_angles(angles):
 
     # Slicer stores angles in XYZ order even though rotations are applied as ZYX, so we flip here
     rot = R.from_euler('zyx', [angles[2], angles[1], angles[0]], degrees=True)
-    rot = rot.as_euler('zxz', degrees=True)
+    # 3dmod and Dynamo have different symmetry axis and we need to rotate around the x by 90 to account for that
+    orientation_mat = np.dot(R.from_euler('zxz', [0, 90, 0],
+                                          degrees=True).as_matrix(),
+                             rot.as_matrix())
 
-    return [rot[0], rot[1], rot[2]]
+    rot = R.from_matrix(orientation_mat)
+    peet = rot.inv().as_euler('zxz', degrees=True)
+    dynamo = [-peet[2], -peet[1], -peet[0]]
+
+    return dynamo
 
 
 def extract_tilt_range(tlt_file):
@@ -278,7 +285,7 @@ def imod_real_to_dynamo(dynamo_args):
     return tomograms_doc_path, table_path, "table_to_crop_notcf"
 
 
-def imod_processor_to_dynamo(root, name):
+def imod_processor_to_dynamo(root, name, dynamo_args):
     """
     Starting from simulated data processed with the IMOD Processor, generate the Dynamo .doc and
         .tbl files necessary for particle extraction and STA project setup
@@ -286,6 +293,7 @@ def imod_processor_to_dynamo(root, name):
     Args:
         root: The ETSimulations project root
         name: The name used for naming the stacks
+        dynamo_args: The Dynamo Processor arguments
 
     Returns: (the .doc file path, the .tbl file path, the table basename)
 
@@ -632,7 +640,16 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
                 # rotate by z to account for reconstruction rotation
                 euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
                 rot = R.from_euler("zxz", euler, degrees=True)
-                orientations.append(rot.as_euler("zxz", degrees=True))
+                if "rotx" in dynamo_args and dynamo_args["rotx"]:
+                    # Reverse the side-view X-axis rotation done by the T4SS simulator
+                    orientation_mat = np.dot(R.from_euler('zxz', [0, 90, 0],
+                                                          degrees=True).as_matrix(),
+                                             rot.as_matrix())
+
+                    rot = R.from_matrix(orientation_mat)
+                peet = rot.inv().as_euler('zxz', degrees=True)
+                dynamo = [-peet[2], -peet[1], -peet[0]]
+                orientations.append(dynamo)
 
             print("\nExtracting individual particle maps for the tomogram...")
             expected_stack = os.path.join(eman2_dir, "particles3d",

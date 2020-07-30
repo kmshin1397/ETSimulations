@@ -644,7 +644,7 @@ def parse_lst_file(filename):
     # Dictionary mapping global particle numbers to info JSONs and stacks
     ldict = {}
 
-    # Return just a set of the stacks as well for easier access later
+    # Return just a set of the stacks as well for easier access later with their number of particles
     stacks = {}
 
     with open(filename) as f:
