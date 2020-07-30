@@ -17,6 +17,23 @@ import warnings
 #################################
 #   General Helper Functions    #
 #################################
+def check_and_fix_names_starting_with_numbers(name):
+    """
+    Since I3 map names cannot start with a number, add a letter 'a' to any names starting with a
+        number
+
+    Args:
+        name: The name to check for a beginning number
+
+    Returns: The new name (unchanged if the name properly started with a letter)
+
+    """
+    result = name
+    if name[0].isdigit():
+        result = 'a' + name
+
+    return result
+
 
 def rotate_positions_around_z(positions):
     """
@@ -371,7 +388,9 @@ def imod_processor_to_i3(root, name, i3_args):
 
             # Copy over the tomogram to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, rec)):
-                shutil.copyfile(os.path.join(root, tomogram_dir, rec), os.path.join(maps_path, rec))
+                shutil.copyfile(os.path.join(root, tomogram_dir, rec),
+                                os.path.join(maps_path,
+                                             check_and_fix_names_starting_with_numbers(rec)))
             else:
                 print("ERROR: No reconstruction was found for sub-directory: %s" % tomogram_dir)
                 exit(1)
@@ -380,18 +399,23 @@ def imod_processor_to_i3(root, name, i3_args):
             # Copy over the tlt file to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, tlt)):
                 convert_tlt_imod(rec, i3_args["tlt_angle"], os.path.join(tomogram_dir, tlt),
-                                 os.path.join(maps_path, tlt))
+                                 os.path.join(maps_path,
+                                              check_and_fix_names_starting_with_numbers(tlt)))
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % tomogram_dir)
 
             # Add the tomogram info to the defs/maps file
             print("Updating the maps file...")
-            new_maps_line = "../maps %s ../maps/%s\n" % (rec, tlt)
+            new_maps_line = "../maps %s ../maps/%s\n" % \
+                            (check_and_fix_names_starting_with_numbers(rec),
+                             check_and_fix_names_starting_with_numbers(tlt))
             maps_file.write(new_maps_line)
 
+            basename = check_and_fix_names_starting_with_numbers(basename)
             # Add the tomogram info to the defs/sets file
             print("Updating the sets file...")
-            new_sets_line = "%s %s_%s\n" % (rec, basename, name)
+            new_sets_line = "%s %s_%s\n" % (check_and_fix_names_starting_with_numbers(rec),
+                                            basename, name)
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
@@ -488,10 +512,13 @@ def imod_real_to_i3(name, i3_args):
                     break
 
             basename = os.path.splitext(rec)[0]
+            basename = check_and_fix_names_starting_with_numbers(basename)
 
             # Copy over the tomogram to the maps folder
             if rec != "":
-                shutil.copyfile(os.path.join(root, subdir, rec), os.path.join(maps_path, rec))
+                shutil.copyfile(os.path.join(root, subdir, rec),
+                                os.path.join(maps_path,
+                                             check_and_fix_names_starting_with_numbers(rec)))
             else:
                 print("ERROR: No reconstruction was found for sub-directory: %s" % subdir)
                 exit(1)
@@ -499,7 +526,8 @@ def imod_real_to_i3(name, i3_args):
             # Copy over the tlt file to the maps folder
             if tlt != "":
                 convert_tlt_imod(rec, i3_args["tlt_angle"], os.path.join(root, subdir, tlt),
-                                 os.path.join(maps_path, tlt))
+                                 os.path.join(maps_path,
+                                              check_and_fix_names_starting_with_numbers(tlt)))
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % subdir)
 
@@ -509,12 +537,15 @@ def imod_real_to_i3(name, i3_args):
 
             # Add the tomogram info to the defs/maps file
             print("Updating the maps file...")
-            new_maps_line = "../maps %s ../maps/%s\n" % (rec, tlt)
+            new_maps_line = "../maps %s ../maps/%s\n" % \
+                            (check_and_fix_names_starting_with_numbers(rec),
+                             check_and_fix_names_starting_with_numbers(tlt))
             maps_file.write(new_maps_line)
 
             # Add the tomogram info to the defs/sets file
             print("Updating the sets file...")
-            new_sets_line = "%s %s_%s\n" % (rec, basename, name)
+            new_sets_line = "%s %s_%s\n" % (check_and_fix_names_starting_with_numbers(rec),
+                                            basename, name)
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
@@ -549,6 +580,7 @@ def extract_e2_particles(stack_file, name, destination):
     Returns: None
 
     """
+    name = check_and_fix_names_starting_with_numbers(name)
     command = "e2proc3d.py --unstacking %s %s/%s.mrc" % (stack_file, destination, name)
     print(command)
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
@@ -783,7 +815,8 @@ def eman2_real_to_i3(i3_args):
 
         num_particles_in_tomogram = stacks_info[lst_entry["stack"]]
         num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
-        particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no, num_digits)
+        name = check_and_fix_names_starting_with_numbers(stack_base)
+        particle_map = "{:s}-{:0{:d}d}".format(name, local_particle_no, num_digits)
 
         print("Creating tlt file and updating the maps file...")
         info_file = os.path.join(i3_args["eman2_dir"], lst_entry["info"])
@@ -914,7 +947,8 @@ def eman2_processor_to_i3(root, name, i3_args):
                     print("Updating I3 files for particle %d of %d for the tomogram..." %
                           (i + 1, num_particles_in_tomogram))
                     particle_num = i + 1
-                    particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
+                    name = check_and_fix_names_starting_with_numbers(basename)
+                    particle_map = "{:s}-{:0{:d}d}".format(name, particle_num, num_digits)
 
                     new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
                     convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)
