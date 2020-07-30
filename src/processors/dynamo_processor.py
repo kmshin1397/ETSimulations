@@ -285,7 +285,7 @@ def imod_real_to_dynamo(dynamo_args):
     return tomograms_doc_path, table_path, "table_to_crop_notcf"
 
 
-def imod_processor_to_dynamo(root, name, dynamo_args):
+def imod_processor_to_dynamo(root, name):
     """
     Starting from simulated data processed with the IMOD Processor, generate the Dynamo .doc and
         .tbl files necessary for particle extraction and STA project setup
@@ -293,7 +293,6 @@ def imod_processor_to_dynamo(root, name, dynamo_args):
     Args:
         root: The ETSimulations project root
         name: The name used for naming the stacks
-        dynamo_args: The Dynamo Processor arguments
 
     Returns: (the .doc file path, the .tbl file path, the table basename)
 
