@@ -672,7 +672,7 @@ def imod_main(root, name, imod_args):
                                imod_args["tomo3d_options"])
 
                     if "rotx" in imod_args and imod_args["rotx"]:
-                        run_rotx(rec_path, rec_path)
+                        run_rotx(reconstruction_full_path, reconstruction_full_path)
 
                     if "flipyz" in imod_args and imod_args["flipyz"]:
                         run_flip(reconstruction_full_path, reconstruction_full_path)
