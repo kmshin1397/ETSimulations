@@ -14,6 +14,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../src'))
 sys.path.insert(0, os.path.abspath('../templates/eman2'))
+sys.path.insert(0, os.path.abspath('_extensions'))
 
 
 # -- Project information -----------------------------------------------------
@@ -28,7 +29,8 @@ author = 'Kyung Min Shin'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon',
+              'hidden_code_block']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
