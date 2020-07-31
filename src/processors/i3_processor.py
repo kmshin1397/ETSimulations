@@ -722,12 +722,13 @@ def convert_tlt_eman2(info_file, map_file, output):
         f.writelines(lines)
 
 
-def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
+def write_trf_eman2_extracted(set_name, translations, rot_matrix, trf_file):
     """
     Helper function to write out the .trf file for one extracted particle
 
     Args:
         set_name: The I3 set name to write (should be the basename of the extracted map file)
+        translations: The particle translations
         rot_matrix: The rotation matrix for the particle
         trf_file: The output file path
 
@@ -737,7 +738,7 @@ def write_trf_eman2_extracted(set_name, rot_matrix, trf_file):
     with open(trf_file, "w") as f:
         a0 = set_name
         a1, a2, a3 = (0, 0, 0)
-        a4, a5, a6 = (0.0, 0.0, 0.0)
+        a4, a5, a6 = translations
 
         f.write("{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(a0, a1, a2, a3, a4, a5, a6))
         f.write("%f %f %f %f %f %f %f %f %f" %
@@ -842,8 +843,10 @@ def eman2_real_to_i3(i3_args):
         a1, a2, a3 = tuple(transformation_matrix[0:3])
         a4, a5, a6 = tuple(transformation_matrix[4:7])
         a7, a8, a9 = tuple(transformation_matrix[8:11])
+        translations = (transformation_matrix[3], transformation_matrix[7],
+                        transformation_matrix[11])
         rot_matrix = [a1, a2, a3, a4, a5, a6, a7, a8, a9]
-        write_trf_eman2_extracted(particle_map, rot_matrix, trf_filepath)
+        write_trf_eman2_extracted(particle_map, translations, rot_matrix, trf_filepath)
 
         progress += 1
 
@@ -969,7 +972,8 @@ def eman2_processor_to_i3(root, name, i3_args):
                     # Write the trf file for this tomogram
                     trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
                     rot_matrix = matrices[i]
-                    write_trf_eman2_extracted(particle_map, rot_matrix, trf_filepath)
+                    translations = (0.0, 0.0, 0.0)
+                    write_trf_eman2_extracted(particle_map, translations, rot_matrix, trf_filepath)
 
             else:
                 print("ERROR: Missing particle stack: particles3d/%s" %
