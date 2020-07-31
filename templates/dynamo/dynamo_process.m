@@ -60,13 +60,14 @@ dynamo_table_eo(azrand_file, 'disk', 1);
 even_tbl_file = sprintf('%s_azrand_even.tbl', basename);
 az_e = daverage(particles_dir, 't', even_tbl_file, 'fcompensate', 1, ...
     'mw', num_workers);
-dwrite(az_e.average,'averages/init_avg_azrand_even.em');
+avg_even = 'averages/init_avg_azrand_even.em';
+dwrite(az_e.average, avg_even);
 
 odd_tbl_file = sprintf('%s_azrand_odd.tbl', basename);
 az_o = daverage(particles_dir, 't', odd_tbl_file, 'fcompensate', 1, ...
     'mw', num_workers);
 avg_odd = 'averages/init_avg_azrand_odd.em';
-dwrite(az_o.average,avg_odd);
+dwrite(az_o.average, avg_odd);
 
 %% Create odd project
 project_name_odd = sprintf('%s_odd', project_name);

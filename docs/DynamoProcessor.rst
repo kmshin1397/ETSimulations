@@ -64,15 +64,15 @@ The arguments below are used for the Dynamo alignment project specifically, and 
 
     * **ite_r1** : int
 
-    * **cr_r1** : int
+    * **cr_r1** : flaot
 
-    * **cs_r1** : int
+    * **cs_r1** : float
 
-    * **ir_r1** : int
+    * **ir_r1** : float
 
-    * **is_r1** : int
+    * **is_r1** : float
 
-    * **rff_r1** : int
+    * **rff_r1** : float
 
     * **rf_r1** : int
 

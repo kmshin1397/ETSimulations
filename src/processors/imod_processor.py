@@ -131,7 +131,7 @@ def add_defocus_to_adoc(adoc_file, defocus):
 
     """
     with open(adoc_file, 'a') as f:
-        f.write("setupset.copyarg.defocus = %d\n" % defocus)
+        f.write("setupset.copyarg.defocus = %.3f\n" % defocus)
 
 
 def get_defocus_values(metadata_file, root):
@@ -150,7 +150,7 @@ def get_defocus_values(metadata_file, root):
         metadata = json.loads(f.read())
         for particle_set in metadata:
             basename = os.path.basename(particle_set["output"]).split(".")[0]
-            defocus = particle_set["defocus"]
+            defocus = float(particle_set["defocus"]) * 1000.
             adoc_file = os.path.join(root, basename, "batchETSimulations_%s.adoc" % basename)
             add_defocus_to_adoc(adoc_file, defocus)
 
