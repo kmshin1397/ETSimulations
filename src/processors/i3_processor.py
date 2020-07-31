@@ -947,8 +947,8 @@ def eman2_processor_to_i3(root, name, i3_args):
                     print("Updating I3 files for particle %d of %d for the tomogram..." %
                           (i + 1, num_particles_in_tomogram))
                     particle_num = i + 1
-                    name = check_and_fix_names_starting_with_numbers(basename)
-                    particle_map = "{:s}-{:0{:d}d}".format(name, particle_num, num_digits)
+                    basename = check_and_fix_names_starting_with_numbers(basename)
+                    particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
 
                     new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
                     convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)

@@ -23,10 +23,11 @@ processors: [
 #      "bxsz": 64,
 #      "pk_mindist": 0.125,
 #      "filterto": 0.45,
-#      "rmbeadthr": 10.0,
+#      "rmbeadthr": -1.0,
 #      "threads": 12,
 #      "clipz": 350,
-#      "notmp": "enable"
+#      "notmp": "enable",
+#      "noali": "enable"
 #    },
 #     e2spt_tomoctf_parameters : {
 #      "alltiltseries": "enable",
@@ -41,8 +42,8 @@ processors: [
 #      "checkhand": "enable"
 #    },
 #    particle_coordinates_parameters: {
-#      mode: "multiple",
-#      coordinates_file: "T4SS_coords_3by3.txt",
+#      mode: "single",
+#      coordinates_file: "/home/kshin/Documents/repositories/ETSimulations/templates/eman2/T4SS_coords_3by3.txt",
 #      unbinned_boxsize: 128,
 #    },
 #    e2spt_extract_parameters : {
@@ -79,7 +80,7 @@ processors: [
 #      "threads": 12
 #    }
 #    }
-#  },
+#  }
 #{
 # name: "imod",
 # args: {
@@ -105,41 +106,42 @@ processors: [
 #{
 #  name: "i3",
 #  args: {
-#    mraparam_path: "/Users/kshin/Documents/data/T4SS/cluster_041720/data_processors/processed_data/IMOD/T4SS_0/T4SS_0.tlt",
+#    mraparam_path: "/data/kshin/T4SS_sim/PDB/test/mraparam_notes.sh",
 #    real_data_mode: false,
-#    tlt_angle: -90.0
+#    tlt_angle: -90.0,
+#    source_type: "imod"
 #  }
-#},
-{
- name: "dynamo",
- args: {
-   box_size: 64,
-   num_workers: 12,
-   project_name: "t4ss",
-   real_data_mode: false,
-   source_type: "imod",
-   rotx: true,
-   cores: 1,
-   mask: "/data/kshin/T4SS_sim/PDB/test_depths2/processed_data/Artiatomi/sta/other/mask.em",
-   mwa: 12,
-   ite_r1: 1,
-   cr_r1: 20,
-   cs_r1: 1,
-   ir_r1: 30,
-   is_r1: 1,
-   rff_r1: 2,
-   rf_r1: 5,
-   dim_r1: 64,
-   lim_r1: [10,10,10],
-   limm_r1: 1,
-   nref_r1: 1,
-   high_r1: 1,
-   low_r1: 18,
-   sym_r1: "c13",
-   dst: "matlab_gpu",
-   gpus: 0
- }
-}
+#}
+#{
+# name: "dynamo",
+# args: {
+#   box_size: 64,
+#   num_workers: 12,
+#   project_name: "t4ss",
+#   real_data_mode: false,
+#   source_type: "imod",
+#   rotx: true,
+#   cores: 1,
+#   mask: "/data/kshin/T4SS_sim/PDB/test_depths2/processed_data/Artiatomi/sta/other/mask.em",
+#   mwa: 12,
+#   ite_r1: 1,
+#   cr_r1: 20,
+#   cs_r1: 1,
+#   ir_r1: 30,
+#   is_r1: 1,
+#   rff_r1: 2,
+#   rf_r1: 5,
+#   dim_r1: 64,
+#   lim_r1: [10,10,10],
+#   limm_r1: 1,
+#   nref_r1: 1,
+#   high_r1: 1,
+#   low_r1: 18,
+#   sym_r1: "c13",
+#   dst: "matlab_gpu",
+#   gpus: 0
+# }
+#}
 #{
 # name: "artiatomi",
 # args: {
