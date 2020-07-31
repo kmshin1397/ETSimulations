@@ -60,6 +60,9 @@ Specifically, we have:
     * **params\_json** : string
         (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The particle_parms_*.json from a run of EMAN2 spt to retrieve pre-orientations and the particle list from.
 
+    * **lst\_file** : string
+        (Optional and used only if **real\_data\_mode** is true and **source\_type** is "eman2") The EMAN2 particle set .lst file to retrieve particles3d file names from, if different from the one mentioned in the particle_parms_*.json file from the option above.
+
 ===================================
 Using the I3 Processor on real data
 ===================================

@@ -762,6 +762,10 @@ def eman2_real_to_i3(i3_args):
     json_file = i3_args["params_json"]
     lst, particles = read_particle_params(json_file)
     lst_file = os.path.join(i3_args["eman2_dir"], lst)
+
+    if "lst_file" in i3_args:
+        lst_file = i3_args["lst_file"]
+
     lst_entries, stacks_info = parse_lst_file(lst_file)
 
     # -------------------------------------
