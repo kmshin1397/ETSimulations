@@ -68,30 +68,60 @@ az_o = daverage(particles_dir, 't', odd_tbl_file, 'fcompensate', 1, ...
 avg_odd = 'averages/init_avg_azrand_odd.em';
 dwrite(az_o.average,avg_odd);
 
-%% Create project
-dcp.new(project_name, 'd', particles_dir, 'template', avg_odd,'masks', ...
+%% Create odd project
+project_name_odd = sprintf('%s_odd', project_name);
+dcp.new(project_name_odd, 'd', particles_dir, 'template', avg_odd,'masks', ...
     'default', 't', odd_tbl_file);
 
 % Project settings
-dvput(project_name, 'd', 'mask', mask);
-dvput(project_name, 'd', 'cores', cores);
-dvput(project_name, 'd', 'mwa', mwa);
-dvput(project_name, 'd', 'ite_r1', ite_r1);
-dvput(project_name, 'd', 'cr_r1', cr_r1);
-dvput(project_name, 'd', 'cs_r1', cs_r1);
-dvput(project_name, 'd', 'ir_r1', ir_r1);
-dvput(project_name, 'd', 'is_r1', is_r1);
-dvput(project_name, 'd', 'rff_r1', rff_r1);
-dvput(project_name, 'd', 'rf_r1', rf_r1);
-dvput(project_name, 'd', 'dim_r1', dim_r1);
-dvput(project_name, 'd', 'lim_r1', lim_r1);
-dvput(project_name, 'd', 'limm_r1', limm_r1);
-dvput(project_name, 'd', 'nref_r1', nref_r1);
-dvput(project_name, 'd', 'high_r1', high_r1);
-dvput(project_name, 'd', 'low_r1', low_r1);
-dvput(project_name, 'd', 'sym_r1', sym_r1);
-dvput(project_name, 'd', 'dst', dst);
-dvput(project_name, 'd', 'gpus', gpus);
+dvput(project_name_odd, 'd', 'mask', mask);
+dvput(project_name_odd, 'd', 'cores', cores);
+dvput(project_name_odd, 'd', 'mwa', mwa);
+dvput(project_name_odd, 'd', 'ite_r1', ite_r1);
+dvput(project_name_odd, 'd', 'cr_r1', cr_r1);
+dvput(project_name_odd, 'd', 'cs_r1', cs_r1);
+dvput(project_name_odd, 'd', 'ir_r1', ir_r1);
+dvput(project_name_odd, 'd', 'is_r1', is_r1);
+dvput(project_name_odd, 'd', 'rff_r1', rff_r1);
+dvput(project_name_odd, 'd', 'rf_r1', rf_r1);
+dvput(project_name_odd, 'd', 'dim_r1', dim_r1);
+dvput(project_name_odd, 'd', 'lim_r1', lim_r1);
+dvput(project_name_odd, 'd', 'limm_r1', limm_r1);
+dvput(project_name_odd, 'd', 'nref_r1', nref_r1);
+dvput(project_name_odd, 'd', 'high_r1', high_r1);
+dvput(project_name_odd, 'd', 'low_r1', low_r1);
+dvput(project_name_odd, 'd', 'sym_r1', sym_r1);
+dvput(project_name_odd, 'd', 'dst', dst);
+dvput(project_name_odd, 'd', 'gpus', gpus);
 
-dvcheck(project_name);
-dvunfold(project_name);
+dvcheck(project_name_odd);
+dvunfold(project_name_odd);
+
+%% Create even project
+project_name_even = sprintf('%s_even', project_name);
+dcp.new(project_name_even, 'd', particles_dir, 'template', avg_even,'masks', ...
+    'default', 't', even_tbl_file);
+
+% Project settings
+dvput(project_name_even, 'd', 'mask', mask);
+dvput(project_name_even, 'd', 'cores', cores);
+dvput(project_name_even, 'd', 'mwa', mwa);
+dvput(project_name_even, 'd', 'ite_r1', ite_r1);
+dvput(project_name_even, 'd', 'cr_r1', cr_r1);
+dvput(project_name_even, 'd', 'cs_r1', cs_r1);
+dvput(project_name_even, 'd', 'ir_r1', ir_r1);
+dvput(project_name_even, 'd', 'is_r1', is_r1);
+dvput(project_name_even, 'd', 'rff_r1', rff_r1);
+dvput(project_name_even, 'd', 'rf_r1', rf_r1);
+dvput(project_name_even, 'd', 'dim_r1', dim_r1);
+dvput(project_name_even, 'd', 'lim_r1', lim_r1);
+dvput(project_name_even, 'd', 'limm_r1', limm_r1);
+dvput(project_name_even, 'd', 'nref_r1', nref_r1);
+dvput(project_name_even, 'd', 'high_r1', high_r1);
+dvput(project_name_even, 'd', 'low_r1', low_r1);
+dvput(project_name_even, 'd', 'sym_r1', sym_r1);
+dvput(project_name_even, 'd', 'dst', dst);
+dvput(project_name_even, 'd', 'gpus', gpus);
+
+dvcheck(project_name_even);
+dvunfold(project_name_even);
