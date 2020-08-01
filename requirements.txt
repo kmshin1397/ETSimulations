@@ -9,3 +9,5 @@ mrcfile==1.1.2
 numpy==1.18.1
 requests==2.22.0
 urllib3==1.25.8
+Sphinx>=3.0.3
+docutils
