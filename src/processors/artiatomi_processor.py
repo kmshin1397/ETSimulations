@@ -43,7 +43,7 @@ def convert_slicer_to_motl(orientations):
     for i, point in enumerate(orientations):
         slicer = orientations[i]
         ref_to_part = R.from_euler("xyz", [-slicer[0], -slicer[1], -slicer[2]], degrees=True)
-        eulers = ref_to_part.as_euler("ZXZ", degrees=True)
+        eulers = ref_to_part.as_euler("zxz", degrees=True)
         # Like PEET, Artiatomi takes Z1, Z2, X
         orientations[i] = [eulers[0], eulers[2], eulers[1]]
 
