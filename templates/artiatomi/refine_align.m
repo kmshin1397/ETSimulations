@@ -111,7 +111,7 @@ opts.borderSize = 5*opts.boxSize;
 for i = 1:numel(tomonr)
     
     tomoNum = tomonr(i);
-    data_dir = data_dirs(i);
+    data_dir = data_dirs{i};
     [~, basename, ~] = fileparts(data_dir);
     % minus 1 for the tomogram number because we 1-indexed the tomonr array
     opts.projFile = sprintf('%s/%s.st', data_dir, basename);
