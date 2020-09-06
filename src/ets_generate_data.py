@@ -230,7 +230,7 @@ def run_process(
 
         TEM_exec_path = configs["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)
-        # scale_mrc(tiltseries_file, configs["apix"] * 10)
+        scale_mrc(tiltseries_file, configs["apix"] * 10)
 
         logger.info(
             "Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores)
