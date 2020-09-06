@@ -37,14 +37,11 @@ from simulation.chimera_server import ChimeraServer
 from simulation.logger import log_listener_process, metadata_log_listener_process
 
 
-assembler_registry = {
-    "basic": BasicAssembler,
-    "t4ss": T4SSAssembler
-}
+assembler_registry = {"basic": BasicAssembler, "t4ss": T4SSAssembler}
 
 
 def configure_root_logger(queue):
-    """ Helper function to initialize and configure the main logger instance to handle log messages.
+    """Helper function to initialize and configure the main logger instance to handle log messages.
 
     Args:
         queue: An instance of the  multiprocessing.queue class which provides thread-safe handling
@@ -56,27 +53,27 @@ def configure_root_logger(queue):
     h = handlers.QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
 
 
 def parse_inputs():
-    """ Instantiate and set up the command line arguments parser for the ets_generate_data module
+    """Instantiate and set up the command line arguments parser for the ets_generate_data module
 
     Returns: None
 
     """
-    parser = argparse.ArgumentParser(
-        description='Generate simulated tilt stacks')
-    parser.add_argument('-i', '--input', required=True,
-                        help='the input configurations YAML file')
+    parser = argparse.ArgumentParser(description="Generate simulated tilt stacks")
+    parser.add_argument(
+        "-i", "--input", required=True, help="the input configurations YAML file"
+    )
     arguments = parser.parse_args()
     input_file = arguments.input
-    stream = open(input_file, 'r')
+    stream = open(input_file, "r")
     return yaml.load(stream, Loader=yaml.FullLoader)
 
 
 def scale_mrc(filename, apix=1.0):
-    """ Given an outputted raw tilt stack from the TEM-Simulator, add voxel sizing information to
+    """Given an outputted raw tilt stack from the TEM-Simulator, add voxel sizing information to
     the header.
 
     Args:
@@ -93,11 +90,13 @@ def scale_mrc(filename, apix=1.0):
         import mrcfile
 
         data = np.array([])
-        with mrcfile.open(filename, mode='r', permissive=True) as mrc:
+        with mrcfile.open(filename, mode="r", permissive=True) as mrc:
             data = np.copy(mrc.data)
 
-        new_file = "%s/%s.mrc" % (os.path.dirname(filename),
-                                  os.path.splitext(os.path.basename(filename))[0])
+        new_file = "%s/%s.mrc" % (
+            os.path.dirname(filename),
+            os.path.splitext(os.path.basename(filename))[0],
+        )
 
         with mrcfile.new(new_file, overwrite=True) as mrc:
             mrc.set_data(data)
@@ -109,8 +108,10 @@ def get_defocus_value(defocuses, global_stack_no):
     return defocuses[global_stack_no % num_defocuses]
 
 
-def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event):
-    """ Drives a single child process of the simulation pipeline.
+def run_process(
+    configs, pid, metadata_queue, chimera_commands_queue, ack_event, complete_event
+):
+    """Drives a single child process of the simulation pipeline.
 
     A temporary data directory is first created for use only by the child process. An Assembler
     instance is created, and for each tiltseries simulation assigned to the child process, the
@@ -163,9 +164,14 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
         num_stacks_per_cores += 1
 
     assembler_type = configs["assembler"]
-    assembler = assembler_registry[assembler_type](configs["model"], process_temp_dir,
-                                                   chimera_commands_queue, ack_event, pid,
-                                                   configs["custom_configs"])
+    assembler = assembler_registry[assembler_type](
+        configs["model"],
+        process_temp_dir,
+        chimera_commands_queue,
+        ack_event,
+        pid,
+        configs["custom_configs"],
+    )
 
     apix = None
     if "apix" in configs:
@@ -173,7 +179,10 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
 
     for i in range(num_stacks_per_cores):
         progress_msg = "Simulating %d of %d tilt stacks assigned to CPU #%d" % (
-            i + 1, num_stacks_per_cores, pid)
+            i + 1,
+            num_stacks_per_cores,
+            pid,
+        )
         logger.info(progress_msg)
         print(progress_msg)
 
@@ -181,21 +190,36 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
             assembler.reset_temp_dir()
 
         remainders_assigned_before = min(pid, remainder)
-        global_id = pid * (configs["num_stacks"] // configs["num_cores"]) + i + \
-                    remainders_assigned_before
+        global_id = (
+            pid * (configs["num_stacks"] // configs["num_cores"])
+            + i
+            + remainders_assigned_before
+        )
 
         stack_dir = raw_data_dir + "/%s_%d" % (project_name, global_id)
         os.mkdir(stack_dir)
 
         tiltseries_file = stack_dir + "/%s_%d.mrc" % (project_name, global_id)
-        nonoise_tilts_file = stack_dir + "/%s_%d_nonoise.mrc" % (project_name, global_id)
+        nonoise_tilts_file = stack_dir + "/%s_%d_nonoise.mrc" % (
+            project_name,
+            global_id,
+        )
 
         # Grab a defocus value for this simulation
         defocus = get_defocus_value(configs["defocus_values"], global_id)
 
-        sim = Simulation(sim_input_file, coord_file, tiltseries_file, nonoise_tilts_file,
-                         global_id, process_temp_dir, apix=apix, defocus=defocus,
-                         template_configs=configs["config"], template_coords=configs["coord"])
+        sim = Simulation(
+            sim_input_file,
+            coord_file,
+            tiltseries_file,
+            nonoise_tilts_file,
+            global_id,
+            process_temp_dir,
+            apix=apix,
+            defocus=defocus,
+            template_configs=configs["config"],
+            template_coords=configs["coord"],
+        )
 
         # Pass along the simulation object to the assembler to set up a simulation run
         assembler.set_up_tiltseries(sim)
@@ -206,9 +230,11 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
 
         TEM_exec_path = configs["tem_simulator_executable"]
         sim.run_tem_simulator(TEM_exec_path)
-        scale_mrc(tiltseries_file, configs["apix"] * 10)
+        # scale_mrc(tiltseries_file, configs["apix"] * 10)
 
-        logger.info("Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores))
+        logger.info(
+            "Enqueing metadata for tilt stack %d of %d" % (i + 1, num_stacks_per_cores)
+        )
         metadata_message = json.dumps(sim.get_metadata(), indent=2)
         metadata_queue.put(metadata_message)
 
@@ -218,7 +244,7 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
 
         sim.close()
 
-        # If this is the last stack for this process, clean up the Assembler 
+        # If this is the last stack for this process, clean up the Assembler
         if i == num_stacks_per_cores - 1:
             logger.debug("Closing Assembler")
             assembler.close()
@@ -235,7 +261,7 @@ def run_process(configs, pid, metadata_queue, chimera_commands_queue, ack_event,
 
 
 def run_chimera_server(chimera_path, commands_queue, process_events):
-    """ Run the Chimera REST Server in a child process.
+    """Run the Chimera REST Server in a child process.
 
     ETSimulations uses a REST Server instance of Chimera to allow Assembler modules to build up
     particle models, shared by all multiprocessing child processes. Each child process whose
@@ -264,8 +290,10 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
         base_request = "http://localhost:%d/run" % chimera.get_port()
 
         if new_commands[0] == "END":
-            logger.info("Received notice that process %d is finished with the server" %
-                        requester_pid)
+            logger.info(
+                "Received notice that process %d is finished with the server"
+                % requester_pid
+            )
             finished_processes.append(requester_pid)
             process_events[requester_pid].set()
             # If that was the last process, quit the server
@@ -274,18 +302,31 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
             else:
                 continue
 
-        for c in new_commands:
+        i = 0
+        while i < len(new_commands):
+            c = new_commands[i]
             # If this is a close session command, it is coming after a save command so give a little
             # more time to let the save complete
             if c.startswith("close"):
                 time.sleep(0.5)
 
-            logger.debug("Making request: " + c)
-            requests.get(base_request, params={'command': c})
-            # time.sleep(2)
+            try:
+                logger.debug("Making request: " + c)
+                requests.get(base_request, params={"command": c}, timeout=600)
+                # time.sleep(2)
+            except requests.exceptions.Timeout:
+                # If the Chimera server hasn't responded in 10 minutes, restart it
+                logger.info("Chimera server is unresponsive. Restarting...")
+                chimera.restart_chimera_server()
+
+                # Restart this particle's assembly
+                i = 0
+                continue
+
+            i += 1
 
         # Clean up in case the Assembler did not
-        requests.get(base_request, params={'command': 'close session'})
+        requests.get(base_request, params={"command": "close session"})
 
         # Pass along an ack
         process_events[requester_pid].set()
@@ -294,7 +335,7 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
 
 
 def start_logger(logs_queue, logfile):
-    """ Start the multiprocessing logging process
+    """Start the multiprocessing logging process
 
     Args:
         logs_queue: A multiprocessing queue to take in and digest log messages
@@ -303,15 +344,16 @@ def start_logger(logs_queue, logfile):
     Returns: The child process of the log listener
 
     """
-    log_listener = multiprocessing.Process(target=log_listener_process, args=(logs_queue, logfile,
-                                                                              start_time))
+    log_listener = multiprocessing.Process(
+        target=log_listener_process, args=(logs_queue, logfile, start_time)
+    )
     log_listener.start()
     configure_root_logger(logs_queue)
     return log_listener
 
 
 def main(configs):
-    """ The main driver process, which sets up top-level run directories and spawns necessary
+    """The main driver process, which sets up top-level run directories and spawns necessary
     child processes.
 
     Returns: None
@@ -321,8 +363,7 @@ def main(configs):
     logfile = "%s/%s.log" % (configs["root"], configs["name"])
     log_listener = start_logger(logs_queue, logfile)
 
-    print("For detailed messages, logs can be found at:\n"
-          + logfile)
+    print("For detailed messages, logs can be found at:\n" + logfile)
 
     # Set up simulation file directories
     # Trailing slash not expected by rest of program
@@ -331,8 +372,10 @@ def main(configs):
     if not os.path.exists(raw_data_dir):
         os.mkdir(raw_data_dir)
     else:
-        print("A raw_data directory already exists in this root folder!\n"
-              "Please remove/rename the existing folder.")
+        print(
+            "A raw_data directory already exists in this root folder!\n"
+            "Please remove/rename the existing folder."
+        )
         exit(1)
 
     # Set up parallel processes
@@ -349,8 +392,9 @@ def main(configs):
     # Set up metadata log listener process #
     metadata_queue = multiprocessing.Queue()
     metadata_log = configs["root"] + "/sim_metadata.json"
-    metadata_process = multiprocessing.Process(target=metadata_log_listener_process,
-                                               args=(metadata_queue, metadata_log))
+    metadata_process = multiprocessing.Process(
+        target=metadata_log_listener_process, args=(metadata_queue, metadata_log)
+    )
     metadata_process.start()
 
     # Set up Chimera server processes #
@@ -381,22 +425,37 @@ def main(configs):
         chimera_commands, chimera_process_events = chimera_objects[chimera_index]
 
         chimera_process_events[pid] = ack_event
-        process = multiprocessing.Process(target=run_process, args=(configs, pid, metadata_queue,
-                                                                    chimera_commands,
-                                                                    ack_event, complete_event))
+        process = multiprocessing.Process(
+            target=run_process,
+            args=(
+                configs,
+                pid,
+                metadata_queue,
+                chimera_commands,
+                ack_event,
+                complete_event,
+            ),
+        )
         processes.append(process)
         complete_processes.append(complete_event)
 
     # When using the Basic Assembler with use_common_model mode, we don't need Chimera servers
-    if not (configs["assembler"] == "basic" and configs["custom_configs"]["use_common_model"]):
+    if not (
+        configs["assembler"] == "basic"
+        and configs["custom_configs"]["use_common_model"]
+    ):
         for i in range(num_chimeras):
             chimera_commands, chimera_process_events = chimera_objects[i]
 
             # Start the Chimera server first, so it can be ready for the model assemblers
-            chimera_process = multiprocessing.Process(target=run_chimera_server,
-                                                      args=(configs["chimera_exec_path"],
-                                                            chimera_commands,
-                                                            chimera_process_events))
+            chimera_process = multiprocessing.Process(
+                target=run_chimera_server,
+                args=(
+                    configs["chimera_exec_path"],
+                    chimera_commands,
+                    chimera_process_events,
+                ),
+            )
             logger.info("Starting Chimera server process")
             chimera_process.start()
 
@@ -413,10 +472,10 @@ def main(configs):
             p.terminate()
             logger.info("Terminated process %d" % i)
 
-        logger.info('An interrupt signal was received: ' + str(sig_num))
-        if "email" in configs:
-            send_email("kshin@umbriel.jensen.caltech.edu", configs["email"],
-                       "ETSimulations Status", 'Interrupt signal received')
+        logger.info("An interrupt signal was received: " + str(sig_num))
+        # if "email" in configs:
+        #     send_email("kshin@umbriel.jensen.caltech.edu", configs["email"],
+        #                "ETSimulations Status", 'Interrupt signal received')
 
         exit(1)
 
@@ -437,27 +496,30 @@ def main(configs):
         event.wait()
 
         logger.info("Got completion signal from process %d" % i)
-        processes[i].join()
-        ''' NOTE: We use terminate to force kill the child processes instead of joining them in 
+        # processes[i].join()
+        """ NOTE: We use terminate to force kill the child processes instead of joining them in 
         because for reasons I have yet to figure out the children hang upon finishing their 
         processing. We know everything should be done since we wait for a signal at the very end of 
         the processing function, so I think it's okay to just terminate the children for now - to be
-        investigated more in the future'''
-        # processes[i].terminate()
+        investigated more in the future"""
+        processes[i].terminate()
 
-    if not (configs["assembler"] == "basic" and configs["custom_configs"]["use_common_model"]):
+    if not (
+        configs["assembler"] == "basic"
+        and configs["custom_configs"]["use_common_model"]
+    ):
         for i, chimera_process in enumerate(chimera_processes):
             chimera_process.join()
             logger.info("Joined in Chimera process %d" % i)
 
         logger.info("Joined Chimera server processes")
 
-    time_taken = (time.time() - start_time) / 60.
+    time_taken = (time.time() - start_time) / 60.0
 
     metadata_queue.put("END")
     metadata_process.join()
 
-    logger.info('Total time taken: %0.3f minutes' % time_taken)
+    logger.info("Total time taken: %0.3f minutes" % time_taken)
 
     # if "email" in configs:
     #     send_email("kshin@umbriel.jensen.caltech.edu", configs["email"],
@@ -470,7 +532,7 @@ def main(configs):
 logger = None
 start_time = time.time()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     logger = logging.getLogger(__name__)
 

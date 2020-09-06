@@ -101,6 +101,17 @@ class ChimeraServer:
             self.process.terminate()
             logger.info("Chimera server shut down successfully")
 
+    def kill(self):
+        """
+        Kill the Chimera server process forcefully (used to escape from an unresponsive server)
+
+        """
+        logger.info("Killing the unresponsive Chimera server")
+        # If the server has been started, terminate it
+        if self.process is not None:
+            self.process.kill()
+            logger.info("Chimera server killed successfully")
+
     def get_port(self):
         """
         Get the Chimera server port number
@@ -124,9 +135,12 @@ class ChimeraServer:
         Returns: None
 
         """
+        logger.info("REST Server")
         port = -1
         # Need to provide executable path because subprocess does not know about aliases
-        command = self.chimera_exec_path + ' --start RESTServer'
+        # command = self.chimera_exec_path + ' --start RESTServer'
+        command = self.chimera_exec_path
+        logger.info(command)
         proc = subprocess.Popen(command.split(),
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
@@ -135,11 +149,13 @@ class ChimeraServer:
         t.start()
 
         time.sleep(0.5)
-
+        logger.info("hello")
         while True:
             try:
                 line = outq.get(block=False)
+                logger.info(line)
                 port = int(line.split("REST server on host 127.0.0.1 port ")[1])
+                logger.info("port: %d" % port)
                 break
             except queue.Empty:
                 time.sleep(0.5)
@@ -149,3 +165,10 @@ class ChimeraServer:
         self.process = proc
         self.port = port
         logger.info("REST Server started on port %d" % self.port)
+
+    def restart_chimera_server(self):
+        """
+        Restart the Chimera server because it has been deemed unresponsive.
+        """
+        self.kill()
+        self.start_chimera_server()
