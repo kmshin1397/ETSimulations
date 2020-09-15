@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_model_from_source(model_file, volume_id, commands):
-    commands.append('open #%d %s' % (volume_id, model_file))
+    commands.append("open #%d %s" % (volume_id, model_file))
     return volume_id
 
 
@@ -19,15 +19,15 @@ def run_commands(commands, port, server_lock):
 
     for c in commands:
         logger.info("Making request: " + c)
-        requests.get(base_request, params={'command': c})
+        requests.get(base_request, params={"command": c})
 
     # Clean up
-    requests.get(base_request, params={'command': 'close session'})
+    requests.get(base_request, params={"command": "close session"})
     server_lock.release()
 
 
 class ChimeraCommandSet:
-    """ Represents a package of Chimera commands to be sent to the Chimera REST Servers.
+    """Represents a package of Chimera commands to be sent to the Chimera REST Servers.
 
     The object has access to an acknowledge event from the Chimera server process so that it can
     send the commands off and wait for notification that the commands were received and sent along
@@ -41,6 +41,7 @@ class ChimeraCommandSet:
             requests
 
     """
+
     def __init__(self, commands, pid, ack_event):
         self.commands = commands
 
@@ -72,7 +73,7 @@ class ChimeraCommandSet:
 
 
 class ChimeraServer:
-    """ Class representing a Chimera REST Server process.
+    """Class representing a Chimera REST Server process.
 
     Uses the Python subprocess module to start Chimera as a REST server, and maintains the localhost
         port number the Chimera server is running at.
@@ -83,6 +84,7 @@ class ChimeraServer:
         chimera_exec_path: The path to the Chimera program executable to run
 
     """
+
     def __init__(self, chimera_exec_path):
         self.port = None
         self.process = None
@@ -123,8 +125,8 @@ class ChimeraServer:
 
     @staticmethod
     def __output_reader(proc, outq):
-        for line in iter(proc.stdout.readline, b''):
-            outq.put(line.decode('utf-8'))
+        for line in iter(proc.stdout.readline, b""):
+            outq.put(line.decode("utf-8"))
             break  # Only need to read the one line for the port
 
     def start_chimera_server(self):
@@ -135,27 +137,21 @@ class ChimeraServer:
         Returns: None
 
         """
-        logger.info("REST Server")
         port = -1
         # Need to provide executable path because subprocess does not know about aliases
-        # command = self.chimera_exec_path + ' --start RESTServer'
-        command = self.chimera_exec_path
-        logger.info(command)
-        proc = subprocess.Popen(command.split(),
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
+        command = self.chimera_exec_path + " --start RESTServer"
+        proc = subprocess.Popen(
+            command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
         outq = queue.Queue()
         t = threading.Thread(target=self.__output_reader, args=(proc, outq))
         t.start()
 
         time.sleep(0.5)
-        logger.info("hello")
         while True:
             try:
                 line = outq.get(block=False)
-                logger.info(line)
                 port = int(line.split("REST server on host 127.0.0.1 port ")[1])
-                logger.info("port: %d" % port)
                 break
             except queue.Empty:
                 time.sleep(0.5)
