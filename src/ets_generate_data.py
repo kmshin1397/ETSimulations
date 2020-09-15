@@ -53,7 +53,7 @@ def configure_root_logger(queue):
     h = handlers.QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.DEBUG)
 
 
 def parse_inputs():
@@ -312,6 +312,10 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
 
             try:
                 logger.debug("Making request: " + c)
+                logger.debug(
+                    "This is command #%d for this batch from process %d"
+                    % (i, requester_pid)
+                )
                 requests.get(base_request, params={"command": c}, timeout=600)
                 # time.sleep(2)
             except requests.exceptions.Timeout:
