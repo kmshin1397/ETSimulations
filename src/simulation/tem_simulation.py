@@ -361,7 +361,7 @@ class Simulation:
                 # Record (for metadata) noisy versions of the orientations if they exist, otherwise
                 # the true ones
                 if particle_set.noisy_orientations:
-                    self.extend_positions(particle_set.noisy_orientations)
+                    self.extend_orientations(particle_set.noisy_orientations)
                 else:
                     self.extend_orientations(particle_set.orientations_to_save)
 
