@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_model_from_source(model_file, volume_id, commands):
-    commands.append('open #%d %s' % (volume_id, model_file))
+    commands.append("open #%d %s" % (volume_id, model_file))
     return volume_id
 
 
@@ -19,15 +19,15 @@ def run_commands(commands, port, server_lock):
 
     for c in commands:
         logger.info("Making request: " + c)
-        requests.get(base_request, params={'command': c})
+        requests.get(base_request, params={"command": c})
 
     # Clean up
-    requests.get(base_request, params={'command': 'close session'})
+    requests.get(base_request, params={"command": "close session"})
     server_lock.release()
 
 
 class ChimeraCommandSet:
-    """ Represents a package of Chimera commands to be sent to the Chimera REST Servers.
+    """Represents a package of Chimera commands to be sent to the Chimera REST Servers.
 
     The object has access to an acknowledge event from the Chimera server process so that it can
     send the commands off and wait for notification that the commands were received and sent along
@@ -41,6 +41,7 @@ class ChimeraCommandSet:
             requests
 
     """
+
     def __init__(self, commands, pid, ack_event):
         self.commands = commands
 
@@ -72,7 +73,7 @@ class ChimeraCommandSet:
 
 
 class ChimeraServer:
-    """ Class representing a Chimera REST Server process.
+    """Class representing a Chimera REST Server process.
 
     Uses the Python subprocess module to start Chimera as a REST server, and maintains the localhost
         port number the Chimera server is running at.
@@ -83,6 +84,7 @@ class ChimeraServer:
         chimera_exec_path: The path to the Chimera program executable to run
 
     """
+
     def __init__(self, chimera_exec_path):
         self.port = None
         self.process = None
@@ -101,6 +103,17 @@ class ChimeraServer:
             self.process.terminate()
             logger.info("Chimera server shut down successfully")
 
+    def kill(self):
+        """
+        Kill the Chimera server process forcefully (used to escape from an unresponsive server)
+
+        """
+        logger.info("Killing the unresponsive Chimera server")
+        # If the server has been started, terminate it
+        if self.process is not None:
+            self.process.kill()
+            logger.info("Chimera server killed successfully")
+
     def get_port(self):
         """
         Get the Chimera server port number
@@ -112,8 +125,8 @@ class ChimeraServer:
 
     @staticmethod
     def __output_reader(proc, outq):
-        for line in iter(proc.stdout.readline, b''):
-            outq.put(line.decode('utf-8'))
+        for line in iter(proc.stdout.readline, b""):
+            outq.put(line.decode("utf-8"))
             break  # Only need to read the one line for the port
 
     def start_chimera_server(self):
@@ -126,16 +139,15 @@ class ChimeraServer:
         """
         port = -1
         # Need to provide executable path because subprocess does not know about aliases
-        command = self.chimera_exec_path + ' --start RESTServer'
-        proc = subprocess.Popen(command.split(),
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
+        command = self.chimera_exec_path + " --start RESTServer"
+        proc = subprocess.Popen(
+            command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
         outq = queue.Queue()
         t = threading.Thread(target=self.__output_reader, args=(proc, outq))
         t.start()
 
         time.sleep(0.5)
-
         while True:
             try:
                 line = outq.get(block=False)
@@ -149,3 +161,10 @@ class ChimeraServer:
         self.process = proc
         self.port = port
         logger.info("REST Server started on port %d" % self.port)
+
+    def restart_chimera_server(self):
+        """
+        Restart the Chimera server because it has been deemed unresponsive.
+        """
+        self.kill()
+        self.start_chimera_server()
