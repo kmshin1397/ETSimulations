@@ -467,8 +467,8 @@ def run_binvol(input_file, output, options):
     Returns: None
 
     """
-    clip_path = os.path.join(os.environ["IMOD_DIR"], "bin", "binvol")
-    command = "%s %s %s" % (clip_path, input_file, output)
+    binvol_path = os.path.join(os.environ["IMOD_DIR"], "bin", "binvol")
+    command = "%s %s %s" % (binvol_path, input_file, output)
     for arg, value in options.items():
         if value == "enable":
             command += " -%s" % arg
@@ -642,7 +642,7 @@ def imod_main(root, name, imod_args):
                         if "binvol" in imod_args:
                             bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %
                                                     (rec_basename, imod_args["binvol"]["binning"]))
-                            run_binvol(rec_basename, bin_path, imod_args["binvol"])
+                            run_binvol(rec_path, bin_path, imod_args["binvol"])
 
         elif imod_args["reconstruction_method"] == "tomo3d":
             print("Running tomo3d reconstructions...")
