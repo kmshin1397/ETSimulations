@@ -30,7 +30,7 @@ def check_and_fix_names_starting_with_numbers(name):
     """
     result = name
     if name[0].isdigit():
-        result = 'a' + name
+        result = "a" + name
 
     return result
 
@@ -47,7 +47,7 @@ def rotate_positions_around_z(positions):
     Returns: None
 
     """
-    rot = R.from_euler('zxz', (90, 0, 0), degrees=True)
+    rot = R.from_euler("zxz", (90, 0, 0), degrees=True)
     for i, point in enumerate(positions):
         positions[i] = np.dot(rot.as_matrix(), np.array(point))
 
@@ -68,8 +68,11 @@ def shift_coordinates_bottom_left(coords, size, binning=1):
     Returns: the new coordinates as a (x, y, z) tuple
 
     """
-    return float(coords[0]) / binning + size[0], float(coords[1]) / binning + size[1], \
-           float(coords[2]) / binning + size[2]
+    return (
+        float(coords[0]) / binning + size[0],
+        float(coords[1]) / binning + size[1],
+        float(coords[2]) / binning + size[2],
+    )
 
 
 def center_coordinates(coords, size, binning=1):
@@ -85,8 +88,11 @@ def center_coordinates(coords, size, binning=1):
     Returns: the new coordinates as a (x, y, z) tuple
 
     """
-    return float(coords[0]) / binning - size[0], float(coords[1]) / binning - size[1], \
-           float(coords[2]) / binning - size[2]
+    return (
+        float(coords[0]) / binning - size[0],
+        float(coords[1]) / binning - size[1],
+        float(coords[2]) / binning - size[2],
+    )
 
 
 def split_coords(coords):
@@ -115,6 +121,7 @@ def split_coords(coords):
 #   IMOD-related Helper Functions    #
 ######################################
 
+
 def get_trf_lines_imod(slicer_info, basename):
     """
     Given the particle coordinates and angles for a tomogram, format them into a list of lines to
@@ -142,10 +149,17 @@ def get_trf_lines_imod(slicer_info, basename):
 
         # Add the rotation matrix
         rot_matrix = slicer_angles_to_i3_matrix(angles)
-        new_line += "%f %f %f %f %f %f %f %f %f\n" % \
-                    (rot_matrix[0], rot_matrix[1], rot_matrix[2],
-                     rot_matrix[3], rot_matrix[4], rot_matrix[5],
-                     rot_matrix[6], rot_matrix[7], rot_matrix[8])
+        new_line += "%f %f %f %f %f %f %f %f %f\n" % (
+            rot_matrix[0],
+            rot_matrix[1],
+            rot_matrix[2],
+            rot_matrix[3],
+            rot_matrix[4],
+            rot_matrix[5],
+            rot_matrix[6],
+            rot_matrix[7],
+            rot_matrix[8],
+        )
 
         lines.append(new_line)
 
@@ -165,15 +179,17 @@ def convert_tlt_imod(map_file, tilt_angle, file_in, file_out):
 
     """
 
-    lines = ["TILT SERIES %s\n" % map_file,
-             "\n",
-             "  AXIS\n",
-             "\n",
-             "    TILT AZIMUTH    %f\n" % tilt_angle,
-             "\n",
-             "\n",
-             "  ORIENTATION\n",
-             "    PHI    0.000\n"]
+    lines = [
+        "TILT SERIES %s\n" % map_file,
+        "\n",
+        "  AXIS\n",
+        "\n",
+        "    TILT AZIMUTH    %f\n" % tilt_angle,
+        "\n",
+        "\n",
+        "  ORIENTATION\n",
+        "    PHI    0.000\n",
+    ]
 
     angles = np.loadtxt(file_in)
     for i, angle in enumerate(angles):
@@ -204,7 +220,7 @@ def get_mrc_size(rec):
         warnings.simplefilter("ignore")
         import mrcfile
 
-        with mrcfile.open(rec, mode='r', header_only=True, permissive=True) as mrc:
+        with mrcfile.open(rec, mode="r", header_only=True, permissive=True) as mrc:
             x = mrc.header.nx
             y = mrc.header.ny
             z = mrc.header.nz
@@ -225,29 +241,31 @@ def get_slicer_info(mod_file):
     results = []
     with open(mod_file, "rb") as file:
         token = file.read(4)
-        if token != b'IMOD':
-            print("ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!")
+        if token != b"IMOD":
+            print(
+                "ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!"
+            )
             exit(1)
 
         # Read past rest of ID and file header
         file.read(236)
 
-        while token != b'IEOF':
+        while token != b"IEOF":
             file.seek(-3, 1)
             token = file.read(4)
-            if token == b'SLAN':
+            if token == b"SLAN":
                 # Read past SLAN object size and time
                 file.read(8)
 
-                angles = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
-                xyz = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
+                angles = struct.unpack(">" + ("f" * 3), file.read(4 * 3))
+                xyz = struct.unpack(">" + ("f" * 3), file.read(4 * 3))
 
                 results.append({"angles": angles, "coords": xyz})
                 file.read(32)
 
                 # Read forward a little so next iteration of while loop starts at end of SLAN object
                 file.read(3)
-            elif token == b'OBJT':
+            elif token == b"OBJT":
                 # Objects are 176 bytes; skip path to make reading faster
                 file.read(176)
                 # Read forward a little so next iteration of while loop starts at end of object
@@ -279,14 +297,19 @@ def slicer_angles_to_i3_matrix(angles):
     # those steps by just converting the Slicer angles to a rotation matrix.
 
     # Slicer stores angles in XYZ order even though rotations are applied as ZYX, so we flip here
-    rot = R.from_euler('zyx', [angles[2], angles[1], angles[0]], degrees=True)
-    matrix = np.array(rot.as_matrix()).flatten()
+    rot = R.from_euler("zyx", [angles[2], angles[1], angles[0]], degrees=True)
+    # Rotate by 90 around the x-axis so that the membrane is in the XY plane
+    orientation_mat = np.dot(
+        R.from_euler("zxz", [0, 90, 0], degrees=True).as_matrix(), rot.as_matrix()
+    )
+    matrix = orientation_mat.flatten()
     return matrix
 
 
 ############################
 #   IMOD Main Functions    #
 ############################
+
 
 def imod_processor_to_i3(root, name, i3_args):
     """
@@ -377,49 +400,75 @@ def imod_processor_to_i3(root, name, i3_args):
             print("Looking for necessary IMOD files...")
             if processor_info["reconstruction_method"].startswith("imod"):
                 if processor_info["binvol"]:
-                    rec = "%s_full_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
+                    rec = "%s_full_bin%d.mrc" % (
+                        basename,
+                        processor_info["binvol"]["binning"],
+                    )
                 else:
                     rec = "%s_full.rec" % basename
             else:
                 if processor_info["binvol"]:
-                    rec = "%s_SIRT_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
+                    rec = "%s_SIRT_bin%d.mrc" % (
+                        basename,
+                        processor_info["binvol"]["binning"],
+                    )
                 else:
                     rec = "%s_SIRT.mrc" % basename
 
             # Copy over the tomogram to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, rec)):
-                shutil.copyfile(os.path.join(root, tomogram_dir, rec),
-                                os.path.join(maps_path,
-                                             check_and_fix_names_starting_with_numbers(rec)))
+                shutil.copyfile(
+                    os.path.join(root, tomogram_dir, rec),
+                    os.path.join(
+                        maps_path, check_and_fix_names_starting_with_numbers(rec)
+                    ),
+                )
             else:
-                print("ERROR: No reconstruction was found for sub-directory: %s" % tomogram_dir)
+                print(
+                    "ERROR: No reconstruction was found for sub-directory: %s"
+                    % tomogram_dir
+                )
                 exit(1)
 
             tlt = "%s.tlt" % basename
             # Copy over the tlt file to the maps folder
             if os.path.exists(os.path.join(tomogram_dir, tlt)):
-                convert_tlt_imod(rec, i3_args["tlt_angle"], os.path.join(tomogram_dir, tlt),
-                                 os.path.join(maps_path,
-                                              check_and_fix_names_starting_with_numbers(tlt)))
+                convert_tlt_imod(
+                    rec,
+                    i3_args["tlt_angle"],
+                    os.path.join(tomogram_dir, tlt),
+                    os.path.join(
+                        maps_path, check_and_fix_names_starting_with_numbers(tlt)
+                    ),
+                )
             else:
-                print("WARNING: No tlt file was found for sub-directory: %s" % tomogram_dir)
+                print(
+                    "WARNING: No tlt file was found for sub-directory: %s"
+                    % tomogram_dir
+                )
 
             # Add the tomogram info to the defs/maps file
             print("Updating the maps file...")
-            new_maps_line = "../maps %s ../maps/%s\n" % \
-                            (check_and_fix_names_starting_with_numbers(rec),
-                             check_and_fix_names_starting_with_numbers(tlt))
+            new_maps_line = "../maps %s ../maps/%s\n" % (
+                check_and_fix_names_starting_with_numbers(rec),
+                check_and_fix_names_starting_with_numbers(tlt),
+            )
             maps_file.write(new_maps_line)
 
             basename = check_and_fix_names_starting_with_numbers(basename)
             # Add the tomogram info to the defs/sets file
             print("Updating the sets file...")
-            new_sets_line = "%s %s_%s\n" % (check_and_fix_names_starting_with_numbers(rec),
-                                            basename, name)
+            new_sets_line = "%s %s_%s\n" % (
+                check_and_fix_names_starting_with_numbers(rec),
+                basename,
+                name,
+            )
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
-            print("Shifting the origins to the bottom-left for the particle coordinates...")
+            print(
+                "Shifting the origins to the bottom-left for the particle coordinates..."
+            )
             rec_fullpath = os.path.join(root, tomogram_dir, rec)
             size = get_mrc_size(rec_fullpath)
             if "binvol" in processor_info:
@@ -429,13 +478,14 @@ def imod_processor_to_i3(root, name, i3_args):
 
             for particle in slicer_info:
                 # Shift the coordinates to have the origin at the tomogram bottom-left
-                particle["coords"] = shift_coordinates_bottom_left(particle["coords"], size,
-                                                                   binning)
+                particle["coords"] = shift_coordinates_bottom_left(
+                    particle["coords"], size, binning
+                )
 
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
             trf_filepath = os.path.join(trf_path, "%s_%s.trf" % (basename, name))
-            with open(trf_filepath, 'w') as trf:
+            with open(trf_filepath, "w") as trf:
                 lines = get_trf_lines_imod(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
 
@@ -503,8 +553,9 @@ def imod_real_to_i3(name, i3_args):
                     mod = file
                 elif i3_args["tlt_contains"] in file and file.endswith(".tlt"):
                     tlt = file
-                elif i3_args["rec_contains"] in file and (file.endswith(".mrc") or
-                                                          file.endswith(".rec")):
+                elif i3_args["rec_contains"] in file and (
+                    file.endswith(".mrc") or file.endswith(".rec")
+                ):
                     rec = file
 
                 # Break out of loop once all three relevant files have been found
@@ -516,18 +567,28 @@ def imod_real_to_i3(name, i3_args):
 
             # Copy over the tomogram to the maps folder
             if rec != "":
-                shutil.copyfile(os.path.join(root, subdir, rec),
-                                os.path.join(maps_path,
-                                             check_and_fix_names_starting_with_numbers(rec)))
+                shutil.copyfile(
+                    os.path.join(root, subdir, rec),
+                    os.path.join(
+                        maps_path, check_and_fix_names_starting_with_numbers(rec)
+                    ),
+                )
             else:
-                print("ERROR: No reconstruction was found for sub-directory: %s" % subdir)
+                print(
+                    "ERROR: No reconstruction was found for sub-directory: %s" % subdir
+                )
                 exit(1)
 
             # Copy over the tlt file to the maps folder
             if tlt != "":
-                convert_tlt_imod(rec, i3_args["tlt_angle"], os.path.join(root, subdir, tlt),
-                                 os.path.join(maps_path,
-                                              check_and_fix_names_starting_with_numbers(tlt)))
+                convert_tlt_imod(
+                    rec,
+                    i3_args["tlt_angle"],
+                    os.path.join(root, subdir, tlt),
+                    os.path.join(
+                        maps_path, check_and_fix_names_starting_with_numbers(tlt)
+                    ),
+                )
             else:
                 print("WARNING: No tlt file was found for sub-directory: %s" % subdir)
 
@@ -537,15 +598,19 @@ def imod_real_to_i3(name, i3_args):
 
             # Add the tomogram info to the defs/maps file
             print("Updating the maps file...")
-            new_maps_line = "../maps %s ../maps/%s\n" % \
-                            (check_and_fix_names_starting_with_numbers(rec),
-                             check_and_fix_names_starting_with_numbers(tlt))
+            new_maps_line = "../maps %s ../maps/%s\n" % (
+                check_and_fix_names_starting_with_numbers(rec),
+                check_and_fix_names_starting_with_numbers(tlt),
+            )
             maps_file.write(new_maps_line)
 
             # Add the tomogram info to the defs/sets file
             print("Updating the sets file...")
-            new_sets_line = "%s %s_%s\n" % (check_and_fix_names_starting_with_numbers(rec),
-                                            basename, name)
+            new_sets_line = "%s %s_%s\n" % (
+                check_and_fix_names_starting_with_numbers(rec),
+                basename,
+                name,
+            )
             sets_file.write(new_sets_line)
 
             # Read the .mod file info
@@ -555,7 +620,7 @@ def imod_real_to_i3(name, i3_args):
             # Write the trf file for this tomogram
             print("Writing the .trf file...")
             trf_filepath = os.path.join(trf_path, "%s_%s.trf" % (basename, name))
-            with open(trf_filepath, 'w') as trf:
+            with open(trf_filepath, "w") as trf:
                 lines = get_trf_lines_imod(slicer_info, "%s_%s" % (basename, name))
                 trf.writelines(lines)
 
@@ -567,6 +632,7 @@ def imod_real_to_i3(name, i3_args):
 #######################################
 #   EMAN2-related Helper Functions    #
 #######################################
+
 
 def extract_e2_particles(stack_file, name, destination):
     """
@@ -586,7 +652,7 @@ def extract_e2_particles(stack_file, name, destination):
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -614,11 +680,11 @@ def read_particle_params(json_file):
         data = json.load(f)
 
         for key, value in data.items():
-            tokens = key.split("\', ")
+            tokens = key.split("', ")
             particle_no = int(tokens[1].split(")")[0])
-            lst_file = tokens[0].split("\'")[1]
+            lst_file = tokens[0].split("'")[1]
 
-            matrix = value['xform.align3d']['matrix']
+            matrix = value["xform.align3d"]["matrix"]
             jdict[particle_no] = matrix
 
     return lst_file, jdict
@@ -657,7 +723,11 @@ def parse_lst_file(filename):
                 basename = os.path.basename(stack).split("__")[0]
                 info_file = "info/{:s}_info.json".format(basename)
                 num = int(tokens[0]) + 1
-                ldict[global_particle_no] = {"info": info_file, "stack": stack, "local_no": num}
+                ldict[global_particle_no] = {
+                    "info": info_file,
+                    "stack": stack,
+                    "local_no": num,
+                }
 
                 # If this is the largest particle number encountered for this stack file so far
                 if stack not in stacks or stacks[stack] < num:
@@ -699,15 +769,17 @@ def convert_tlt_eman2(info_file, map_file, output):
     """
 
     tilt_axis, tlt_angles = get_eman2_tilts(info_file)
-    lines = ["TILT SERIES %s\n" % map_file,
-             "\n",
-             "  AXIS\n",
-             "\n",
-             "    TILT AZIMUTH    %f\n" % tilt_axis,
-             "\n",
-             "\n",
-             "  ORIENTATION\n",
-             "    PHI    0.000\n"]
+    lines = [
+        "TILT SERIES %s\n" % map_file,
+        "\n",
+        "  AXIS\n",
+        "\n",
+        "    TILT AZIMUTH    %f\n" % tilt_axis,
+        "\n",
+        "\n",
+        "  ORIENTATION\n",
+        "    PHI    0.000\n",
+    ]
 
     for i, angle in enumerate(tlt_angles):
         line = "  IMAGE %03d" % (i + 1)
@@ -740,16 +812,31 @@ def write_trf_eman2_extracted(set_name, translations, rot_matrix, trf_file):
         a1, a2, a3 = (0, 0, 0)
         a4, a5, a6 = translations
 
-        f.write("{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(a0, a1, a2, a3, a4, a5, a6))
-        f.write("%f %f %f %f %f %f %f %f %f" %
-                (rot_matrix[0], rot_matrix[1], rot_matrix[2],
-                 rot_matrix[3], rot_matrix[4], rot_matrix[5],
-                 rot_matrix[6], rot_matrix[7], rot_matrix[8]))
+        f.write(
+            "{0}   {1} {2} {3} {4:.2f} {5:.2f} {6:.2f}   ".format(
+                a0, a1, a2, a3, a4, a5, a6
+            )
+        )
+        f.write(
+            "%f %f %f %f %f %f %f %f %f"
+            % (
+                rot_matrix[0],
+                rot_matrix[1],
+                rot_matrix[2],
+                rot_matrix[3],
+                rot_matrix[4],
+                rot_matrix[5],
+                rot_matrix[6],
+                rot_matrix[7],
+                rot_matrix[8],
+            )
+        )
 
 
 #############################
 #   EMAN2 Main Functions    #
 #############################
+
 
 def eman2_real_to_i3(i3_args):
     """
@@ -806,14 +893,17 @@ def eman2_real_to_i3(i3_args):
     print("\nExtracting individual particle maps...")
     for stack in stacks_info.keys():
         basename = os.path.basename(stack).split(".")[0]
-        extract_e2_particles(os.path.join(i3_args["eman2_dir"], stack), basename,
-                             maps_path)
+        extract_e2_particles(
+            os.path.join(i3_args["eman2_dir"], stack), basename, maps_path
+        )
 
     # Extract individual particle maps into maps folder
     num_particles = len(particles)
     progress = 1
     for particle_no, transformation_matrix in particles.items():
-        print("\nWorking on particle {:d} out of {:d}..".format(progress, num_particles))
+        print(
+            "\nWorking on particle {:d} out of {:d}..".format(progress, num_particles)
+        )
         lst_entry = lst_entries[particle_no]
         stack_base = os.path.basename(lst_entry["stack"]).split(".")[0]
         local_particle_no = lst_entry["local_no"]
@@ -828,7 +918,9 @@ def eman2_real_to_i3(i3_args):
         new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
         convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)
 
-        new_maps_line = "../maps {:s}.mrc ../maps/{:s}.tlt\n".format(particle_map, particle_map)
+        new_maps_line = "../maps {:s}.mrc ../maps/{:s}.tlt\n".format(
+            particle_map, particle_map
+        )
         maps_file.write(new_maps_line)
 
         # Add the particle info to the defs/sets file
@@ -843,8 +935,11 @@ def eman2_real_to_i3(i3_args):
         a1, a2, a3 = tuple(transformation_matrix[0:3])
         a4, a5, a6 = tuple(transformation_matrix[4:7])
         a7, a8, a9 = tuple(transformation_matrix[8:11])
-        translations = (transformation_matrix[3], transformation_matrix[7],
-                        transformation_matrix[11])
+        translations = (
+            transformation_matrix[3],
+            transformation_matrix[7],
+            transformation_matrix[11],
+        )
         rot_matrix = [a1, a2, a3, a4, a5, a6, a7, a8, a9]
         write_trf_eman2_extracted(particle_map, translations, rot_matrix, trf_filepath)
 
@@ -919,8 +1014,9 @@ def eman2_processor_to_i3(root, name, i3_args):
         for num, tomogram in enumerate(metadata):
             basename = "%s_%d" % (name, tomogram["global_stack_no"])
 
-            info_file = os.path.join(root, "processed_data/EMAN2/info",
-                                     "{:s}_info.json".format(basename))
+            info_file = os.path.join(
+                root, "processed_data/EMAN2/info", "{:s}_info.json".format(basename)
+            )
 
             print("")
             print("\nCollecting information for %s" % basename)
@@ -935,13 +1031,14 @@ def eman2_processor_to_i3(root, name, i3_args):
                 euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
 
                 # TEM-Simulator is in stationary zxz
-                rotation = R.from_euler('zxz', euler, degrees=True)
+                rotation = R.from_euler("zxz", euler, degrees=True)
 
                 matrices.append(np.array(rotation.as_matrix()).flatten())
 
             print("\nExtracting individual particle maps for the tomogram...")
-            expected_stack = os.path.join(eman2_dir, "particles3d",
-                                          "{:s}__{:s}.hdf".format(basename, name))
+            expected_stack = os.path.join(
+                eman2_dir, "particles3d", "{:s}__{:s}.hdf".format(basename, name)
+            )
 
             if os.path.exists(expected_stack):
                 extract_e2_particles(expected_stack, basename, maps_path)
@@ -951,18 +1048,24 @@ def eman2_processor_to_i3(root, name, i3_args):
                 num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
                 print("")
                 for i in range(num_particles_in_tomogram):
-                    print("Updating I3 files for particle %d of %d for the tomogram..." %
-                          (i + 1, num_particles_in_tomogram))
+                    print(
+                        "Updating I3 files for particle %d of %d for the tomogram..."
+                        % (i + 1, num_particles_in_tomogram)
+                    )
                     particle_num = i + 1
                     basename = check_and_fix_names_starting_with_numbers(basename)
-                    particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
+                    particle_map = "{:s}-{:0{:d}d}".format(
+                        basename, particle_num, num_digits
+                    )
 
                     new_tlt_file = os.path.join(maps_path, particle_map + ".tlt")
                     convert_tlt_eman2(info_file, particle_map + ".mrc", new_tlt_file)
 
                     # Add the tomogram info to the defs/maps file`
-                    new_maps_line = "../maps %s ../maps/%s\n" % (particle_map + ".mrc",
-                                                                 particle_map + ".tlt")
+                    new_maps_line = "../maps %s ../maps/%s\n" % (
+                        particle_map + ".mrc",
+                        particle_map + ".tlt",
+                    )
                     maps_file.write(new_maps_line)
 
                     # Add the tomogram info to the defs/sets file
@@ -973,11 +1076,15 @@ def eman2_processor_to_i3(root, name, i3_args):
                     trf_filepath = os.path.join(trf_path, "%s.trf" % particle_map)
                     rot_matrix = matrices[i]
                     translations = (0.0, 0.0, 0.0)
-                    write_trf_eman2_extracted(particle_map, translations, rot_matrix, trf_filepath)
+                    write_trf_eman2_extracted(
+                        particle_map, translations, rot_matrix, trf_filepath
+                    )
 
             else:
-                print("ERROR: Missing particle stack: particles3d/%s" %
-                      "{:s}__{:s}.hdf".format(basename, name))
+                print(
+                    "ERROR: Missing particle stack: particles3d/%s"
+                    % "{:s}__{:s}.hdf".format(basename, name)
+                )
                 exit(1)
 
     # Close files
