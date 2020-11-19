@@ -318,9 +318,12 @@ def run_chimera_server(chimera_path, commands_queue, process_events):
                 )
                 requests.get(base_request, params={"command": c}, timeout=600)
                 # time.sleep(2)
-            except requests.exceptions.Timeout:
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
                 # If the Chimera server hasn't responded in 10 minutes, restart it
-                logger.info("Chimera server at port %d is unresponsive. Restarting..." % chimera.get_port())
+                logger.info(
+                    "Chimera server at port %d is unresponsive. Restarting..."
+                    % chimera.get_port()
+                )
                 chimera.restart_chimera_server()
                 base_request = "http://localhost:%d/run" % chimera.get_port()
                 # Restart this particle's assembly
