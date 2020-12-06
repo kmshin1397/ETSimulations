@@ -26,6 +26,8 @@ def test_configs():
     num_chimera_windows: 1\n
     defocus_values: [1, 5, 10]\n
     bead_map: "/data/kshin/T4SS_sim/bead.mrc"\n
+    bead_occupancy: 0.00025\n
+    assembler: "t4ss"\n
     \n
     # Custom configs\n
     custom_configs:\n
@@ -40,14 +42,16 @@ def test_configs():
 
 @pytest.fixture(scope="module")
 def base_test_config():
-    return "=== simulation ===\n" + \
-           "log_file = old_log_file.txt\n"+ \
-           "=== detector ===\n" + \
-           "image_file_out = old_test_tiltseries.mrc\n" + \
-           "=== detector ===\n" + \
-           "image_file_out = old_test_tiltseries_nonoise.mrc\n" + \
-           "=== optics ===\n" + \
-           "defocus_nominal = 0\n"
+    return (
+        "=== simulation ===\n"
+        + "log_file = old_log_file.txt\n"
+        + "=== detector ===\n"
+        + "image_file_out = old_test_tiltseries.mrc\n"
+        + "=== detector ===\n"
+        + "image_file_out = old_test_tiltseries_nonoise.mrc\n"
+        + "=== optics ===\n"
+        + "defocus_nominal = 0\n"
+    )
 
 
 @pytest.fixture(scope="module")
@@ -55,7 +59,9 @@ def base_test_coords():
     return "# Random comment\n2 6\n0 0 0 0 0 0\n100 100 100 0 0 0\n"
 
 
-def test_project(tmpdir_factory, test_configs, mocker, base_test_config, base_test_coords):
+def test_project(
+    tmpdir_factory, test_configs, mocker, base_test_config, base_test_coords, capsys
+):
     # Set up an initial test project directory
     root = tmpdir_factory.mktemp("root")
     test_tem_configs = root.join("sim.txt")
@@ -106,5 +112,12 @@ def test_project(tmpdir_factory, test_configs, mocker, base_test_config, base_te
     mocker.patch.object(ets, "scale_mrc", lambda a, b: None)
 
     ets.main(test_configs)
-    ets.Simulation.run_tem_simulator.assert_called()
 
+    # Read generated logs to check for successful integration and project set-up lines
+    captured = capsys.readouterr()
+    assert "Using 2 cores" in captured.out
+    assert "Starting Chimera server process" in captured.out
+    assert "Waiting for process 0" in captured.out
+    assert "Got completion signal from process 1" in captured.out
+    assert "Joined Chimera server processes" in captured.out
+    assert "Total time taken:" in captured.out
