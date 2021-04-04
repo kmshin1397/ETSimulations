@@ -6,7 +6,7 @@ Full documentation available online at : https://etsimulations.readthedocs.io/en
 This README serves to provide a quick overview of the capabilities of the software. It is recommended that you check out the official documentation link above for more detailed guidance if you are trying to use the software yourself.
 
 ## Getting started
-The ETSimulations package is designed to be a tool to facilitate generation and processing of simulated cryo-electron tomography data. As of this preliminary version, only the generation of simulated tilt stacks is well-supported and covered by this manual.
+The ETSimulations package is designed to be a tool to facilitate generation and processing of simulated cryo-electron tomography data. 
 
 ### External dependencies
 The following external software is used by ETSimulations and should thus be installed first:
