@@ -12,6 +12,7 @@ import struct
 #   General Helper Functions    #
 #################################
 
+
 def rotate_positions_around_z(positions):
     """
     Given a list of coordinates, rotate them all by 90 degrees around the z-axis. This is used to
@@ -24,7 +25,7 @@ def rotate_positions_around_z(positions):
     Returns: None
 
     """
-    rot = R.from_euler('zxz', (90, 0, 0), degrees=True)
+    rot = R.from_euler("zxz", (90, 0, 0), degrees=True)
     for i, point in enumerate(positions):
         positions[i] = np.dot(rot.as_matrix(), np.array(point))
 
@@ -42,13 +43,15 @@ def convert_slicer_to_motl(orientations):
     """
     for i, point in enumerate(orientations):
         slicer = orientations[i]
-        # Rotate by 90 around the x-axis so that the membrane is in the XY 
+        # Rotate by 90 around the x-axis so that the membrane is in the XY
         # plane (Phi gives in-plane rotation)
-        slicer_rot = R.from_euler("zyx", [slicer[2], slicer[1], slicer[0], 
-                                  degrees=True)
-        orientation_mat = np.dot(R.from_euler('zxz', [0, 90, 0],
-                                              degrees=True).as_matrix(),
-                                 slicer_rot.as_matrix())
+        slicer_rot = R.from_euler(
+            "zyx", [slicer[2], slicer[1], slicer[0]], degrees=True
+        )
+        orientation_mat = np.dot(
+            R.from_euler("zxz", [0, 90, 0], degrees=True).as_matrix(),
+            slicer_rot.as_matrix(),
+        )
         rotation = R.from_matrix(orientation_mat)
         ref_to_part = rotation.inv()
         eulers = ref_to_part.as_euler("zxz", degrees=True)
@@ -71,29 +74,31 @@ def get_slicer_info(mod_file):
     results = []
     with open(mod_file, "rb") as file:
         token = file.read(4)
-        if token != b'IMOD':
-            print("ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!")
+        if token != b"IMOD":
+            print(
+                "ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!"
+            )
             exit(1)
 
         # Read past rest of ID and file header
         file.read(236)
 
-        while token != b'IEOF':
+        while token != b"IEOF":
             file.seek(-3, 1)
             token = file.read(4)
-            if token == b'SLAN':
+            if token == b"SLAN":
                 # Read past SLAN object size and time
                 file.read(8)
 
-                angles = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
-                xyz = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
+                angles = struct.unpack(">" + ("f" * 3), file.read(4 * 3))
+                xyz = struct.unpack(">" + ("f" * 3), file.read(4 * 3))
 
                 results.append({"angles": angles, "coords": xyz})
                 file.read(32)
 
                 # Read forward a little so next iteration of while loop starts at end of SLAN object
                 file.read(3)
-            elif token == b'OBJT':
+            elif token == b"OBJT":
                 # Objects are 176 bytes; skip path to make reading faster
                 file.read(176)
                 # Read forward a little so next iteration of while loop starts at end of object
@@ -109,6 +114,7 @@ def get_slicer_info(mod_file):
 #######################
 #   IMOD Functions    #
 #######################
+
 
 def imod_setup_sta(artia_root, dirs_start_with):
     """
@@ -159,8 +165,11 @@ def shift_coordinates_bottom_left(coords, size, binning=1):
     Returns: the new coordinates as a (x, y, z) tuple
 
     """
-    return float(coords[0]) / binning + size[0], float(coords[1]) / binning + size[1], \
-           float(coords[2]) / binning + size[2]
+    return (
+        float(coords[0]) / binning + size[0],
+        float(coords[1]) / binning + size[1],
+        float(coords[2]) / binning + size[2],
+    )
 
 
 def write_out_motl_files_simulated(root, name, xyz_name, motl_name, size, binning):
@@ -266,7 +275,9 @@ def write_out_motl_files_real(artia_root, xyz_name, motl_name):
         eulers_motl_file.close()
 
 
-def copy_over_imod_files(imod_root, artia_root, dir_starts_with, real_data_mode=False, mod_contains=None):
+def copy_over_imod_files(
+    imod_root, artia_root, dir_starts_with, real_data_mode=False, mod_contains=None
+):
     for subdir in os.listdir(imod_root):
         if subdir.startswith(dir_starts_with):
 
@@ -297,29 +308,43 @@ def copy_over_imod_files(imod_root, artia_root, dir_starts_with, real_data_mode=
 
             # Copy over the stack to the Artiatomi folder
             if stack != "":
-                shutil.copyfile(os.path.join(imod_root, subdir, stack), os.path.join(artia_stack_dir, stack))
+                shutil.copyfile(
+                    os.path.join(imod_root, subdir, stack),
+                    os.path.join(artia_stack_dir, stack),
+                )
             else:
                 print("ERROR: No tiltseries was found for sub-directory: %s" % subdir)
                 exit(1)
 
             # Copy over the tlt file to the Artiatomi folder
             if tlt != "":
-                shutil.copyfile(os.path.join(imod_root, subdir, tlt), os.path.join(artia_stack_dir, tlt))
+                shutil.copyfile(
+                    os.path.join(imod_root, subdir, tlt),
+                    os.path.join(artia_stack_dir, tlt),
+                )
             else:
                 print("WARNING: No .tlt file was found for sub-directory: %s" % subdir)
 
             # Copy over the tlt file to the Artiatomi folder
             if xf != "":
-                shutil.copyfile(os.path.join(imod_root, subdir, xf), os.path.join(artia_stack_dir, xf))
+                shutil.copyfile(
+                    os.path.join(imod_root, subdir, xf),
+                    os.path.join(artia_stack_dir, xf),
+                )
             else:
                 print("WARNING: No .xf file was found for sub-directory: %s" % subdir)
 
             if real_data_mode:
                 # Copy over the mod file to the Artiatomi folder
                 if mod != "":
-                    shutil.copyfile(os.path.join(imod_root, subdir, mod), os.path.join(artia_stack_dir, mod))
+                    shutil.copyfile(
+                        os.path.join(imod_root, subdir, mod),
+                        os.path.join(artia_stack_dir, mod),
+                    )
                 else:
-                    print("WARNING: No .mod file was found for sub-directory: %s" % subdir)
+                    print(
+                        "WARNING: No .mod file was found for sub-directory: %s" % subdir
+                    )
 
 
 def setup_reconstructions_script(root, name, artia_args):
@@ -356,8 +381,13 @@ def setup_reconstructions_script(root, name, artia_args):
     if not os.path.exists(artia_root):
         os.mkdir(artia_root)
 
-    copy_over_imod_files(imod_root, artia_root, dir_starts_with, real_data_mode=artia_args["real_data_mode"],
-                         mod_contains=mod_contains)
+    copy_over_imod_files(
+        imod_root,
+        artia_root,
+        dir_starts_with,
+        real_data_mode=artia_args["real_data_mode"],
+        mod_contains=mod_contains,
+    )
 
     print("Writing out MOTL-related files")
     if artia_args["real_data_mode"]:
@@ -367,7 +397,11 @@ def setup_reconstructions_script(root, name, artia_args):
         if "position_binning" in artia_args:
             binning = artia_args["position_binning"]
 
-        size = (artia_args["tomogram_size_x"] / 2, artia_args["tomogram_size_y"] / 2, artia_args["tomogram_size_z"] / 2)
+        size = (
+            artia_args["tomogram_size_x"] / 2,
+            artia_args["tomogram_size_y"] / 2,
+            artia_args["tomogram_size_z"] / 2,
+        )
         write_out_motl_files_simulated(root, name, xyz_motl, eulers_motl, size, binning)
 
     # Use template file to create Matlab script to run the remaining steps
@@ -403,20 +437,23 @@ def setup_reconstructions_script(root, name, artia_args):
 
                     value_to_write_out = ""
                     if variable_name == "project_root":
-                        value_to_write_out = f"\'{artia_root}\';"
+                        value_to_write_out = f"'{artia_root}';"
                     elif variable_name == "dir_starts_with":
-                        value_to_write_out = f"\'{dir_starts_with}\';"
+                        value_to_write_out = f"'{dir_starts_with}';"
                     elif variable_name == "xyz_motl":
-                        value_to_write_out = f"\'{xyz_motl}\';"
+                        value_to_write_out = f"'{xyz_motl}';"
                     elif variable_name == "eulers_motl":
-                        value_to_write_out = f"\'{eulers_motl}\';"
+                        value_to_write_out = f"'{eulers_motl}';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
-                            value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                            value_to_write_out = f"'{artia_args[variable_name]}';"
                         else:
                             value_to_write_out = str(artia_args[variable_name]) + ";"
                     else:
-                        print("Missing Artiatomi processing parameter: %s!" % variable_name)
+                        print(
+                            "Missing Artiatomi processing parameter: %s!"
+                            % variable_name
+                        )
                         exit(1)
 
                     new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])
@@ -473,12 +510,14 @@ def generate_reconstructions_script(root, name, artia_args):
                     new_line = f"for f in {dir_pattern}\n"
                     new_file.write(new_line)
                 elif line.startswith("config_file"):
-                    config_file = os.path.basename(artia_args["reconstruction_template_config"])
-                    new_line = f"config_file=\"{config_file}\"\n"
+                    config_file = os.path.basename(
+                        artia_args["reconstruction_template_config"]
+                    )
+                    new_line = f'config_file="{config_file}"\n'
                     new_file.write(new_line)
                 elif line.startswith("emsart_path"):
                     emsart = artia_args["emsart_path"]
-                    new_line = f"emsart_path=\"{emsart}\"\n"
+                    new_line = f'emsart_path="{emsart}"\n'
                     new_file.write(new_line)
                 else:
                     new_file.write(line)
@@ -538,32 +577,35 @@ def generate_sta_script(artia_root, info_file, artia_args):
 
                     value_to_write_out = ""
                     if variable_name == "info_file":
-                        value_to_write_out = f"\'{info_file}\';"
+                        value_to_write_out = f"'{info_file}';"
                     elif variable_name == "sta_folder":
-                        value_to_write_out = f"\'{sta_folder}\';"
+                        value_to_write_out = f"'{sta_folder}';"
                     elif variable_name == "maskFile":
-                        value_to_write_out = f"\'{mask_file}\';"
+                        value_to_write_out = f"'{mask_file}';"
                     elif variable_name == "wedgeFile":
-                        value_to_write_out = f"\'{wedge_file}\';"
+                        value_to_write_out = f"'{wedge_file}';"
                     elif variable_name == "maskCCFile":
-                        value_to_write_out = f"\'{maskCC_file}\';"
+                        value_to_write_out = f"'{maskCC_file}';"
                     elif variable_name == "motlFile":
-                        value_to_write_out = f"\'{global_motl_file}\';"
+                        value_to_write_out = f"'{global_motl_file}';"
                     elif variable_name == "motlFilePre":
-                        value_to_write_out = f"\'{motl_file_pre}\';"
+                        value_to_write_out = f"'{motl_file_pre}';"
                     elif variable_name == "particles_folder":
-                        value_to_write_out = f"\'{particles_folder}\';"
+                        value_to_write_out = f"'{particles_folder}';"
                     elif variable_name == "partFilePre":
-                        value_to_write_out = f"\'{part_file_pre}\';"
+                        value_to_write_out = f"'{part_file_pre}';"
                     elif variable_name == "avgCfgFile":
-                        value_to_write_out = f"\'{cfg_file}\';"
+                        value_to_write_out = f"'{cfg_file}';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
-                            value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                            value_to_write_out = f"'{artia_args[variable_name]}';"
                         else:
                             value_to_write_out = str(artia_args[variable_name]) + ";"
                     else:
-                        print("Missing Artiatomi processing parameter: %s!" % variable_name)
+                        print(
+                            "Missing Artiatomi processing parameter: %s!"
+                            % variable_name
+                        )
                         exit(1)
 
                     new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])
@@ -680,28 +722,31 @@ def generate_refinement_script(artia_root, info_file, artia_args):
 
                     value_to_write_out = ""
                     if variable_name == "info_file":
-                        value_to_write_out = f"\'{info_file}\';"
+                        value_to_write_out = f"'{info_file}';"
                     elif variable_name == "mask_file":
-                        value_to_write_out = f"\'{mask_file}\';"
+                        value_to_write_out = f"'{mask_file}';"
                     elif variable_name == "wedge_file":
-                        value_to_write_out = f"\'{wedge_file}\';"
+                        value_to_write_out = f"'{wedge_file}';"
                     elif variable_name == "maskCC_file":
-                        value_to_write_out = f"\'{maskCC_file}\';"
+                        value_to_write_out = f"'{maskCC_file}';"
                     elif variable_name == "main_root":
-                        value_to_write_out = f"\'{refine_dir}\';"
+                        value_to_write_out = f"'{refine_dir}';"
                     elif variable_name == "refine_motls_dir":
-                        value_to_write_out = f"\'{refine_motls_dir}\';"
+                        value_to_write_out = f"'{refine_motls_dir}';"
                     elif variable_name == "latest_ref":
-                        value_to_write_out = f"\'{latest_ref}\';"
+                        value_to_write_out = f"'{latest_ref}';"
                     elif variable_name == "latest_motl":
-                        value_to_write_out = f"\'{latest_motl}\';"
+                        value_to_write_out = f"'{latest_motl}';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
-                            value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                            value_to_write_out = f"'{artia_args[variable_name]}';"
                         else:
                             value_to_write_out = str(artia_args[variable_name]) + ";"
                     else:
-                        print("Missing Artiatomi processing parameter: %s!" % variable_name)
+                        print(
+                            "Missing Artiatomi processing parameter: %s!"
+                            % variable_name
+                        )
                         exit(1)
 
                     new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])
@@ -772,24 +817,27 @@ def generate_extract_script(artia_root, artia_args):
 
                     value_to_write_out = ""
                     if variable_name == "refineDir":
-                        value_to_write_out = f"\'{refine_dir}\';"
+                        value_to_write_out = f"'{refine_dir}';"
                     elif variable_name == "subVolPre":
-                        value_to_write_out = f"\'{subvol_pre}\';"
+                        value_to_write_out = f"'{subvol_pre}';"
                     elif variable_name == "latestStaMotl":
-                        value_to_write_out = f"\'{latest_motl}\';"
+                        value_to_write_out = f"'{latest_motl}';"
                     elif variable_name == "mask_file":
-                        value_to_write_out = f"\'{mask_file}\';"
+                        value_to_write_out = f"'{mask_file}';"
                     elif variable_name == "wedge_file":
-                        value_to_write_out = f"\'{wedge_file}\';"
+                        value_to_write_out = f"'{wedge_file}';"
                     elif variable_name == "maskCC_file":
-                        value_to_write_out = f"\'{maskCC_file}\';"
+                        value_to_write_out = f"'{maskCC_file}';"
                     elif variable_name in artia_args:
                         if type(artia_args[variable_name]) == str:
-                            value_to_write_out = f"\'{artia_args[variable_name]}\';"
+                            value_to_write_out = f"'{artia_args[variable_name]}';"
                         else:
                             value_to_write_out = str(artia_args[variable_name]) + ";"
                     else:
-                        print("Missing Artiatomi processing parameter: %s!" % variable_name)
+                        print(
+                            "Missing Artiatomi processing parameter: %s!"
+                            % variable_name
+                        )
                         exit(1)
 
                     new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])
@@ -811,7 +859,10 @@ def generate_extract_script(artia_root, artia_args):
 
 def artiatomi_main(root, name, artia_args):
 
-    if "setup_reconstructions_and_motls" in artia_args and artia_args["setup_reconstructions_and_motls"]:
+    if (
+        "setup_reconstructions_and_motls" in artia_args
+        and artia_args["setup_reconstructions_and_motls"]
+    ):
         setup_reconstructions_script(root, name, artia_args)
 
         generate_reconstructions_script(root, name, artia_args)
