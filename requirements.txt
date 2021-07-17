@@ -7,8 +7,8 @@ chardet==3.0.4
 idna==2.8
 mrcfile==1.1.2
 numpy==1.18.1
-requests==2.22.0
-urllib3==1.25.8
+requests==2.25.1
+urllib3==1.26.5
 Sphinx>=3.0.3
 docutils
 pytest-mock
