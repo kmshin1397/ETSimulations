@@ -903,6 +903,10 @@ def dynamo_main(root, name, dynamo_args):
             # First look for the input params section
             while True:
                 line = base_file.readline()
+                # Break if end of file reached early
+                if len(line) == 0:
+                    break
+
                 if re.match(r"^%% Input parameters", line):
                     break
                 else:
@@ -911,6 +915,11 @@ def dynamo_main(root, name, dynamo_args):
             # Now start replacing input params
             while True:
                 line = base_file.readline()
+
+                # Break if end of file reached early
+                if len(line) == 0:
+                    break
+
                 # Break once we reach the end of the segment
                 if re.match(r"^%% Process table", line):
                     break
