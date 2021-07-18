@@ -207,10 +207,6 @@ def imod_real_to_dynamo(dynamo_args):
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
 
-    tomograms_path = dynamo_root + "/tomograms"
-    if not os.path.exists(tomograms_path):
-        os.mkdir(tomograms_path)
-
     tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
 
@@ -248,12 +244,7 @@ def imod_real_to_dynamo(dynamo_args):
                 if mod != "" and tlt != "" and rec != "":
                     break
 
-            # Copy over the tomogram to the tomogram folder
-            if rec != "":
-                shutil.copyfile(
-                    os.path.join(root, subdir, rec), os.path.join(tomograms_path, rec)
-                )
-            else:
+            if rec == "":
                 print(
                     "ERROR: No reconstruction was found for sub-directory: %s" % subdir
                 )
@@ -274,7 +265,9 @@ def imod_real_to_dynamo(dynamo_args):
             print("Reading the .mod file for Slicer info...")
             slicer_info = get_slicer_info(os.path.join(root, subdir, mod))
 
-            tomograms_doc_file.write("{:d} tomograms/{:s}\n".format(tomogram_num, rec))
+            tomograms_doc_file.write(
+                "{:d} {:s}/{:s}\n".format(tomogram_num, os.path.join(root, subdir), rec)
+            )
 
             print("Converting particle angles and writing .tbl file entry...")
             for particle in slicer_info:
@@ -325,10 +318,6 @@ def imod_processor_to_dynamo(root, name):
     dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
-
-    tomograms_path = dynamo_root + "/tomograms"
-    if not os.path.exists(tomograms_path):
-        os.mkdir(tomograms_path)
 
     tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
@@ -397,13 +386,7 @@ def imod_processor_to_dynamo(root, name):
                 else:
                     rec = "%s_SIRT.mrc" % basename
 
-            # Copy over the tomogram to the maps folder
-            if os.path.exists(os.path.join(tomogram_dir, rec)):
-                shutil.copyfile(
-                    os.path.join(root, tomogram_dir, rec),
-                    os.path.join(tomograms_path, rec),
-                )
-            else:
+            if not os.path.exists(os.path.join(tomogram_dir, rec)):
                 print(
                     "ERROR: No reconstruction was found for sub-directory: %s"
                     % tomogram_dir
@@ -420,7 +403,9 @@ def imod_processor_to_dynamo(root, name):
                     % tomogram_dir
                 )
 
-            tomograms_doc_file.write("{:d} tomograms/{:s}\n".format(num + 1, rec))
+            tomograms_doc_file.write(
+                "{:d} {:s}/{:s}\n".format(num + 1, tomogram_dir, rec)
+            )
 
             print(
                 "Converting particle positions and angles and writing .tbl file entry..."
