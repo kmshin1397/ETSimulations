@@ -36,9 +36,10 @@ def retrieve_orientations(metadata_file, name, root):
             basename = os.path.basename(particle_set["output"]).split(".")[0]
             csv_name = root + "/%s/" % basename + "%s_slicerAngles.csv" % name
             orientations = np.array(particle_set["orientations"])
-            with open(csv_name, 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile, delimiter=',',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            with open(csv_name, "w", newline="") as csvfile:
+                writer = csv.writer(
+                    csvfile, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+                )
 
                 for i, row in enumerate(orientations):
                     # In ZXZ
@@ -47,7 +48,7 @@ def retrieve_orientations(metadata_file, name, root):
                     euler = [-row[2] - 90, -row[1], -row[0]]  # now at part-to-ref, ext
 
                     # TEM-Simulator is in stationary zxz
-                    rotation = R.from_euler('zxz', euler, degrees=True)
+                    rotation = R.from_euler("zxz", euler, degrees=True)
 
                     # Note: Used to rotate here but have since moved rotations to when recording
                     # the chosen orientations in the T4SS Assembler
@@ -58,7 +59,7 @@ def retrieve_orientations(metadata_file, name, root):
                     #
                     # rotation = R.from_matrix(orientation_mat)
 
-                    euler = rotation.as_euler('zyx', degrees=True)
+                    euler = rotation.as_euler("zyx", degrees=True)
                     new_row = [euler[2], euler[1], euler[0]]
 
                     writer.writerow(new_row)
@@ -78,30 +79,42 @@ def replace_adoc_values(adoc_file, imod_args):
     """
     # Create temp file
     fh, abs_path = mkstemp()
-    with os.fdopen(fh, 'w') as new_file:
+    with os.fdopen(fh, "w") as new_file:
         with open(adoc_file) as old_file:
             for line in old_file:
                 new_line = line
                 if line.startswith("setupset.copyarg.gold"):
-                    new_line = "setupset.copyarg.gold = %d\n" % imod_args["num_fiducials"]
-                elif line.startswith("comparam.autofidseed.autofidseed.TargetNumberOfBeads"):
-                    new_line = "comparam.autofidseed.autofidseed.TargetNumberOfBeads = %d\n" % \
-                               imod_args["num_fiducials"]
+                    new_line = (
+                        "setupset.copyarg.gold = %d\n" % imod_args["num_fiducials"]
+                    )
+                elif line.startswith(
+                    "comparam.autofidseed.autofidseed.TargetNumberOfBeads"
+                ):
+                    new_line = (
+                        "comparam.autofidseed.autofidseed.TargetNumberOfBeads = %d\n"
+                        % imod_args["num_fiducials"]
+                    )
                 elif line.startswith("setupset.copyarg.pixel"):
                     new_line = "setupset.copyarg.pixel = %0.3f\n" % imod_args["apix"]
                 elif line.startswith("setupset.copyarg.rotation"):
-                    new_line = "setupset.copyarg.rotation = %0.2f\n" % imod_args["tilt_axis"]
+                    new_line = (
+                        "setupset.copyarg.rotation = %0.2f\n" % imod_args["tilt_axis"]
+                    )
                 elif line.startswith("runtime.Fiducials.any.trackingMethod"):
                     if imod_args["fiducial_method"] == "raptor":
                         new_line = "runtime.Fiducials.any.trackingMethod = 2\n"
                 elif line.startswith("runtime.RAPTOR.any.numberOfMarkers"):
-                    new_line = "runtime.RAPTOR.any.numberOfMarkers = %d\n" % \
-                               imod_args["num_fiducials"]
+                    new_line = (
+                        "runtime.RAPTOR.any.numberOfMarkers = %d\n"
+                        % imod_args["num_fiducials"]
+                    )
 
                 new_file.write(new_line)
         if imod_args["fiducial_method"] == "raptor":
             new_file.write("runtime.Fiducials.any.trackingMethod = 2\n")
-            new_file.write("runtime.RAPTOR.any.numberOfMarkers = %d\n" % imod_args["num_fiducials"])
+            new_file.write(
+                "runtime.RAPTOR.any.numberOfMarkers = %d\n" % imod_args["num_fiducials"]
+            )
             new_file.write("runtime.RAPTOR.any.useAlignedStack = 1\n")
         elif imod_args["fiducial_method"] == "autofidseed":
             new_file.write("runtime.Fiducials.any.trackingMethod = 0\n")
@@ -111,8 +124,10 @@ def replace_adoc_values(adoc_file, imod_args):
             new_file.write("runtime.Reconstruction.any.useSirt = 1\n")
 
         if "imod_tomogram_thickness" in imod_args:
-            new_file.write("comparam.tilt.tilt.THICKNESS = %d\n" %
-                           imod_args["imod_tomogram_thickness"])
+            new_file.write(
+                "comparam.tilt.tilt.THICKNESS = %d\n"
+                % imod_args["imod_tomogram_thickness"]
+            )
 
     # Remove original file
     os.remove(adoc_file)
@@ -130,7 +145,7 @@ def add_defocus_to_adoc(adoc_file, defocus):
     Returns: None
 
     """
-    with open(adoc_file, 'a') as f:
+    with open(adoc_file, "a") as f:
         f.write("setupset.copyarg.defocus = %.3f\n" % defocus)
 
 
@@ -150,13 +165,34 @@ def get_defocus_values(metadata_file, root):
         metadata = json.loads(f.read())
         for particle_set in metadata:
             basename = os.path.basename(particle_set["output"]).split(".")[0]
-            defocus = float(particle_set["defocus"]) * 1000.
-            adoc_file = os.path.join(root, basename, "batchETSimulations_%s.adoc" % basename)
+            defocus = float(particle_set["defocus"]) * 1000.0
+            adoc_file = os.path.join(
+                root, basename, "batchETSimulations_%s.adoc" % basename
+            )
             add_defocus_to_adoc(adoc_file, defocus)
 
 
+def get_imod_filename(path, extension, convention):
+    """
+    Return the filepath for an expected output file from an IMOD process, adjusting for
+        filename convention.
+
+    Args:
+        path: The base filepath of the file
+        extension: The file extension with the dot prefix, i.e. ".preali"
+        convetion: Either "old" or "new", denoting the IMOD filename convention
+
+    Returns: The output filepath
+    """
+    if convention == "old":
+        return path + extension
+    elif convention == "new":
+        file_type = extension[1:]
+        return f"{path}_{file_type}.mrc"
+
+
 def set_up_batchtomo(root, name, imod_args):
-    """ Generates a new set of batchruntomo configuration files in the project directory, such as
+    """Generates a new set of batchruntomo configuration files in the project directory, such as
         the .com file for the batchruntomo run, the .adoc directive files, and the .ebt Etomo file
 
     Args:
@@ -172,6 +208,10 @@ def set_up_batchtomo(root, name, imod_args):
         imod_args["real_data_mode"] = False
     if "data_dirs_start_with" not in imod_args:
         imod_args["data_dirs_start_with"] = name
+
+    if "filename_convention" not in imod_args:
+        imod_args["filename_convention"] = "old"
+    filename_convention = imod_args["filename_convention"]
 
     # Set up an IMOD project directory
     raw_data = ""
@@ -199,7 +239,9 @@ def set_up_batchtomo(root, name, imod_args):
             new_base = ""
             for f in os.listdir(raw_data + "/" + base):
                 # Look for map for the raw stack
-                if (f.endswith(".mrc") or f.endswith(".st")) and not f.endswith("nonoise.mrc"):
+                if (f.endswith(".mrc") or f.endswith(".st")) and not f.endswith(
+                    "nonoise.mrc"
+                ):
                     raw_stack = f
                     new_base = os.path.splitext(f)[0]
                     break
@@ -214,13 +256,19 @@ def set_up_batchtomo(root, name, imod_args):
             # Copy over stack and relevant intermediate IMOD files
             # We are copying over our own versions of the outputs of coarse alignment in IMOD
             # since we want to skip that step.
-            shutil.copyfile(raw_data + "/" + base + "/" + raw_stack,
-                            new_tilt_folder + "/" + base + ".mrc")
+            shutil.copyfile(
+                raw_data + "/" + base + "/" + raw_stack,
+                new_tilt_folder + "/" + base + ".mrc",
+            )
 
             # Simulated data needs to skip coarse alignment, so copy over fake outputs for it
             if not imod_args["real_data_mode"]:
-                shutil.copyfile(raw_data + "/" + base + "/" + raw_stack,
-                                new_tilt_folder + "/" + base + ".preali")
+                shutil.copyfile(
+                    raw_data + "/" + base + "/" + raw_stack,
+                    get_imod_filename(
+                        new_tilt_folder + "/" + base, ".preali", filename_convention
+                    ),
+                )
 
                 for template_file in os.listdir(template_path):
                     template = os.fsdecode(template_file)
@@ -229,8 +277,12 @@ def set_up_batchtomo(root, name, imod_args):
                     # done it and can skip it. These are the .prexf, .prexg, and .rawtlt files.
                     if template.startswith("name"):
                         ext = os.path.splitext(template)[1]
-                        shutil.copyfile(template_path + "/" + template,
-                                        new_tilt_folder + "/" + base + ext)
+                        shutil.copyfile(
+                            template_path + "/" + template,
+                            get_imod_filename(
+                                new_tilt_folder + "/" + base, ext, filename_convention
+                            ),
+                        )
 
     if not imod_args["real_data_mode"]:
         print("Retrieving orientations...")
@@ -254,8 +306,11 @@ def set_up_batchtomo(root, name, imod_args):
     batchtomo_infos = []
     for base_folder in os.listdir(directory):
         base = os.fsdecode(base_folder)
-        if not base.startswith("batch") and not base.startswith(".") and \
-                not base.startswith("etomo"):
+        if (
+            not base.startswith("batch")
+            and not base.startswith(".")
+            and not base.startswith("etomo")
+        ):
             # Copy over individual sub-directory adoc files
             batch_file = ("%s_name.adoc" % batchtomo_name).replace("name", base)
             this_adoc = "%s/%s/%s" % (imod_project_dir, base, batch_file)
@@ -271,9 +326,12 @@ def set_up_batchtomo(root, name, imod_args):
                     if stack == "" or filename.endswith(".st"):
                         stack = filename
 
-            batchtomo_info = {"root": stack.split(".")[0],
-                              "tilt_folder": "%s/%s" % (imod_project_dir, base), "adoc": this_adoc,
-                              "stack": "%s/%s/%s" % (imod_project_dir, base, stack)}
+            batchtomo_info = {
+                "root": stack.split(".")[0],
+                "tilt_folder": "%s/%s" % (imod_project_dir, base),
+                "adoc": this_adoc,
+                "stack": "%s/%s/%s" % (imod_project_dir, base, stack),
+            }
             batchtomo_infos.append(batchtomo_info)
 
     # Get the defocus for the individual stacks if working with simulated data
@@ -285,24 +343,32 @@ def set_up_batchtomo(root, name, imod_args):
     shutil.copyfile(template_batch_com_file, new_com_file)
     with open(new_com_file, "a") as f:
         for info in batchtomo_infos:
-            f.writelines(["DirectiveFile    %s\n" % info["adoc"],
-                          "RootName    %s\n" % info["root"],
-                          "CurrentLocation %s\n" % info["tilt_folder"]])
+            f.writelines(
+                [
+                    "DirectiveFile    %s\n" % info["adoc"],
+                    "RootName    %s\n" % info["root"],
+                    "CurrentLocation %s\n" % info["tilt_folder"],
+                ]
+            )
 
     template_batch_ebt_file = "%s/%s.ebt" % (batchtomo_templates, batchtomo_name)
     new_ebt = "%s/%s.ebt" % (imod_project_dir, batchtomo_name)
     shutil.copyfile(template_batch_ebt_file, new_ebt)
     with open(new_ebt, "a") as f:
         for i, info in enumerate(batchtomo_infos):
-            f.writelines(["meta.row.ebt%d.Run=true\n" % (i + 1),
-                          "meta.row.ebt%d.Etomo.Enabled=true\n" % (i + 1),
-                          "meta.row.ebt%d.Tomogram.Done=false\n" % (i + 1),
-                          "meta.row.ebt%d.RowNumber=%d\n" % (i + 1, i + 1),
-                          "meta.row.ebt%d.Log.Enabled=false\n" % (i + 1),
-                          "meta.row.ebt%d.Trimvol.Done=false\n" % (i + 1),
-                          "meta.row.ebt%d.Rec.Enabled=false\n" % (i + 1),
-                          "meta.row.ebt%d.dual=false\n" % (i + 1),
-                          "meta.ref.ebt%d=%s\n" % (i + 1, info["stack"])])
+            f.writelines(
+                [
+                    "meta.row.ebt%d.Run=true\n" % (i + 1),
+                    "meta.row.ebt%d.Etomo.Enabled=true\n" % (i + 1),
+                    "meta.row.ebt%d.Tomogram.Done=false\n" % (i + 1),
+                    "meta.row.ebt%d.RowNumber=%d\n" % (i + 1, i + 1),
+                    "meta.row.ebt%d.Log.Enabled=false\n" % (i + 1),
+                    "meta.row.ebt%d.Trimvol.Done=false\n" % (i + 1),
+                    "meta.row.ebt%d.Rec.Enabled=false\n" % (i + 1),
+                    "meta.row.ebt%d.dual=false\n" % (i + 1),
+                    "meta.ref.ebt%d=%s\n" % (i + 1, info["stack"]),
+                ]
+            )
         f.write("meta.ref.ebt.lastID=ebt%d\n" % len(batchtomo_infos))
 
 
@@ -320,7 +386,7 @@ def replace_batchtomo_start_and_end_steps(com_file, start, end):
     """
     # Create temp file
     fh, abs_path = mkstemp()
-    with os.fdopen(fh, 'w') as new_file:
+    with os.fdopen(fh, "w") as new_file:
         with open(com_file) as old_file:
             for line in old_file:
                 new_line = line
@@ -351,12 +417,14 @@ def run_submfg(com_file, cwd=None):
     command = "%s -t %s" % (submfg_path, com_file)
     print(command)
     if cwd:
-        process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, cwd=r"%s" % cwd)
+        process = subprocess.Popen(
+            shlex.split(command), stdout=subprocess.PIPE, cwd=r"%s" % cwd
+        )
     else:
         process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -393,7 +461,7 @@ def run_tomo3d(tomo3d_path, tlt, tiltseries, output, other_args):
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -420,7 +488,7 @@ def run_flip(input_file, output):
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -447,7 +515,7 @@ def run_rotx(input_file, output):
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -479,7 +547,7 @@ def run_binvol(input_file, output, options):
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -489,7 +557,7 @@ def run_binvol(input_file, output, options):
 
 
 def imod_main(root, name, imod_args):
-    """ The method to set-up tiltseries processing using IMOD
+    """The method to set-up tiltseries processing using IMOD
 
     The steps taken are:
         1. Make IMOD dir
@@ -507,11 +575,17 @@ def imod_main(root, name, imod_args):
     end = imod_args["end_step"]
     com_file = "%s/%s.com" % (root + "/processed_data/IMOD", "batchETSimulations")
     if end <= start:
-        print("ERROR: The batchruntomo ending step is less than or equal to the starting step")
+        print(
+            "ERROR: The batchruntomo ending step is less than or equal to the starting step"
+        )
         exit(1)
     if os.getenv("IMOD_DIR") is None:
-        print('ERROR: IMOD_DIR is not defined as an ENV variable')
+        print("ERROR: IMOD_DIR is not defined as an ENV variable")
         exit(1)
+
+    if "filename_convention" not in imod_args:
+        imod_args["filename_convention"] = "old"
+    filename_convention = imod_args["filename_convention"]
 
     reconstruct = end >= 14
 
@@ -524,8 +598,10 @@ def imod_main(root, name, imod_args):
         imod_args["force_coarse_align"] = False
 
     if imod_args["force_coarse_align"]:
-        print("WARNING: cross-correlation alignment will most likely fail due to low signal for "
-              "simulated stacks")
+        print(
+            "WARNING: cross-correlation alignment will most likely fail due to low signal for "
+            "simulated stacks"
+        )
         replace_batchtomo_start_and_end_steps(com_file, start, end)
 
         msg = "Running batchruntomo..."
@@ -604,16 +680,19 @@ def imod_main(root, name, imod_args):
 
     # Run reconstruction if necessary
     if reconstruct:
-        if imod_args["reconstruction_method"] == "imod-wbp" or \
-                imod_args["reconstruction_method"] == "imod-sirt":
+        if (
+            imod_args["reconstruction_method"] == "imod-wbp"
+            or imod_args["reconstruction_method"] == "imod-sirt"
+        ):
             print("Running remaining batchruntomo steps from step 14...")
             replace_batchtomo_start_and_end_steps(com_file, 14, end)
             run_submfg(com_file)
 
             # If we need to apply rotations or binning to each tomogram, start iterating through the
             # data directories
-            if ("rotx" in imod_args and imod_args["rotx"]) or \
-                    ("binvol" in imod_args and imod_args["binvol"]):
+            if ("rotx" in imod_args and imod_args["rotx"]) or (
+                "binvol" in imod_args and imod_args["binvol"]
+            ):
                 print("Running tomogram rotations and/or tomogram binning...")
                 imod_proj_dir = root + "/processed_data/IMOD"
                 for f in os.listdir(imod_proj_dir):
@@ -624,13 +703,25 @@ def imod_main(root, name, imod_args):
                         rec_path = ""
                         rec_basename = ""
                         for file in os.listdir(os.path.join(imod_proj_dir, f)):
-                            if file.endswith(".rec"):
+                            if file.endswith(".rec") and filename_convention == "old":
                                 rec_path = os.path.join(imod_proj_dir, f, file)
                                 rec_basename = os.path.splitext(file)[0]
                                 break
+                            elif (
+                                file.endswith("_rec.mrc")
+                                and filename_convention == "new"
+                            ):
+                                rec_path = os.path.join(imod_proj_dir, f, file)
+                                rec_basename = os.path.splitext(file)[0].split("_rec")[
+                                    0
+                                ]
+                                break
 
                         if rec_path == "":
-                            print("ERROR: Couldn't find reconstruction for directory: %s" % f)
+                            print(
+                                "ERROR: Couldn't find reconstruction for directory: %s"
+                                % f
+                            )
                             exit(1)
 
                         if "rotx" in imod_args and imod_args["rotx"]:
@@ -640,8 +731,12 @@ def imod_main(root, name, imod_args):
                             run_flip(rec_path, rec_path)
 
                         if "binvol" in imod_args:
-                            bin_path = os.path.join(imod_proj_dir, f, "%s_bin%d.mrc" %
-                                                    (rec_basename, imod_args["binvol"]["binning"]))
+                            bin_path = os.path.join(
+                                imod_proj_dir,
+                                f,
+                                "%s_bin%d.mrc"
+                                % (rec_basename, imod_args["binvol"]["binning"]),
+                            )
                             run_binvol(rec_path, bin_path, imod_args["binvol"])
 
         elif imod_args["reconstruction_method"] == "tomo3d":
@@ -656,20 +751,35 @@ def imod_main(root, name, imod_args):
                     basename = ""
                     tlt = ""
                     for file in os.listdir(os.path.join(imod_proj_dir, f)):
-                        if file.endswith(".ali"):
+                        if file.endswith(".ali") and filename_convention == "old":
                             tiltseries = os.path.join(imod_proj_dir, f, file)
                             basename = os.path.splitext(file)[0]
                             tlt = os.path.join(imod_proj_dir, f, "%s.tlt" % basename)
                             break
+                        elif file.endswith("_ali.mrc") and filename_convention == "new":
+                            tiltseries = os.path.join(imod_proj_dir, f, file)
+                            basename = os.path.splitext(file)[0].split("_ali")[0]
+                            tlt = os.path.join(imod_proj_dir, f, "%s.tlt" % basename)
+                            break
 
                     if tiltseries == "":
-                        print("ERROR: Couldn't find final aligned tiltseries for directory: %s" % f)
+                        print(
+                            "ERROR: Couldn't find final aligned tiltseries for directory: %s"
+                            % f
+                        )
                         exit(1)
 
                     reconstruction_name = "%s_SIRT.mrc" % basename
-                    reconstruction_full_path = os.path.join(imod_proj_dir, f, reconstruction_name)
-                    run_tomo3d(imod_args["tomo3d_path"], tlt, tiltseries, reconstruction_full_path,
-                               imod_args["tomo3d_options"])
+                    reconstruction_full_path = os.path.join(
+                        imod_proj_dir, f, reconstruction_name
+                    )
+                    run_tomo3d(
+                        imod_args["tomo3d_path"],
+                        tlt,
+                        tiltseries,
+                        reconstruction_full_path,
+                        imod_args["tomo3d_options"],
+                    )
 
                     if "rotx" in imod_args and imod_args["rotx"]:
                         run_rotx(reconstruction_full_path, reconstruction_full_path)
@@ -678,9 +788,15 @@ def imod_main(root, name, imod_args):
                         run_flip(reconstruction_full_path, reconstruction_full_path)
 
                     if "binvol" in imod_args:
-                        bin_path = os.path.join(imod_proj_dir, f, "%s_SIRT_bin%d.mrc" %
-                                                (basename, imod_args["binvol"]["binning"]))
-                        run_binvol(reconstruction_full_path, bin_path, imod_args["binvol"])
+                        bin_path = os.path.join(
+                            imod_proj_dir,
+                            f,
+                            "%s_SIRT_bin%d.mrc"
+                            % (basename, imod_args["binvol"]["binning"]),
+                        )
+                        run_binvol(
+                            reconstruction_full_path, bin_path, imod_args["binvol"]
+                        )
 
         else:
             print("ERROR: Invalid reconstruction method specified!")

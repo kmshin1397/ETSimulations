@@ -43,6 +43,9 @@ The IMOD Processor, like all others, have the **name** argument ("imod") and an 
     * **end\_step** : float
         The batchruntomo processing end step (the list of steps can be found on the IMOD batchruntomo documentation page)
 
+    * **filename\_convention** : string
+        One of either "new" or "old". Whether to use the old naming convention for files by IMOD, which uses different file extensions based on the step (i.e. \*.preali files), or the new convention which sets all MRC files to use the \*.mrc extension. Must be set to match the convention used by your version of IMOD. Defaults to "old".
+
     * **num\_fiducials** : integer
         The number of fiducials to track with either Raptor or the automatic fiducial seeding/tracking for alignment
 
