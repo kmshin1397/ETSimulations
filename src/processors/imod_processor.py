@@ -586,6 +586,9 @@ def imod_main(root, name, imod_args):
     if "filename_convention" not in imod_args:
         imod_args["filename_convention"] = "old"
     filename_convention = imod_args["filename_convention"]
+    if filename_convention not in ["old", "new"]:
+        print("ERROR: IMOD `filename_convention` parameter must be `old` or `new`")
+        exit(1)
 
     reconstruct = end >= 14
 
