@@ -1,6 +1,6 @@
 ---
-root: "/data/kshin/T4SS_sim/PDB/test_depths2"
-name: "T4SS"
+root: "/home/kshin/repositories/ETSimulations/test"
+name: "Cone"
 processors: [
 #  {name: "eman2",
 #   args:
@@ -81,28 +81,28 @@ processors: [
 #    }
 #    }
 #  }
-#{
-# name: "imod",
-# args: {
-#   start_step: 8.0,
-#   end_step: 14.0,
-#   num_fiducials: 10,
-#   tilt_axis: -90,
-#   apix: 0.283,
-#   fiducial_method: "autofidseed",
-#   data_dirs_start_with: "T4SS",
-#   reconstruction_method: "tomo3d",
-#   rotx: true,
-#   binvol: {
-#     "binning": 2
-#   },
-#   tomo3d_path: "tomo3d",
-#   tomo3d_options: {
-#     "S": "enable",
-#     "z": 700
-#   }
-# }
-#}
+{
+name: "imod",
+args: {
+  start_step: 0.0,
+  end_step: 14.0,
+  num_fiducials: 10,
+  tilt_axis: -90,
+  apix: 0.283,
+  fiducial_method: "autofidseed",
+  data_dirs_start_with: "Cone",
+  reconstruction_method: "imod-wbp",
+  rotx: true,
+  binvol: {
+    "binning": 1
+  },
+  # tomo3d_path: "tomo3d",
+  # tomo3d_options: {
+  #   "S": "enable",
+  #   "z": 700
+  # }
+}
+}
 #{
 #  name: "i3",
 #  args: {
