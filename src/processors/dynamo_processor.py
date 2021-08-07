@@ -1,7 +1,7 @@
-""" This module implements the processing function for the EMAN2 software package.
+""" This module implements the processing function for the Dynamo software package.
 
-The module will create an EMAN2 project directory and set up a new Python script to process the
-raw data from ets_generate_data.py through the EMAN2 tomography pipeline.
+The module will create an Dynamo project directory and set up a new Matlab script to process the
+raw data from ets_generate_data.py through the Dynamo tomography pipeline.
 """
 
 import os
@@ -22,6 +22,7 @@ import math
 #   General Helper Functions    #
 #################################
 
+
 def rotate_positions_around_z(positions):
     """
     Given a list of coordinates, rotate them all by 90 degrees around the z-axis. This is used to
@@ -34,7 +35,7 @@ def rotate_positions_around_z(positions):
     Returns: None
 
     """
-    rot = R.from_euler('zxz', (90, 0, 0), degrees=True)
+    rot = R.from_euler("zxz", (90, 0, 0), degrees=True)
     for i, point in enumerate(positions):
         positions[i] = np.dot(rot.as_matrix(), np.array(point))
 
@@ -44,6 +45,7 @@ def rotate_positions_around_z(positions):
 ######################################
 #   IMOD-related Helper Functions    #
 ######################################
+
 
 def get_mrc_size(rec):
     """
@@ -60,7 +62,7 @@ def get_mrc_size(rec):
         warnings.simplefilter("ignore")
         import mrcfile
 
-        with mrcfile.open(rec, mode='r', header_only=True, permissive=True) as mrc:
+        with mrcfile.open(rec, mode="r", header_only=True, permissive=True) as mrc:
             x = mrc.header.nx
             y = mrc.header.ny
             z = mrc.header.nz
@@ -82,8 +84,11 @@ def shift_coordinates_bottom_left(coords, size, binning=1):
     Returns: the new coordinates as a (x, y, z) tuple
 
     """
-    return float(coords[0]) / binning + size[0], float(coords[1]) / binning + size[1], \
-           float(coords[2]) / binning + size[2]
+    return (
+        float(coords[0]) / binning + size[0],
+        float(coords[1]) / binning + size[1],
+        float(coords[2]) / binning + size[2],
+    )
 
 
 def get_slicer_info(mod_file):
@@ -99,29 +104,31 @@ def get_slicer_info(mod_file):
     results = []
     with open(mod_file, "rb") as file:
         token = file.read(4)
-        if token != b'IMOD':
-            print("ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!")
+        if token != b"IMOD":
+            print(
+                "ID of .mod file is not 'IMOD'. This does not seem to be an IMOD MOD file!"
+            )
             exit(1)
 
         # Read past rest of ID and file header
         file.read(236)
 
-        while token != b'IEOF':
+        while token != b"IEOF":
             file.seek(-3, 1)
             token = file.read(4)
-            if token == b'SLAN':
+            if token == b"SLAN":
                 # Read past SLAN object size and time
                 file.read(8)
 
-                angles = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
-                xyz = struct.unpack('>' + ('f' * 3), file.read(4 * 3))
+                angles = struct.unpack(">" + ("f" * 3), file.read(4 * 3))
+                xyz = struct.unpack(">" + ("f" * 3), file.read(4 * 3))
 
                 results.append({"angles": list(angles), "coords": xyz})
                 file.read(32)
 
                 # Read forward a little so next iteration of while loop starts at end of SLAN object
                 file.read(3)
-            elif token == b'OBJT':
+            elif token == b"OBJT":
                 # Objects are 176 bytes; skip path to make reading faster
                 file.read(176)
                 # Read forward a little so next iteration of while loop starts at end of object
@@ -147,14 +154,14 @@ def slicer_angles_to_dynamo_angles(angles):
     """
 
     # Slicer stores angles in XYZ order even though rotations are applied as ZYX, so we flip here
-    rot = R.from_euler('zyx', [angles[2], angles[1], angles[0]], degrees=True)
+    rot = R.from_euler("zyx", [angles[2], angles[1], angles[0]], degrees=True)
     # 3dmod and Dynamo have different symmetry axis and we need to rotate around the x by 90 to account for that
-    orientation_mat = np.dot(R.from_euler('zxz', [0, 90, 0],
-                                          degrees=True).as_matrix(),
-                             rot.as_matrix())
+    orientation_mat = np.dot(
+        R.from_euler("zxz", [0, 90, 0], degrees=True).as_matrix(), rot.as_matrix()
+    )
 
     rot = R.from_matrix(orientation_mat)
-    peet = rot.inv().as_euler('zxz', degrees=True)
+    peet = rot.inv().as_euler("zxz", degrees=True)
     dynamo = [-peet[2], -peet[1], -peet[0]]
 
     return dynamo
@@ -180,6 +187,7 @@ def extract_tilt_range(tlt_file):
 #   IMOD Main Functions    #
 ############################
 
+
 def imod_real_to_dynamo(dynamo_args):
     """
     Starting from real data processed with the IMOD Processor, generate the Dynamo .doc and
@@ -198,10 +206,6 @@ def imod_real_to_dynamo(dynamo_args):
     dynamo_root = dynamo_args["dynamo_dir"]
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
-
-    tomograms_path = dynamo_root + "/tomograms"
-    if not os.path.exists(tomograms_path):
-        os.mkdir(tomograms_path)
 
     tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
@@ -231,20 +235,19 @@ def imod_real_to_dynamo(dynamo_args):
                     mod = file
                 elif dynamo_args["tlt_contains"] in file and file.endswith(".tlt"):
                     tlt = file
-                elif dynamo_args["rec_contains"] in file and (file.endswith(".mrc") or
-                                                          file.endswith(".rec")):
+                elif dynamo_args["rec_contains"] in file and (
+                    file.endswith(".mrc") or file.endswith(".rec")
+                ):
                     rec = file
 
                 # Break out of loop once all three relevant files have been found
                 if mod != "" and tlt != "" and rec != "":
                     break
 
-            # Copy over the tomogram to the tomogram folder
-            if rec != "":
-                shutil.copyfile(os.path.join(root, subdir, rec),
-                                os.path.join(tomograms_path, rec))
-            else:
-                print("ERROR: No reconstruction was found for sub-directory: %s" % subdir)
+            if rec == "":
+                print(
+                    "ERROR: No reconstruction was found for sub-directory: %s" % subdir
+                )
                 exit(1)
 
             # Copy over the tlt file to the maps folder
@@ -262,7 +265,9 @@ def imod_real_to_dynamo(dynamo_args):
             print("Reading the .mod file for Slicer info...")
             slicer_info = get_slicer_info(os.path.join(root, subdir, mod))
 
-            tomograms_doc_file.write("{:d} tomograms/{:s}\n".format(tomogram_num, rec))
+            tomograms_doc_file.write(
+                "{:d} {:s}/{:s}\n".format(tomogram_num, os.path.join(root, subdir), rec)
+            )
 
             print("Converting particle angles and writing .tbl file entry...")
             for particle in slicer_info:
@@ -270,9 +275,17 @@ def imod_real_to_dynamo(dynamo_args):
                 particle["angles"] = slicer_angles_to_dynamo_angles(particle["angles"])
 
                 row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
-                    global_particle_num, particle["angles"][0], particle["angles"][1],
-                    particle["angles"][2], int(min_tilt), int(max_tilt), tomogram_num,
-                    particle["coords"][0], particle["coords"][1], particle["coords"][2])
+                    global_particle_num,
+                    particle["angles"][0],
+                    particle["angles"][1],
+                    particle["angles"][2],
+                    int(min_tilt),
+                    int(max_tilt),
+                    tomogram_num,
+                    particle["coords"][0],
+                    particle["coords"][1],
+                    particle["coords"][2],
+                )
 
                 table_file.write(row)
                 global_particle_num += 1
@@ -305,10 +318,6 @@ def imod_processor_to_dynamo(root, name):
     dynamo_root = processed_data_dir + "/Dynamo-from-IMOD"
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
-
-    tomograms_path = dynamo_root + "/tomograms"
-    if not os.path.exists(tomograms_path):
-        os.mkdir(tomograms_path)
 
     tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
@@ -362,21 +371,26 @@ def imod_processor_to_dynamo(root, name):
             print("Looking for necessary IMOD files...")
             if processor_info["reconstruction_method"].startswith("imod"):
                 if processor_info["binvol"]:
-                    rec = "%s_full_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
+                    rec = "%s_full_bin%d.mrc" % (
+                        basename,
+                        processor_info["binvol"]["binning"],
+                    )
                 else:
                     rec = "%s_full.rec" % basename
             else:
                 if processor_info["binvol"]:
-                    rec = "%s_SIRT_bin%d.mrc" % (basename, processor_info["binvol"]["binning"])
+                    rec = "%s_SIRT_bin%d.mrc" % (
+                        basename,
+                        processor_info["binvol"]["binning"],
+                    )
                 else:
                     rec = "%s_SIRT.mrc" % basename
 
-            # Copy over the tomogram to the maps folder
-            if os.path.exists(os.path.join(tomogram_dir, rec)):
-                shutil.copyfile(os.path.join(root, tomogram_dir, rec),
-                                os.path.join(tomograms_path, rec))
-            else:
-                print("ERROR: No reconstruction was found for sub-directory: %s" % tomogram_dir)
+            if not os.path.exists(os.path.join(tomogram_dir, rec)):
+                print(
+                    "ERROR: No reconstruction was found for sub-directory: %s"
+                    % tomogram_dir
+                )
                 exit(1)
 
             tlt = "%s.tlt" % basename
@@ -384,11 +398,18 @@ def imod_processor_to_dynamo(root, name):
             if os.path.exists(os.path.join(tomogram_dir, tlt)):
                 min_tilt, max_tilt = extract_tilt_range(os.path.join(tomogram_dir, tlt))
             else:
-                print("WARNING: No tlt file was found for sub-directory: %s" % tomogram_dir)
+                print(
+                    "WARNING: No tlt file was found for sub-directory: %s"
+                    % tomogram_dir
+                )
 
-            tomograms_doc_file.write("{:d} tomograms/{:s}\n".format(num + 1, rec))
+            tomograms_doc_file.write(
+                "{:d} {:s}/{:s}\n".format(num + 1, tomogram_dir, rec)
+            )
 
-            print("Converting particle positions and angles and writing .tbl file entry...")
+            print(
+                "Converting particle positions and angles and writing .tbl file entry..."
+            )
             rec_fullpath = os.path.join(root, tomogram_dir, rec)
             size = get_mrc_size(rec_fullpath)
             if "binvol" in processor_info:
@@ -398,15 +419,24 @@ def imod_processor_to_dynamo(root, name):
 
             for particle in slicer_info:
                 # Shift the coordinates to have the origin at the tomogram bottom-left
-                particle["coords"] = shift_coordinates_bottom_left(particle["coords"], size,
-                                                                   binning)
+                particle["coords"] = shift_coordinates_bottom_left(
+                    particle["coords"], size, binning
+                )
                 # Convert the Slicer angles to Dynamo Euler angles
                 particle["angles"] = slicer_angles_to_dynamo_angles(particle["angles"])
 
                 row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
-                    global_particle_num, particle["angles"][0], particle["angles"][1], particle["angles"][2],
-                    int(min_tilt), int(max_tilt), num + 1, particle["coords"][0], particle["coords"][1],
-                    particle["coords"][2])
+                    global_particle_num,
+                    particle["angles"][0],
+                    particle["angles"][1],
+                    particle["angles"][2],
+                    int(min_tilt),
+                    int(max_tilt),
+                    num + 1,
+                    particle["coords"][0],
+                    particle["coords"][1],
+                    particle["coords"][2],
+                )
 
                 table_file.write(row)
                 global_particle_num += 1
@@ -420,6 +450,7 @@ def imod_processor_to_dynamo(root, name):
 #############################
 #   EMAN2 Helper Functions    #
 #############################
+
 
 def extract_e2_particles(stack_file, name, destination):
     """
@@ -438,7 +469,7 @@ def extract_e2_particles(stack_file, name, destination):
     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
     while True:
         output = os.fsdecode(process.stdout.readline())
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
@@ -470,8 +501,10 @@ def get_eman2_info(info_file, particle_name):
                 break
 
         if box_size == "":
-            print("Error: Couldn't find particle label/class %s in info file: %s" % (particle_name,
-                                                                                     info_file))
+            print(
+                "Error: Couldn't find particle label/class %s in info file: %s"
+                % (particle_name, info_file)
+            )
 
         return round(np.min(tlt_angles)), round(np.max(tlt_angles)), int(box_size)
 
@@ -509,7 +542,11 @@ def parse_lst_file(filename):
                 basename = os.path.basename(stack).split("__")[0]
                 info_file = "info/{:s}_info.json".format(basename)
                 num = int(tokens[0]) + 1
-                ldict[global_particle_no] = {"info": info_file, "stack": stack, "local_no": num}
+                ldict[global_particle_no] = {
+                    "info": info_file,
+                    "stack": stack,
+                    "local_no": num,
+                }
 
                 # If this is the largest particle number encountered for this stack file so far
                 if stack not in stacks or stacks[stack] < num:
@@ -537,11 +574,11 @@ def read_particle_params(json_file):
         data = json.load(f)
 
         for key, value in data.items():
-            tokens = key.split("\', ")
+            tokens = key.split("', ")
             particle_no = int(tokens[1].split(")")[0])
-            lst_file = tokens[0].split("\'")[1]
+            lst_file = tokens[0].split("'")[1]
 
-            matrix = value['xform.align3d']['matrix']
+            matrix = value["xform.align3d"]["matrix"]
             jdict[particle_no] = matrix
 
     return lst_file, jdict
@@ -563,7 +600,7 @@ def transformation_matrix_to_euler(transformation_matrix):
     a7, a8, a9 = tuple(transformation_matrix[8:11])
     rot_matrix = np.array([[a1, a2, a3], [a4, a5, a6], [a7, a8, a9]])
     rot = R.from_matrix(rot_matrix)
-    euler = rot.as_euler('zxz', degrees=True)
+    euler = rot.as_euler("zxz", degrees=True)
 
     return [euler[0], euler[1], euler[2]]
 
@@ -571,6 +608,7 @@ def transformation_matrix_to_euler(transformation_matrix):
 #############################
 #   EMAN2 Main Functions    #
 #############################
+
 
 def eman2_processor_to_dynamo(root, name, dynamo_args):
     """
@@ -624,8 +662,9 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
         for num, tomogram in enumerate(metadata):
             basename = "%s_%d" % (name, tomogram["global_stack_no"])
 
-            info_file = os.path.join(root, "processed_data/EMAN2/info",
-                                     "{:s}_info.json".format(basename))
+            info_file = os.path.join(
+                root, "processed_data/EMAN2/info", "{:s}_info.json".format(basename)
+            )
 
             print("")
             print("\nCollecting information for %s" % basename)
@@ -641,18 +680,20 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
                 rot = R.from_euler("zxz", euler, degrees=True)
                 if "rotx" in dynamo_args and dynamo_args["rotx"]:
                     # Reverse the side-view X-axis rotation done by the T4SS simulator
-                    orientation_mat = np.dot(R.from_euler('zxz', [0, 90, 0],
-                                                          degrees=True).as_matrix(),
-                                             rot.as_matrix())
+                    orientation_mat = np.dot(
+                        R.from_euler("zxz", [0, 90, 0], degrees=True).as_matrix(),
+                        rot.as_matrix(),
+                    )
 
                     rot = R.from_matrix(orientation_mat)
-                peet = rot.inv().as_euler('zxz', degrees=True)
+                peet = rot.inv().as_euler("zxz", degrees=True)
                 dynamo = [-peet[2], -peet[1], -peet[0]]
                 orientations.append(dynamo)
 
             print("\nExtracting individual particle maps for the tomogram...")
-            expected_stack = os.path.join(eman2_dir, "particles3d",
-                                          "{:s}__{:s}.hdf".format(basename, name))
+            expected_stack = os.path.join(
+                eman2_dir, "particles3d", "{:s}__{:s}.hdf".format(basename, name)
+            )
 
             min_tilt, max_tilt, box_size = get_eman2_info(info_file, name)
 
@@ -664,20 +705,35 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
                 num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
                 print("")
                 for i in range(num_particles_in_tomogram):
-                    print("Updating Dynamo files for particle %d of %d for the tomogram..." %
-                          (i + 1, num_particles_in_tomogram))
+                    print(
+                        "Updating Dynamo files for particle %d of %d for the tomogram..."
+                        % (i + 1, num_particles_in_tomogram)
+                    )
                     particle_num = i + 1
-                    particle_map = "{:s}-{:0{:d}d}".format(basename, particle_num, num_digits)
+                    particle_map = "{:s}-{:0{:d}d}".format(
+                        basename, particle_num, num_digits
+                    )
 
-                    tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(global_particle_num,
-                                                                                particle_map))
+                    tomograms_doc_file.write(
+                        "{:d} tomograms/{:s}.mrc\n".format(
+                            global_particle_num, particle_map
+                        )
+                    )
 
                     center = box_size / 2
 
                     row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
-                        global_particle_num, orientations[i][0], orientations[i][1],
-                        orientations[i][2], int(min_tilt), int(max_tilt), global_particle_num,
-                        center, center, center)
+                        global_particle_num,
+                        orientations[i][0],
+                        orientations[i][1],
+                        orientations[i][2],
+                        int(min_tilt),
+                        int(max_tilt),
+                        global_particle_num,
+                        center,
+                        center,
+                        center,
+                    )
 
                     table_file.write(row)
                     global_particle_num += 1
@@ -741,21 +797,33 @@ def eman2_real_to_dynamo(dynamo_args):
 
         num_particles_in_tomogram = stacks_info[lst_entry["stack"]]
         num_digits = math.floor(math.log10(num_particles_in_tomogram)) + 1
-        particle_map = "{:s}-{:0{:d}d}".format(stack_base, local_particle_no, num_digits)
+        particle_map = "{:s}-{:0{:d}d}".format(
+            stack_base, local_particle_no, num_digits
+        )
 
         info_file = os.path.join(eman2_dir, lst_entry["info"])
         min_tilt, max_tilt, box_size = get_eman2_info(info_file, boxer_class_name)
 
-        tomograms_doc_file.write("{:d} tomograms/{:s}.mrc\n".format(particle_no + 1,
-                                                                    particle_map))
+        tomograms_doc_file.write(
+            "{:d} tomograms/{:s}.mrc\n".format(particle_no + 1, particle_map)
+        )
 
         center = dynamo_args["box_size"] / 2
 
         orientation = transformation_matrix_to_euler(transformation_matrix)
 
         row = "{0:d} 1 1 0 0 0 {1:.3f} {2:.3f} {3:.3f} 0 0 0 1 {4:d} {5:d} 0 0 0 0 {6:d} 0 0 0 {7:.3f} {8:.3f} {9:.3f} 0 0 0 0 0 0\n".format(
-            particle_no + 1, orientation[0], orientation[1], orientation[2], int(min_tilt),
-            int(max_tilt), particle_no + 1, center, center, center)
+            particle_no + 1,
+            orientation[0],
+            orientation[1],
+            orientation[2],
+            int(min_tilt),
+            int(max_tilt),
+            particle_no + 1,
+            center,
+            center,
+            center,
+        )
 
         table_file.write(row)
 
@@ -820,6 +888,10 @@ def dynamo_main(root, name, dynamo_args):
             # First look for the input params section
             while True:
                 line = base_file.readline()
+                # Break if end of file reached early
+                if len(line) == 0:
+                    break
+
                 if re.match(r"^%% Input parameters", line):
                     break
                 else:
@@ -828,6 +900,11 @@ def dynamo_main(root, name, dynamo_args):
             # Now start replacing input params
             while True:
                 line = base_file.readline()
+
+                # Break if end of file reached early
+                if len(line) == 0:
+                    break
+
                 # Break once we reach the end of the segment
                 if re.match(r"^%% Process table", line):
                     break
@@ -840,13 +917,13 @@ def dynamo_main(root, name, dynamo_args):
 
                     value_to_write_out = ""
                     if variable_name == "basename":
-                        value_to_write_out = f"\'{basename}\';"
+                        value_to_write_out = f"'{basename}';"
                     elif variable_name == "doc_file":
-                        value_to_write_out = f"\'{doc}\';"
+                        value_to_write_out = f"'{doc}';"
                     elif variable_name == "tbl_file":
-                        value_to_write_out = f"\'{tbl}\';"
+                        value_to_write_out = f"'{tbl}';"
                     elif variable_name == "particles_dir":
-                        value_to_write_out = "\'particles\';"
+                        value_to_write_out = "'particles';"
                     elif variable_name == "invert_particles":
                         if dynamo_args["source_type"] == "eman2":
                             value_to_write_out = "1;"
@@ -854,11 +931,13 @@ def dynamo_main(root, name, dynamo_args):
                             value_to_write_out = "0;"
                     elif variable_name in dynamo_args:
                         if type(dynamo_args[variable_name]) == str:
-                            value_to_write_out = f"\'{dynamo_args[variable_name]}\';"
+                            value_to_write_out = f"'{dynamo_args[variable_name]}';"
                         else:
                             value_to_write_out = str(dynamo_args[variable_name]) + ";"
                     else:
-                        print("Missing Dynamo processing parameter: %s!" % variable_name)
+                        print(
+                            "Missing Dynamo processing parameter: %s!" % variable_name
+                        )
                         exit(1)
 
                     new_line = " ".join([variable_name, "=", value_to_write_out, "\n"])

@@ -6,7 +6,12 @@
 
 % Kyung Min Shin, Caltech, 2020
 
+% NOTE: The below comment line is used by dynamo_processor.py to identify
+% the section of input parameters to fill in automatically, so you should
+% not remove it.
+
 %% Input parameters
+apix = '';
 basename = '';
 doc_file = '';
 tbl_file = '';
@@ -34,6 +39,9 @@ sym_r1 = '';
 dst = '';
 gpus = '';
 invert_particles = 1;
+
+% NOTE: The below comment line is used by dynamo_processor.py to identify
+% the end of the input parameters section, so you should not remove it.
 
 %% Process table
 % Crop out the particles
@@ -70,7 +78,7 @@ avg_odd = 'averages/init_avg_azrand_odd.em';
 dwrite(az_o.average, avg_odd);
 
 %% Create odd project
-project_name_odd = sprintf('%s_odd', project_name);
+project_name_odd = sprintf('odd_%s', project_name);
 dcp.new(project_name_odd, 'd', particles_dir, 'template', avg_odd,'masks', ...
     'default', 't', odd_tbl_file);
 
@@ -99,7 +107,7 @@ dvcheck(project_name_odd);
 dvunfold(project_name_odd);
 
 %% Create even project
-project_name_even = sprintf('%s_even', project_name);
+project_name_even = sprintf('even_%s', project_name);
 dcp.new(project_name_even, 'd', particles_dir, 'template', avg_even,'masks', ...
     'default', 't', even_tbl_file);
 
@@ -126,3 +134,33 @@ dvput(project_name_even, 'd', 'gpus', gpus);
 
 dvcheck(project_name_even);
 dvunfold(project_name_even);
+
+%% Make FSC curve
+% Make even and odd averages with all the particles
+even_avg = [project_name_even, '/results/ite_0001/averages/even_avg.em'];
+odd_avg = [project_name_odd, '/results/ite_0001/averages/odd_avg.em'];
+
+even_table = dread([project_name_even, '/results/ite_0001/averages/refined_table_ref_001_ite_0001.tbl'])
+odd_table = dread([project_name_odd, '/results/ite_0001/averages/refined_table_ref_001_ite_0001.tbl'])
+
+even = daverage(particles_dir, 't', even_table, 'fcompensate', 1, 'mw', mwa);
+dwrite(even.average, even_avg);
+
+odd = daverage(particles_dir, 't', odd_table, 'fcompensate', 1, 'mw', mwa);
+dwrite(odd.average, odd_avg);
+
+% Align the two averages with each other
+sal = dalign(odd_avg, even_avg, 'cr', 0, 'cs', 1, 'ir', 60, 'is', 1, 'rf', 2, 'rff', 2, ...
+    'dim', 128, 'limm', 1, 'lim', [2 2 2]);
+dwrite(sal.aligned_particle, [project_name_odd, '/results/ite_0001/averages/odd_avg_aligned2even.em']);
+odd_aligned_to_even_table = dynamo_table_rigid(odd_table, sal.Tp);
+dwrite(odd_aligned_to_even_table, ...
+    [project_name_odd, '/results/ite_0001/averages/refined_table_ref_001_ite_0001_aligned_to_even.tbl']);
+full_tbl = dynamo_table_merge({even_table, odd_aligned_to_even_table});
+dwrite(full_tbl, [project_name_odd, '/results/ite_0001/averages/full.tbl']);
+full_avg = daverage(particles_dir, 't', full_tbl, 'fcompensate', 1, 'mw', 24);
+dwrite(full_avg.average, [project_name_odd, '/results/ite_0001/averages/full_avg.em']);
+
+% Calculate fsc
+dfsc(even_avg, odd_avg, 'nshells', 32, 'apix', apix, 'show', 1, ...
+    'o', [project_name_odd, '/results/ite_0001/averages/fsc_alignedeo.txt'], 'mask', mask);
