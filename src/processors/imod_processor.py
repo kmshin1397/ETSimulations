@@ -184,7 +184,8 @@ def get_imod_filename(path, extension, convention):
 
     Returns: The output filepath
     """
-    if convention == "old":
+    non_mrc_files = [".rawtlt", ".prexg", ".prexf"]
+    if extension in non_mrc_files or convention == "old":
         return path + extension
     elif convention == "new":
         file_type = extension[1:]
