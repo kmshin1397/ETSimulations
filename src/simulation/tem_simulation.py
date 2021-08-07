@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class Simulation:
-    """ A class to hold associated configurations and metadata for a run of the TEM-Simulator.
+    """A class to hold associated configurations and metadata for a run of the TEM-Simulator.
 
     Attributes:
         ### Attributes passed in on initialization ###
@@ -36,9 +36,19 @@ class Simulation:
 
     """
 
-    def __init__(self, config_file, base_coord_file, tiltseries_file, nonoise_tilts_file,
-                 global_stack_no, temp_dir, apix=None, defocus=5, template_configs="",
-                 template_coords=""):
+    def __init__(
+        self,
+        config_file,
+        base_coord_file,
+        tiltseries_file,
+        nonoise_tilts_file,
+        global_stack_no,
+        temp_dir,
+        apix=None,
+        defocus=5,
+        template_configs="",
+        template_coords="",
+    ):
         # TEM-Simulator configuration input file
         self.config_file = config_file
 
@@ -129,16 +139,18 @@ class Simulation:
             logging
 
         """
-        metadata = {"output": self.tiltseries_file,
-                    "nonoise_output": self.nonoise_tilts_file,
-                    "global_stack_no": self.global_stack_no,
-                    "apix": self.apix,
-                    "defocus": self.defocus,
-                    "sim_configs": self.template_configs,
-                    "particle_coords": self.template_coords,
-                    "orientations": self.orientations,
-                    "positions": self.positions,
-                    "custom_data": self.custom_data}
+        metadata = {
+            "output": self.tiltseries_file,
+            "nonoise_output": self.nonoise_tilts_file,
+            "global_stack_no": self.global_stack_no,
+            "apix": self.apix,
+            "defocus": self.defocus,
+            "sim_configs": self.template_configs,
+            "particle_coords": self.template_coords,
+            "orientations": self.orientations,
+            "positions": self.positions,
+            "custom_data": self.custom_data,
+        }
 
         return metadata
 
@@ -157,7 +169,7 @@ class Simulation:
         """
         # Create temp file
         fh, abs_path = mkstemp()
-        with os.fdopen(fh, 'w') as new_file:
+        with os.fdopen(fh, "w") as new_file:
             with open(file_path) as old_file:
                 for line in old_file:
                     new_line = re.sub(pattern, subst, line)
@@ -185,7 +197,7 @@ class Simulation:
         fh, abs_path = mkstemp()
         found_first = False
         replaced = False
-        with os.fdopen(fh, 'w') as new_file:
+        with os.fdopen(fh, "w") as new_file:
             with open(file_path) as old_file:
                 for line in old_file:
                     if replaced:
@@ -214,7 +226,9 @@ class Simulation:
         self.__replace(self.config_file, image_file_out_pattern, replacement_line)
 
         replacement_line = "image_file_out = %s\n" % self.nonoise_tilts_file
-        self.__replace_nonoise(self.config_file, image_file_out_pattern, replacement_line)
+        self.__replace_nonoise(
+            self.config_file, image_file_out_pattern, replacement_line
+        )
 
         log_pattern = "^log_file = .*\n"
         replacement_line = "log_file = %s\n" % self.sim_log_file
@@ -231,13 +245,24 @@ class Simulation:
         Returns: The number of particles indicated by the coordinates file
 
         """
-        with open(self.base_coord_file, 'r') as f:
+        with open(self.base_coord_file, "r") as f:
             for line in f.readlines():
                 if line.startswith("#"):  # Ignore comment lines
                     continue
                 else:
                     num_particles = int(line.strip().split()[0])
                     return num_particles
+
+    def __convert_coordinates(self, coordinates):
+        """
+        Give particle coordinates provided in pixels, convert them to nanometers.
+
+        Returns: A list of lists [x, y, z] representing particle positions in nm.
+        """
+        for i, point in enumerate(coordinates):
+            coordinates[i] = map(lambda x: x * self.apix * 0.1, point)
+
+        return coordinates
 
     def parse_coordinates(self):
         """
@@ -247,7 +272,7 @@ class Simulation:
 
         """
         coordinates = []
-        with open(self.base_coord_file, 'r') as f:
+        with open(self.base_coord_file, "r") as f:
             read_summary_line = False
             for line in f.readlines():
                 if line.startswith("#"):  # Ignore comment lines
@@ -257,10 +282,14 @@ class Simulation:
                         read_summary_line = True
                     else:
                         tokens = line.strip().split()
-                        coordinate = [float(tokens[0]), float(tokens[1]), float(tokens[2])]
+                        coordinate = [
+                            float(tokens[0]),
+                            float(tokens[1]),
+                            float(tokens[2]),
+                        ]
                         coordinates.append(coordinate)
 
-        return coordinates
+        return self.__convert_coordinates(coordinates)
 
     @staticmethod
     def __write_coord_file(filename, coordinates, orientations):
@@ -274,12 +303,18 @@ class Simulation:
             orientations: The list of particle Euler angles (extrinsic ZXZ) to write out
 
         """
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             f.write("%d 6\n" % len(coordinates))
             for i, coordinate in enumerate(coordinates):
                 orientation = orientations[i]
-                new_line = "%d %d %d %d %d %d\n" % (coordinate[0], coordinate[1], coordinate[2],
-                                                    orientation[0], orientation[1], orientation[2])
+                new_line = "%d %d %d %d %d %d\n" % (
+                    coordinate[0],
+                    coordinate[1],
+                    coordinate[2],
+                    orientation[0],
+                    orientation[1],
+                    orientation[2],
+                )
                 f.write(new_line)
 
     def __write_particle_section(self, particle_name, source, voxel_size=0.283):
@@ -367,8 +402,11 @@ class Simulation:
 
                 self.extend_positions(particle_set.coordinates)
 
-            self.__write_coord_file(new_coord_file, particle_set.coordinates,
-                                    particle_set.orientations_to_simulate)
+            self.__write_coord_file(
+                new_coord_file,
+                particle_set.coordinates,
+                particle_set.orientations_to_simulate,
+            )
 
             # Add Particle and ParticleSet segments to config file
             self.__write_particle_section(particle, particle_set.source, self.apix)

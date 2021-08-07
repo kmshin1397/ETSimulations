@@ -47,7 +47,7 @@ As noted above, configuration parameters for simulating data sets with the **ets
         The TEM-simulator configuration text file to apply to each simulation. An example is provided in the templates folder.
 
     * **coord** :  string
-        TheTEM-simulator particle coordinates text file to use as a reference for placing particles in each generated tiltseries. An example for this is also provided in the templates folder.
+        The TEM-simulator particle coordinates text file to use as a reference for placing particles in each generated tiltseries. This file provides positions in units of pixels, with the origin at the center of the tiltseries. An example for this is also provided in the templates folder.
 
     * **num\_stacks** : integer
         The number of tilt stacks to generate

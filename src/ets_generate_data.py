@@ -547,8 +547,8 @@ if __name__ == "__main__":
     if "name" not in args:
         args["name"] = os.path.basename(args["root"])
 
-    if args["model"].endswith(".pdb") and "apix" not in args:
-        print("An apix value must be provided with a PDB model!")
+    if "apix" not in args:
+        print("An apix value must be provided.")
         exit(1)
 
     main(args)
