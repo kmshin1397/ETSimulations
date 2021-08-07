@@ -370,15 +370,29 @@ def imod_processor_to_dynamo(root, name):
             # Look for the necessary IMOD files
             print("Looking for necessary IMOD files...")
             if processor_info["reconstruction_method"].startswith("imod"):
-                if processor_info["binvol"]:
+                if (
+                    "binvol" in processor_info
+                    and processor_info["binvol"]
+                    and processor_info["binvol"]["binning"] != 1
+                ):
                     rec = "%s_full_bin%d.mrc" % (
                         basename,
                         processor_info["binvol"]["binning"],
                     )
                 else:
-                    rec = "%s_full.rec" % basename
+                    if (
+                        "filename_convention" in processor_info
+                        and processor_info["filename_convention"] == "new"
+                    ):
+                        rec = "%s_full_rec.mrc" % basename
+                    else:
+                        rec = "%s_full.rec" % basename
             else:
-                if processor_info["binvol"]:
+                if (
+                    "binvol" in processor_info
+                    and processor_info["binvol"]
+                    and processor_info["binvol"]["binning"] != 1
+                ):
                     rec = "%s_SIRT_bin%d.mrc" % (
                         basename,
                         processor_info["binvol"]["binning"],
