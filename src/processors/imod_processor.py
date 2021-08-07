@@ -791,7 +791,7 @@ def imod_main(root, name, imod_args):
                     if "flipyz" in imod_args and imod_args["flipyz"]:
                         run_flip(reconstruction_full_path, reconstruction_full_path)
 
-                    if "binvol" in imod_args:
+                    if "binvol" in imod_args and imod_args["binvol"]["binning"] != 1:
                         bin_path = os.path.join(
                             imod_proj_dir,
                             f,
