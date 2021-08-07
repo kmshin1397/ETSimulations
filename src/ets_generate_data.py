@@ -148,7 +148,7 @@ def run_process(
 
     # Copy over TEM-Simulator input files so it doesn't interfere with
     # any other potentially running simulations
-    new_coord_file = process_temp_dir + "/T4SS_coord.txt"
+    new_coord_file = process_temp_dir + "/coord.txt"
     new_input_file = process_temp_dir + "/sim.txt"
     copyfile(configs["coord"], new_coord_file)
     copyfile(configs["config"], new_input_file)
