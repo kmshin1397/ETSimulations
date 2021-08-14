@@ -152,6 +152,12 @@ def run_process(
     new_input_file = process_temp_dir + "/sim.txt"
     copyfile(configs["coord"], new_coord_file)
     copyfile(configs["config"], new_input_file)
+    coord_error = None
+    if "coord_error" in configs:
+        coord_error = configs["coord_error"]
+        if "mu" not in coord_error or "sigma" not in coord_error:
+            print("ERROR: Both 'mu' and 'sigma' must be provided for 'coord_error'")
+            exit(1)
 
     sim_input_file = new_input_file
     coord_file = new_coord_file
@@ -219,6 +225,7 @@ def run_process(
             defocus=defocus,
             template_configs=configs["config"],
             template_coords=configs["coord"],
+            coord_error=coord_error,
         )
 
         # Pass along the simulation object to the assembler to set up a simulation run

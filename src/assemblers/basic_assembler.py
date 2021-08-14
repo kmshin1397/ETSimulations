@@ -55,15 +55,15 @@ class BasicAssembler:
 
     def __assemble_particle(self, output_filename):
         """
-            This is a simple assembly module which just saves the passed in model to a new location
-            where the TEM-Simulator can find it
+        This is a simple assembly module which just saves the passed in model to a new location
+        where the TEM-Simulator can find it
         """
 
         # Clear state variables
         model_id = 0
 
         # The first Chimera command is to open the template model file
-        self.commands.append('open #%d %s' % (model_id, self.model))
+        self.commands.append("open #%d %s" % (model_id, self.model))
 
         # Now we just save it to the desired location passed in
         self.commands.append("volume #%d save %s" % (model_id, output_filename))
@@ -99,10 +99,16 @@ class BasicAssembler:
         if orientation_source == "none":
             return [0, 0, 0]
         # If gauss(), parse out the mu and sigma for the distribution and sample the angles
-        elif re.search(r"gauss\(([-+]?\d*\.\d*|\d+),\s*([-+]?\d*\.\d*|\d+)\)", orientation_source):
+        elif re.search(
+            r"gauss\(([-+]?\d*\.\d*|\d+),\s*([-+]?\d*\.\d*|\d+)\)", orientation_source
+        ):
             numbers = re.findall(r"[-+]?\d*\.\d*|\d+", orientation_source)
             mu, sigma = float(numbers[0]), float(numbers[1])
-            return [random.gauss(mu, sigma), random.gauss(mu, sigma), random.gauss(mu, sigma)]
+            return [
+                random.gauss(mu, sigma),
+                random.gauss(mu, sigma),
+                random.gauss(mu, sigma),
+            ]
         # If the source is a valid file, try to sample an orientation from it
         elif os.path.exists(orientation_source):
             # Load in the text file if it has not done yet
@@ -115,7 +121,9 @@ class BasicAssembler:
             orientation = random.choice(self.loaded_orientations).tolist()
 
             if len(orientation) != 3:
-                print("Error: Orientation loaded from text file does not have exactly 3 angles!")
+                print(
+                    "Error: Orientation loaded from text file does not have exactly 3 angles!"
+                )
                 exit(1)
 
             return orientation
@@ -141,17 +149,21 @@ class BasicAssembler:
 
         # Get particle coordinates from base file provided
         num_particles = self.simulation.get_num_particles()
-        coordinates = self.simulation.parse_coordinates()
 
         truth_vols_dir = self.temp_dir + "/truth_vols"
         os.mkdir(truth_vols_dir)
 
-        custom_metadata = {"true_orientations": [], "your_custom_information_to_log": []}
+        custom_metadata = {
+            "true_orientations": [],
+            "your_custom_information_to_log": [],
+        }
 
         # Initialize a Particle Set instance to add individual particles to a stack
         particle_set = ParticleSet("BasicParticle", key=True)
 
         for i in range(num_particles):
+
+            coordinates = self.simulation.parse_coordinates()
 
             if not self.custom_args["use_common_model"]:
                 new_particle = truth_vols_dir + "/%d.mrc" % i
@@ -163,7 +175,9 @@ class BasicAssembler:
 
             # Update the simulation parameters with the new particle
 
-            true_orientation = self.get_new_orientation(self.custom_args["orientations_source"])
+            true_orientation = self.get_new_orientation(
+                self.custom_args["orientations_source"]
+            )
 
             # If we want to add noise to orientations, do it here
             if "orientations_error" in self.custom_args:
@@ -172,17 +186,22 @@ class BasicAssembler:
                 sigma = error_params["sigma"]
 
                 # Record the error parameters used
-                custom_metadata["orientations_error_distribution"] = \
-                    "gauss({:f}, {:f})".format(mu, sigma)
+                custom_metadata[
+                    "orientations_error_distribution"
+                ] = "gauss({:f}, {:f})".format(mu, sigma)
 
-                noisy_orientation = [true_orientation[0] + random.gauss(mu, sigma),
-                                     true_orientation[1] + random.gauss(mu, sigma),
-                                     true_orientation[2] + random.gauss(mu, sigma)]
+                noisy_orientation = [
+                    true_orientation[0] + random.gauss(mu, sigma),
+                    true_orientation[1] + random.gauss(mu, sigma),
+                    true_orientation[2] + random.gauss(mu, sigma),
+                ]
 
                 # Update metadata records for changed orientations
                 custom_metadata["true_orientations"].append(true_orientation)
 
-                particle_set.add_orientation_to_simulate(true_orientation, noisy_version=noisy_orientation)
+                particle_set.add_orientation_to_simulate(
+                    true_orientation, noisy_version=noisy_orientation
+                )
             else:
                 particle_set.add_orientation_to_simulate(true_orientation)
                 particle_set.add_orientation_to_save(true_orientation)
@@ -191,7 +210,9 @@ class BasicAssembler:
             particle_set.add_source(new_particle)
             particle_set.num_particles += 1
 
-            custom_metadata["your_custom_information_to_log"].append("some_custom_log_info")
+            custom_metadata["your_custom_information_to_log"].append(
+                "some_custom_log_info"
+            )
 
         # Now send off the Chimera commands you have compiled for this stack off to the Chimera
         # server to be processed (if we used Chimera, as use_common_map mode will not

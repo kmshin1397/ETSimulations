@@ -8,6 +8,7 @@ from shutil import move
 from tempfile import mkstemp
 import re
 from subprocess import check_output
+import random
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,12 +49,16 @@ class Simulation:
         defocus=5,
         template_configs="",
         template_coords="",
+        coord_error=None,
     ):
         # TEM-Simulator configuration input file
         self.config_file = config_file
 
         # TEM-Simulator particle coordinates file to use as base orientations/locations
         self.base_coord_file = base_coord_file
+
+        # An error distribution to apply to particle coordinates, if desired
+        self.coord_error = coord_error
 
         # Orientations given to the particles of interest
         self.orientations = []
@@ -151,6 +156,11 @@ class Simulation:
             "positions": self.positions,
             "custom_data": self.custom_data,
         }
+
+        if self.coord_error is not None:
+            mu = self.coord_error["mu"]
+            sigma = self.coord_error["sigma"]
+            metadata["coord_error"] = "gauss({:f}, {:f})".format(mu, sigma)
 
         return metadata
 
@@ -288,6 +298,22 @@ class Simulation:
                             float(tokens[2]),
                         ]
                         coordinates.append(coordinate)
+
+        if self.coord_error is not None:
+            mu = self.coord_error["mu"]
+            sigma = self.coord_error["sigma"]
+
+            noisy_coordinates = []
+            for coordinate in coordinates:
+                noisy_coordinates.append(
+                    [
+                        coordinate[0] + random.gauss(mu, sigma),
+                        coordinate[1] + random.gauss(mu, sigma),
+                        coordinate[2] + random.gauss(mu, sigma),
+                    ]
+                )
+
+            coordinates = noisy_coordinates
 
         return self.__convert_coordinates(coordinates)
 
