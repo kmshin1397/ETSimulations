@@ -147,7 +147,7 @@ class BasicAssembler:
         """
         self.simulation = simulation
 
-        # Get particle coordinates from base file provided
+        # Get particle coordinates info from base file provided
         num_particles = self.simulation.get_num_particles()
 
         truth_vols_dir = self.temp_dir + "/truth_vols"
@@ -162,7 +162,7 @@ class BasicAssembler:
         particle_set = ParticleSet("BasicParticle", key=True)
 
         for i in range(num_particles):
-
+            # Get particle coordinates, with random errors applied for this tiltseries, if desired
             coordinates = self.simulation.parse_coordinates()
 
             if not self.custom_args["use_common_model"]:

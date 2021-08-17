@@ -396,7 +396,7 @@ class T4SSAssembler:
         self.simulation = simulation
         self.commands = []
 
-        # Get particle coordinates from base file provided
+        # Get particle coordinates info from base file provided
         num_particles = self.simulation.get_num_particles()
 
         truth_vols_dir = self.temp_dir + "/truth_vols"
@@ -410,7 +410,7 @@ class T4SSAssembler:
 
         particle_sets = []
         for i in range(num_particles):
-            # Get particle coordinates from base file provided
+            # Get particle coordinates, with random errors applied for this tiltseries, if desired
             coordinates = self.simulation.parse_coordinates()
 
             # We use a new particle "set" per particle, since each will come from a slightly
