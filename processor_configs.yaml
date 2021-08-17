@@ -81,28 +81,29 @@ processors: [
 #    }
 #    }
 #  }
-{
-name: "imod",
-args: {
-  start_step: 0.0,
-  end_step: 14.0,
-  num_fiducials: 10,
-  tilt_axis: -90,
-  apix: 0.283,
-  fiducial_method: "autofidseed",
-  data_dirs_start_with: "Cone",
-  reconstruction_method: "imod-wbp",
-  rotx: true,
-  binvol: {
-    "binning": 1
-  },
-  # tomo3d_path: "tomo3d",
-  # tomo3d_options: {
-  #   "S": "enable",
-  #   "z": 700
-  # }
-}
-}
+# {
+# name: "imod",
+# args: {
+#   start_step: 0.0,
+#   end_step: 14.0,
+#   num_fiducials: 10,
+#   tilt_axis: -90,
+#   apix: 0.283,
+#   fiducial_method: "autofidseed",
+#   data_dirs_start_with: "Cone",
+#   reconstruction_method: "imod-wbp",
+#   rotx: true,
+#   binvol: {
+#     "binning": 1
+#   },
+#   filename_convention: "new"
+#   # tomo3d_path: "tomo3d",
+#   # tomo3d_options: {
+#   #   "S": "enable",
+#   #   "z": 700
+#   # }
+# }
+# }
 #{
 #  name: "i3",
 #  args: {
@@ -112,36 +113,37 @@ args: {
 #    source_type: "imod"
 #  }
 #}
-#{
-# name: "dynamo",
-# args: {
-#   box_size: 64,
-#   num_workers: 12,
-#   project_name: "t4ss",
-#   real_data_mode: false,
-#   source_type: "imod",
-#   rotx: true,
-#   cores: 1,
-#   mask: "/data/kshin/T4SS_sim/PDB/test_depths2/processed_data/Artiatomi/sta/other/mask.em",
-#   mwa: 12,
-#   ite_r1: 1,
-#   cr_r1: 20,
-#   cs_r1: 1,
-#   ir_r1: 30,
-#   is_r1: 1,
-#   rff_r1: 2,
-#   rf_r1: 5,
-#   dim_r1: 64,
-#   lim_r1: [10,10,10],
-#   limm_r1: 1,
-#   nref_r1: 1,
-#   high_r1: 1,
-#   low_r1: 18,
-#   sym_r1: "c13",
-#   dst: "matlab_gpu",
-#   gpus: 0
-# }
-#}
+{
+name: "dynamo",
+args: {
+  box_size: 64,
+  num_workers: 12,
+  project_name: "cone",
+  real_data_mode: false,
+  source_type: "imod",
+  apix: 0.283,
+  rotx: true,
+  cores: 1,
+  mask: "test/mask/file",
+  mwa: 12,
+  ite_r1: 1,
+  cr_r1: 20,
+  cs_r1: 1,
+  ir_r1: 30,
+  is_r1: 1,
+  rff_r1: 2,
+  rf_r1: 5,
+  dim_r1: 64,
+  lim_r1: [10,10,10],
+  limm_r1: 1,
+  nref_r1: 1,
+  high_r1: 1,
+  low_r1: 18,
+  sym_r1: "c13",
+  dst: "matlab_gpu",
+  gpus: 0
+}
+}
 #{
 # name: "artiatomi",
 # args: {
