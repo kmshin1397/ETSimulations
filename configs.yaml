@@ -4,12 +4,15 @@ tem_simulator_executable: "/home/kshin/software/TEM-simulator_1.3/src/TEM-simula
 chimera_exec_path: "/home/kshin/.local/UCSF-Chimera64-1.15rc/bin/chimera"
 
 # Run-specific configs
-model: "/home/kshin/repositories/ETSimulations/test/cone.mrc"
+model: "/home/kshin/repositories/ETSimulations/templates/tem_simulator/bead.mrc"
 root: "/home/kshin/repositories/ETSimulations/test"
 config: "/home/kshin/repositories/ETSimulations/templates/tem_simulator/sim.txt"
 coord: "/home/kshin/repositories/ETSimulations/templates/tem_simulator/T4SS_coord.txt"
+coord_error:
+  mu: 0
+  sigma: 50
 num_stacks: 1
-name: "Cone"
+name: "Bead"
 num_cores: 1
 # apix in nm
 apix: 0.283

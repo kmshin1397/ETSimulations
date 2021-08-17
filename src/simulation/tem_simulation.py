@@ -270,8 +270,7 @@ class Simulation:
         Returns: A list of lists [x, y, z] representing particle positions in nm.
         """
         for i, point in enumerate(coordinates):
-            coordinates[i] = map(lambda x: x * self.apix * 0.1, point)
-
+            coordinates[i] = list(map(lambda x: x * self.apix, point))
         return coordinates
 
     def parse_coordinates(self):
