@@ -4,7 +4,7 @@ The Dynamo Processor
 ====================
 The Dynamo Processor, found in processors/dynamo\_processor.py, is implemented to facilitate setting a sub-tomogram averaging project within Dynamo. Currently, starting from an IMOD or EMAN2 project for reconstructions/particle picking is supported.
 
-The Dynamo Processor will first generate a Dynamo-format volume index .doc file and data table .tbl file based on the IMOD/EMAN2 source provided. Afterwards, a MATLAB script designed to set up a Dynamo averaging project based on these will be generated and placed in the folder created for the Dynamo run. The generated script will contain code to extract the particles to be averaged and then create a new `Dynamo alignment project <https://wiki.dynamo.biozentrum.unibas.ch/w/index.php/Alignment_project>`_ for them. Various parameters for this project can be provided via the processor args in the YAML file passed to ets\_process\_data.py, and they will be passed along to the generated MATLAB script.
+The Dynamo Processor will first generate a Dynamo-format volume index .doc file and data table .tbl file based on the IMOD/EMAN2 source provided. Afterwards, a MATLAB script designed to set up a Dynamo averaging project based on these will be generated and placed in the folder created for the Dynamo run. The generated script will contain code to extract the particles to be averaged and then create a new `Dynamo alignment project <https://wiki.dynamo.biozentrum.unibas.ch/w/index.php/Alignment_project>`_ for them. The script also includes code for generating an FSC curve using the newly created alignment project. Various parameters for this project can be provided via the processor args in the YAML file passed to ets\_process\_data.py, and they will be passed along to the generated MATLAB script.
 
 The Dynamo alignment project parameters, and other arguments to the Processor, are listed in the section below.
 
@@ -53,6 +53,9 @@ All these are parameters that should be placed in the **args** section of the Pr
 
     * **params\_json** : string
         (Required if **real\_data\_mode** is true and **source\_type** is "eman2") The particle_parms_*.json from a run of EMAN2 spt to retrieve pre-orientations and the particle list from.
+
+    * **apix** : float
+        APIX values used for calculating the FSC
 
 The arguments below are used for the Dynamo alignment project specifically, and assigned in the generated script using the *dvput* function. Descriptions for these parameters can be found through the Dynamo `dcp GUI <https://wiki.dynamo.biozentrum.unibas.ch/w/index.php/Dcp_GUI>`_.
 

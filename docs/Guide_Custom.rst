@@ -119,9 +119,8 @@ In all, we'd end up with a set_up_tiltseries() function like this (along with th
         """
         self.simulation = simulation
 
-        # Get particle coordinates from base file provided
+        # Get particle coordinates info from base file provided
         num_particles = self.simulation.get_num_particles()
-        coordinates = self.simulation.parse_coordinates()
 
         truth_vols_dir = self.temp_dir + "/truth_vols"
         os.mkdir(truth_vols_dir)
@@ -132,6 +131,8 @@ In all, we'd end up with a set_up_tiltseries() function like this (along with th
         particle_set = ParticleSet("CustomParticle", key=True)
 
         for i in range(num_particles):
+            # Get particle coordinates, with random errors applied for this tiltseries, if desired
+            coordinates = self.simulation.parse_coordinates()
 
             new_particle = truth_vols_dir + "/%d.mrc" % i
 

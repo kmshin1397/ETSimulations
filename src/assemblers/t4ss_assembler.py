@@ -48,11 +48,13 @@ class Barrel:
         Returns: List of Chimera commands
 
         """
-        commands = ["open #%d %s" % (self.volume_id, self.source),
-                    "turn x %.3f models #%d center 0,0,0 coordinateSystem #%d" %
-                    (self.angle[0], self.volume_id, self.orig_coord_sys),
-                    "turn y %.3f models #%d center 0,0,0 coordinateSystem #%d" %
-                    (self.angle[1], self.volume_id, self.orig_coord_sys)]
+        commands = [
+            "open #%d %s" % (self.volume_id, self.source),
+            "turn x %.3f models #%d center 0,0,0 coordinateSystem #%d"
+            % (self.angle[0], self.volume_id, self.orig_coord_sys),
+            "turn y %.3f models #%d center 0,0,0 coordinateSystem #%d"
+            % (self.angle[1], self.volume_id, self.orig_coord_sys),
+        ]
         return commands
 
 
@@ -90,28 +92,28 @@ class Rod:
 
         """
         center_string = "0,0,0"
-        commands = ["open #%d %s" % (self.volume_id, self.source),
-                    "turn z %.3f models #%d center 0,0,0 coordinateSystem #%d" % (self.degrees,
-                                                                                  self.volume_id,
-                                                                                  self.volume_id),
-                    "move %.3f,%.3f,%.3f models #%d coordinateSystem #%d" % (self.center[0],
-                                                                             self.center[1],
-                                                                             self.center[2],
-                                                                             self.volume_id,
-                                                                             self.orig_coord_sys),
-                    "turn x %.3f models #%d center %s coordinateSystem #%d" % (self.angle[0],
-                                                                               self.volume_id,
-                                                                               center_string,
-                                                                               self.volume_id),
-                    "turn y %.3f models #%d center %s coordinateSystem #%d" % (self.angle[1],
-                                                                               self.volume_id,
-                                                                               center_string,
-                                                                               self.volume_id)]
+        commands = [
+            "open #%d %s" % (self.volume_id, self.source),
+            "turn z %.3f models #%d center 0,0,0 coordinateSystem #%d"
+            % (self.degrees, self.volume_id, self.volume_id),
+            "move %.3f,%.3f,%.3f models #%d coordinateSystem #%d"
+            % (
+                self.center[0],
+                self.center[1],
+                self.center[2],
+                self.volume_id,
+                self.orig_coord_sys,
+            ),
+            "turn x %.3f models #%d center %s coordinateSystem #%d"
+            % (self.angle[0], self.volume_id, center_string, self.volume_id),
+            "turn y %.3f models #%d center %s coordinateSystem #%d"
+            % (self.angle[1], self.volume_id, center_string, self.volume_id),
+        ]
         return commands
 
 
 class T4SSAssembler:
-    """ A custom particle Assembler class used to build up fake Type IV Secretion System particles
+    """A custom particle Assembler class used to build up fake Type IV Secretion System particles
 
     Attributes:
         ### Attributes passed in on initialization ###
@@ -221,10 +223,11 @@ class T4SSAssembler:
 
         """
         path = self.custom_args["membrane_path"]
-        self.commands.append('open #%d %s' % (model_id + 10, path))
+        self.commands.append("open #%d %s" % (model_id + 10, path))
         self.commands.append(
-            "vop scale #%d factor %0.3f modelId #%d" % (model_id + 10, 1.5, model_id))
-        self.commands.append('close #%d' % (model_id + 10))
+            "vop scale #%d factor %0.3f modelId #%d" % (model_id + 10, 1.5, model_id)
+        )
+        self.commands.append("close #%d" % (model_id + 10))
         return model_id
 
     def __assemble_particle(self, output_filename):
@@ -255,10 +258,14 @@ class T4SSAssembler:
         # by 90 around the X
         euler = [-random_orientation[2], -random_orientation[1], -random_orientation[0]]
         orientation = R.from_euler("zxz", euler, degrees=True)
-        orientation_mat = np.dot(R.from_euler("zxz", [0, -90, 0], degrees=True).as_matrix(),
-                                 orientation.as_matrix())
+        orientation_mat = np.dot(
+            R.from_euler("zxz", [0, -90, 0], degrees=True).as_matrix(),
+            orientation.as_matrix(),
+        )
         corrected_orientation = R.from_matrix(orientation_mat).inv()
-        corrected_orientation = corrected_orientation.as_euler("zxz", degrees=True).tolist()
+        corrected_orientation = corrected_orientation.as_euler(
+            "zxz", degrees=True
+        ).tolist()
         self.chosen_orientations.append(corrected_orientation)
 
         # Random position is with respect to center of membrane segment, not in entire tiltseries
@@ -267,8 +274,9 @@ class T4SSAssembler:
 
         # Tack on membrane
         particle_height_offset = 18
-        membrane_model = self.__open_membrane(membrane_model, particle_height_offset,
-                                              reference_coord_sys)
+        membrane_model = self.__open_membrane(
+            membrane_model, particle_height_offset, reference_coord_sys
+        )
 
         # Random angle with respect to the membrane (different from overall orientation angles)
         barrel_angle = self.__get_random_angle()
@@ -278,28 +286,40 @@ class T4SSAssembler:
 
         # Move the central barrel down to below the membrane
         self.commands.append(
-            'move 0,0,%d models #%d coordinateSystem #%d' % (-particle_height_offset - 25,
-                                                             b.volume_id,
-                                                             membrane_model))
+            "move 0,0,%d models #%d coordinateSystem #%d"
+            % (-particle_height_offset - 25, b.volume_id, membrane_model)
+        )
         # Rods
         rods_id = model_id + 1
         num_rods = self.custom_args["num_rods"]
         rod_ids = []
         for i in range(num_rods):
-            deg_increment = 360. / num_rods
+            deg_increment = 360.0 / num_rods
             degrees = deg_increment * i
 
             # Compute positions
-            x = math.cos(math.radians(degrees)) * self.custom_args["rod_distance_from_center"]
-            y = math.sin(math.radians(degrees)) * self.custom_args["rod_distance_from_center"]
+            x = (
+                math.cos(math.radians(degrees))
+                * self.custom_args["rod_distance_from_center"]
+            )
+            y = (
+                math.sin(math.radians(degrees))
+                * self.custom_args["rod_distance_from_center"]
+            )
 
             # Random angle with respect to the membrane (different from overall orientation angles)
             random_angle = self.__get_random_angle()
 
             # Note: rods seem to get added moved-down to where the barrel is automatically since the
             # last thing we added was the barrel, so no need to move them down with a command
-            rod = Rod(rods_id + i, self.custom_args["rod"], (x, y, 0), degrees, random_angle,
-                      membrane_model)
+            rod = Rod(
+                rods_id + i,
+                self.custom_args["rod"],
+                (x, y, 0),
+                degrees,
+                random_angle,
+                membrane_model,
+            )
             rod_ids.append(rods_id + i)
             random_angles.append(random_angle)
 
@@ -310,22 +330,32 @@ class T4SSAssembler:
         # Combine the barrel and rod maps
         full_model = 99
         max_rod_id = rod_ids[-1]
-        combine_command = "vop add #%d-%d modelId #%d" % (model_id, max_rod_id, full_model)
+        combine_command = "vop add #%d-%d modelId #%d" % (
+            model_id,
+            max_rod_id,
+            full_model,
+        )
         self.commands.append(combine_command)
 
         # Apply random position
-        self.commands.append("move %.2f,%.2f,0 models #%d coordinateSystem #%d" %
-                             (random_position[0], random_position[1], full_model, membrane_model))
+        self.commands.append(
+            "move %.2f,%.2f,0 models #%d coordinateSystem #%d"
+            % (random_position[0], random_position[1], full_model, membrane_model)
+        )
 
         # Commands to combine membrane and particle into one mrc
         final_model = 100
         self.commands.append(
-            "vop add #%d-%d modelId #%d" % (membrane_model, full_model, final_model))
+            "vop add #%d-%d modelId #%d" % (membrane_model, full_model, final_model)
+        )
 
         self.commands.append(
-            "vop scale #%d factor %0.3f modelId #%d" % (final_model, 3, final_model + 1))
+            "vop scale #%d factor %0.3f modelId #%d" % (final_model, 3, final_model + 1)
+        )
         self.commands.append(
-            "vop scale #%d shift %0.3f modelId #%d" % (final_model, 4.875, final_model + 2))
+            "vop scale #%d shift %0.3f modelId #%d"
+            % (final_model, 4.875, final_model + 2)
+        )
 
         # Save truth particle map
         self.commands.append("volume #%d save %s" % (final_model + 2, output_filename))
@@ -366,19 +396,23 @@ class T4SSAssembler:
         self.simulation = simulation
         self.commands = []
 
-        # Get particle coordinates from base file provided
+        # Get particle coordinates info from base file provided
         num_particles = self.simulation.get_num_particles()
-        coordinates = self.simulation.parse_coordinates()
 
         truth_vols_dir = self.temp_dir + "/truth_vols"
         os.mkdir(truth_vols_dir)
 
-        custom_metadata = {"shifts_from_membrane_center": [],
-                           "angles_from_membrane_perpendicular": [],
-                           "true_orientations": []}
+        custom_metadata = {
+            "shifts_from_membrane_center": [],
+            "angles_from_membrane_perpendicular": [],
+            "true_orientations": [],
+        }
 
         particle_sets = []
         for i in range(num_particles):
+            # Get particle coordinates, with random errors applied for this tiltseries, if desired
+            coordinates = self.simulation.parse_coordinates()
+
             # We use a new particle "set" per particle, since each will come from a slightly
             # different source map (based on randomized angles/position with respect to the
             # membrane)
@@ -387,7 +421,12 @@ class T4SSAssembler:
             new_particle = truth_vols_dir + "/%d.mrc" % i
 
             # Assemble a new particle
-            true_orientation, position, angles, side_view_orientation = self.__assemble_particle(new_particle)
+            (
+                true_orientation,
+                position,
+                angles,
+                side_view_orientation,
+            ) = self.__assemble_particle(new_particle)
 
             # If we want to add noise to orientations, do it here
             if "orientations_error" in self.custom_args:
@@ -396,20 +435,28 @@ class T4SSAssembler:
                 sigma = error_params["sigma"]
 
                 # Record the error parameters used
-                custom_metadata["orientations_error_distribution"] = \
-                    "gauss({:f}, {:f})".format(mu, sigma)
-                noise_z1, noise_x, noise_z2 = (random.gauss(mu, sigma), random.gauss(mu, sigma),
-                                               random.gauss(mu, sigma))
+                custom_metadata[
+                    "orientations_error_distribution"
+                ] = "gauss({:f}, {:f})".format(mu, sigma)
+                noise_z1, noise_x, noise_z2 = (
+                    random.gauss(mu, sigma),
+                    random.gauss(mu, sigma),
+                    random.gauss(mu, sigma),
+                )
                 # Save a noisy, side-view orientation
-                noisy_orientation = [side_view_orientation[0] + noise_z1,
-                                     side_view_orientation[1] + noise_x,
-                                     side_view_orientation[2] + noise_z2]
+                noisy_orientation = [
+                    side_view_orientation[0] + noise_z1,
+                    side_view_orientation[1] + noise_x,
+                    side_view_orientation[2] + noise_z2,
+                ]
 
                 # Update metadata records for changed orientations
                 custom_metadata["true_orientations"].append(true_orientation)
 
                 # Pass along to TEM-Simulator the noisy top-view orientation, but record the side view
-                particle_set.add_orientation_to_simulate(true_orientation, noisy_version=noisy_orientation)
+                particle_set.add_orientation_to_simulate(
+                    true_orientation, noisy_version=noisy_orientation
+                )
             else:
                 # Pass along to TEM-Simulator the true top-view orientation, but record the side view
                 particle_set.add_orientation_to_simulate(true_orientation)

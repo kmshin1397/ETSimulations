@@ -1,13 +1,13 @@
 # Each line contains 6 records: the first 3 columns are the XYZ coordinates, and the last three are
-# Euler angles for the orientation in ZXZ reference-to-particle extrinsic format. Units are nm.
+# Euler angles for the orientation in ZXZ reference-to-particle extrinsic format. Units are pixels.
 #
 9 6
--200 200 0 0 0 0
-0 200 0 0 0 0
-200 200 0 0 0 0
--200 0 0 0 0 0
+-706.7 706.7 0 0 0 0
+0 706.7 0 0 0 0
+706.7 706.7 0 0 0 0
+-706.7 0 0 0 0 0
 0 0 0 0 0 0
-200 0 0 0 0 0
--200 -200 0 0 0 0
-0 -200 0 0 0 0
-200 -200 0 0 0 0
+706.7 0 0 0 0 0
+-706.7 -706.7 0 0 0 0
+0 -706.7 0 0 0 0
+706.7 -706.7 0 0 0 0

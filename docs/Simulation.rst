@@ -47,7 +47,10 @@ As noted above, configuration parameters for simulating data sets with the **ets
         The TEM-simulator configuration text file to apply to each simulation. An example is provided in the templates folder.
 
     * **coord** :  string
-        TheTEM-simulator particle coordinates text file to use as a reference for placing particles in each generated tiltseries. An example for this is also provided in the templates folder.
+        The TEM-simulator particle coordinates text file to use as a reference for placing particles in each generated tiltseries. This file provides positions in units of pixels, with the origin at the center of the tiltseries. An example for this is also provided in the templates folder.
+
+    * **coord\_error** : object with keys "mu" and "sigma"
+        (Optional) Add Gaussian noise to the coordinates from the coord file. Random error values are sampled from a Gaussian distribution with mean "mu" and standard deviation "sigma" to be added to the each of x, y, z positions for the coordinates. For example, using { "mu": 0, "sigma": 1 } as the value will result in a standard normal distribution being used for errors.
 
     * **num\_stacks** : integer
         The number of tilt stacks to generate
