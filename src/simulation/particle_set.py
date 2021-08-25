@@ -1,5 +1,5 @@
 class ParticleSet:
-    """ Represents a set of particles of the same kind within a TEM-Simulator run.
+    """Represents a set of particles of the same kind within a TEM-Simulator run.
 
     This class directly corresponds to the particleset segments defined within a configuration file
     for the TEM-Simulator software.
@@ -22,10 +22,12 @@ class ParticleSet:
         add_source(source): Set the particle source file for the particle set
 
     """
+
     def __init__(self, name, key=False):
         self.name = name
         self.source = None
-        self.coordinates = []
+        self.coordinates_to_simulate = []
+        self.coordinates_to_save = []
         self.orientations_to_simulate = []
         self.orientations_to_save = []
         self.noisy_orientations = []
@@ -35,9 +37,13 @@ class ParticleSet:
         # averaged)
         self.key = key
 
-    def add_coordinate(self, coord):
-        """ Append an XYZ coordinate to the list of particle coordinates """
-        self.coordinates.append(coord)
+    def add_coordinate_to_simulate(self, coord):
+        """Append an XYZ coordinate to the list of particle coordinates to simulate"""
+        self.coordinates_to_simulate.append(coord)
+
+    def add_coordinate_to_save(self, coord):
+        """Append an XYZ coordinate to the list of particle coordinates to record"""
+        self.coordinates_to_save.append(coord)
 
     def add_orientation_to_simulate(self, orientation, noisy_version=None):
         """
@@ -68,6 +74,5 @@ class ParticleSet:
         self.orientations_to_save.append(orientation)
 
     def add_source(self, source):
-        """ Set the particle source file for the particle set """
+        """Set the particle source file for the particle set"""
         self.source = source
-

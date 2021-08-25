@@ -406,6 +406,7 @@ class T4SSAssembler:
             "shifts_from_membrane_center": [],
             "angles_from_membrane_perpendicular": [],
             "true_orientations": [],
+            "true_coordinates": [],
         }
 
         particle_sets = []
@@ -463,7 +464,12 @@ class T4SSAssembler:
                 particle_set.add_orientation_to_save(side_view_orientation)
 
             # Update the other simulation parameters with the new particle
-            particle_set.add_coordinate(coordinates[i])
+            particle_set.add_coordinate_to_simulate(coordinates["true_coordinates"][i])
+            particle_set.add_coordinate_to_save(coordinates["coordinates"][i])
+            if "coord_error" in self.custom_args:
+                custom_metadata["true_coordinates"].append(
+                    coordinates["true_coordinates"][i]
+                )
             particle_set.add_source(new_particle)
             particle_set.num_particles += 1
 

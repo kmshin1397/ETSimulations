@@ -277,7 +277,10 @@ class Simulation:
         """
         Read the particle coordinates in self.base_coord_file and return them as an array
 
-        Returns: A list of lists [x, y, z] representing particle positions
+        Returns: A dict of {
+            coordinates: list of lists [x, y, z] representing particle positions to record
+            true_coordinateS: list of lists [x, y, z] representing particle positions to simulate
+        }
 
         """
         coordinates = []
@@ -298,6 +301,7 @@ class Simulation:
                         ]
                         coordinates.append(coordinate)
 
+        results = {}
         if self.coord_error is not None:
             mu = self.coord_error["mu"]
             sigma = self.coord_error["sigma"]
@@ -311,10 +315,13 @@ class Simulation:
                         coordinate[2] + random.gauss(mu, sigma),
                     ]
                 )
+            results["coordinates"] = self.__convert_coordinates(noisy_coordinates)
+        else:
+            results["coordinates"] = self.__convert_coordinates(coordinates)
 
-            coordinates = noisy_coordinates
+        results["true_coordinates"] = self.__convert_coordinates(coordinates)
 
-        return self.__convert_coordinates(coordinates)
+        return results
 
     @staticmethod
     def __write_coord_file(filename, coordinates, orientations):
@@ -425,11 +432,11 @@ class Simulation:
                 else:
                     self.extend_orientations(particle_set.orientations_to_save)
 
-                self.extend_positions(particle_set.coordinates)
+                self.extend_positions(particle_set.coordinates_to_save)
 
             self.__write_coord_file(
                 new_coord_file,
-                particle_set.coordinates,
+                particle_set.coordinates_to_simulate,
                 particle_set.orientations_to_simulate,
             )
 

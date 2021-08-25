@@ -155,6 +155,7 @@ def run_process(
     coord_error = None
     if "coord_error" in configs:
         coord_error = configs["coord_error"]
+        configs["custom_configs"]["coord_error"] = coord_error
         if "mu" not in coord_error or "sigma" not in coord_error:
             print("ERROR: Both 'mu' and 'sigma' must be provided for 'coord_error'")
             exit(1)

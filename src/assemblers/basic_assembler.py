@@ -155,6 +155,7 @@ class BasicAssembler:
 
         custom_metadata = {
             "true_orientations": [],
+            "true_coordinates": [],
             "your_custom_information_to_log": [],
         }
 
@@ -206,7 +207,14 @@ class BasicAssembler:
                 particle_set.add_orientation_to_simulate(true_orientation)
                 particle_set.add_orientation_to_save(true_orientation)
 
-            particle_set.add_coordinate(coordinates[i])
+            particle_set.add_coordinate_to_simulate(coordinates["true_coordinates"][i])
+            particle_set.add_coordinate_to_save(coordinates["coordinates"][i])
+
+            if "coord_error" in self.custom_args:
+                custom_metadata["true_coordinates"].append(
+                    coordinates["true_coordinates"][i]
+                )
+
             particle_set.add_source(new_particle)
             particle_set.num_particles += 1
 
