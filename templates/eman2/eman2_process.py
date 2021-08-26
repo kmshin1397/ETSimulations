@@ -41,8 +41,11 @@ e2spt_refine_parameters = {}
 
 # ==========================================================
 
-def run_process_with_params(base_command, params_dict, get_command_without_running=False):
-    """ Helper function to run a given command line command, used to invoke various EMAN2 programs.
+
+def run_process_with_params(
+    base_command, params_dict, get_command_without_running=False
+):
+    """Helper function to run a given command line command, used to invoke various EMAN2 programs.
 
     Command line arguments to the base command can be passed in as a dictionary of key, value pairs.
     Arguments that do not have a value (i.e --help for many programs) should instead be passed in
@@ -70,7 +73,7 @@ def run_process_with_params(base_command, params_dict, get_command_without_runni
         process = subprocess.Popen(shlex.split(base_command), stdout=subprocess.PIPE)
         while True:
             output = os.fsdecode(process.stdout.readline())
-            if output == '' and process.poll() is not None:
+            if output == "" and process.poll() is not None:
                 break
             if output:
                 print(output.strip())
@@ -90,7 +93,7 @@ def rotate_positions_around_z(positions):
     Returns: None
 
     """
-    rot = R.from_euler('zxz', (90, 0, 0), degrees=True)
+    rot = R.from_euler("zxz", (90, 0, 0), degrees=True)
     for i, point in enumerate(positions):
         positions[i] = np.dot(rot.as_matrix(), np.array(point))
 
@@ -99,7 +102,7 @@ def rotate_positions_around_z(positions):
 
 # ==================== Processing steps ====================
 def import_tiltseries(get_command_without_running=False):
-    """ Run the e2import.py program to import tilt stacks """
+    """Run the e2import.py program to import tilt stacks"""
     results = ""
     # Scan everything in the raw data folder
     for dir_entry in os.scandir(raw_data_dir):
@@ -109,8 +112,9 @@ def import_tiltseries(get_command_without_running=False):
             stack_basename = dir_entry.name
             stack_to_import = dir_entry.path + "/%s.mrc" % stack_basename
             base_command = "e2import.py %s" % stack_to_import
-            result = run_process_with_params(base_command, e2import_parameters,
-                                             get_command_without_running)
+            result = run_process_with_params(
+                base_command, e2import_parameters, get_command_without_running
+            )
 
             if not get_command_without_running and result != 0:
                 print("Error with import tiltseries, exiting...")
@@ -130,21 +134,33 @@ def import_tiltseries(get_command_without_running=False):
 
 
 def reconstruct_tomograms(get_command_without_running=False):
-    """ Run the e2tomogram.py program to reconstruct tomograms """
+    """Run the e2tomogram.py program to reconstruct tomograms"""
 
     # If we haven't imported stacks yet, we don't know the exact reconstruction command
-    if get_command_without_running and not os.path.exists(os.path.join(eman2_root, "tiltseries")):
-        command = "e2tomogram.py tiltseries/{some_tiltseries_not_imported_yet}.hdf"
-        result = run_process_with_params(command, e2tomogram_parameters,
-                                         get_command_without_running)
+    if get_command_without_running and not os.path.exists(
+        os.path.join(eman2_root, "tiltseries")
+    ):
+        # Just get the first tiltseries name
+        for dir_entry in os.scandir(raw_data_dir):
+            # For every directory found which begins with the proper project name, i.e. assumed to
+            # contain a raw stack
+            if dir_entry.is_dir() and dir_entry.name.startswith(name):
+                stack_basename = dir_entry.name
+                break
+
+        command = "e2tomogram.py tiltseries/%s.hdf" % stack_basename
+        result = run_process_with_params(
+            command, e2tomogram_parameters, get_command_without_running
+        )
         return result
     else:
         results = ""
         # Iterate through each tiltseries
         for tiltseries in os.scandir(os.path.join(eman2_root, "tiltseries")):
             command = "e2tomogram.py %s" % ("tiltseries/" + tiltseries.name)
-            result = run_process_with_params(command, e2tomogram_parameters,
-                                             get_command_without_running)
+            result = run_process_with_params(
+                command, e2tomogram_parameters, get_command_without_running
+            )
             if not get_command_without_running and result != 0:
                 print("Error with reconstructing tomograms, exiting...")
                 exit(1)
@@ -163,9 +179,11 @@ def reconstruct_tomograms(get_command_without_running=False):
 
 
 def estimate_ctf(get_command_without_running=False):
-    """ Run the e2spt_tomoctf.py program to estimate CTF for the tomograms """
+    """Run the e2spt_tomoctf.py program to estimate CTF for the tomograms"""
     command = "e2spt_tomoctf.py"
-    result = run_process_with_params(command, e2spt_tomoctf_parameters, get_command_without_running)
+    result = run_process_with_params(
+        command, e2spt_tomoctf_parameters, get_command_without_running
+    )
     if not get_command_without_running and result != 0:
         print("Error with estimating CTF values, exiting...")
         exit(1)
@@ -174,7 +192,7 @@ def estimate_ctf(get_command_without_running=False):
 
 
 def record_eman2_particle(particles_array, info_file, particle_name, boxsize):
-    """ Write out particle coordinates to a EMAN2 tomogram info JSON file
+    """Write out particle coordinates to a EMAN2 tomogram info JSON file
 
     Args:
         particles_array: A list/numpy array of particle coordinates
@@ -191,7 +209,7 @@ def record_eman2_particle(particles_array, info_file, particle_name, boxsize):
         # Wrap in a new list to make it two-dimensional so next for loop will work
         particles_array = [particles_array]
 
-    with open(info_file, 'r') as f:
+    with open(info_file, "r") as f:
         tomogram_info = json.load(f)
 
         # Build up boxes
@@ -208,13 +226,13 @@ def record_eman2_particle(particles_array, info_file, particle_name, boxsize):
 
         tomogram_info["class_list"] = {"0": {"boxsize": boxsize, "name": particle_name}}
 
-    with open(info_file, 'w') as f:
+    with open(info_file, "w") as f:
         json.dump(tomogram_info, f, indent=4)
 
 
 def extract_particles(get_command_without_running=False):
-    """ Run the e2spt_extract.py program to extract subvolumes after writing out the particle
-        coordinates to the EMAN2 info files
+    """Run the e2spt_extract.py program to extract subvolumes after writing out the particle
+    coordinates to the EMAN2 info files
     """
     # Record particles
     if not get_command_without_running:
@@ -229,7 +247,9 @@ def extract_particles(get_command_without_running=False):
         if "coordinates_file" in particle_coordinates_parameters:
             coordinates_file = particle_coordinates_parameters["coordinates_file"]
         elif mode != "sim":
-            print("Error - Missing 'coordinates_file' parameter in particle_coordinates_parameters")
+            print(
+                "Error - Missing 'coordinates_file' parameter in particle_coordinates_parameters"
+            )
             exit(1)
 
         unbinned_boxsize = 64
@@ -242,13 +262,16 @@ def extract_particles(get_command_without_running=False):
                 info_file = os.fsdecode(f)
                 if info_file.startswith(name):
                     particles = np.loadtxt(coordinates_file)
-                    record_eman2_particle(particles, info_files + "/" + info_file, name,
-                                          unbinned_boxsize)
+                    record_eman2_particle(
+                        particles, info_files + "/" + info_file, name, unbinned_boxsize
+                    )
         elif mode == "multiple":
             for subdir in os.listdir(raw_data_dir):
                 if subdir.startswith(name):
                     coordinates = os.path.join(raw_data_dir, subdir, coordinates_file)
-                    info_file = os.path.join(eman2_root, "info", "%s_info.json" % subdir)
+                    info_file = os.path.join(
+                        eman2_root, "info", "%s_info.json" % subdir
+                    )
                     particles = np.loadtxt(coordinates)
                     record_eman2_particle(particles, info_file, name, unbinned_boxsize)
 
@@ -265,18 +288,23 @@ def extract_particles(get_command_without_running=False):
                     # During reconstruction, there is a 90 degree rotation around the z-axis,
                     # so correct for that with the positions
                     positions = rotate_positions_around_z(positions)
-                    info_file = os.path.join(eman2_root, "info", "%s_info.json" % basename)
+                    info_file = os.path.join(
+                        eman2_root, "info", "%s_info.json" % basename
+                    )
                     record_eman2_particle(positions, info_file, name, unbinned_boxsize)
 
         else:
-            print("Error - Invalid 'mode' for particle coordinates. Should be 'single' or "
-                  "'multiple' or 'sim'")
+            print(
+                "Error - Invalid 'mode' for particle coordinates. Should be 'single' or "
+                "'multiple' or 'sim'"
+            )
             exit(1)
 
     # Extract particles
     base_command = "e2spt_extract.py --label=%s" % name
-    result = run_process_with_params(base_command, e2spt_extract_parameters,
-                                     get_command_without_running)
+    result = run_process_with_params(
+        base_command, e2spt_extract_parameters, get_command_without_running
+    )
     if not get_command_without_running and result != 0:
         print("Error with extracting particles, exiting...")
         exit(1)
@@ -285,11 +313,12 @@ def extract_particles(get_command_without_running=False):
 
 
 def make_particle_set(get_command_without_running=False):
-    """ Run the e2spt_buildsets.py program to create a list of particles for averaging """
+    """Run the e2spt_buildsets.py program to create a list of particles for averaging"""
     # Build set
     base_command = "e2spt_buildsets.py --label=%s" % name
-    result = run_process_with_params(base_command, e2spt_buildsets_parameters,
-                                     get_command_without_running)
+    result = run_process_with_params(
+        base_command, e2spt_buildsets_parameters, get_command_without_running
+    )
     if not get_command_without_running and result != 0:
         print("Error with building the particle set, exiting...")
         exit(1)
@@ -298,10 +327,11 @@ def make_particle_set(get_command_without_running=False):
 
 
 def make_initial_model(get_command_without_running=False):
-    """ Run the e2spt_sgd program to automatically generate an initial reference for averaging """
+    """Run the e2spt_sgd program to automatically generate an initial reference for averaging"""
     base_command = "e2spt_sgd.py sets/%s.lst" % name
-    result = run_process_with_params(base_command, e2spt_sgd_parameters,
-                                     get_command_without_running)
+    result = run_process_with_params(
+        base_command, e2spt_sgd_parameters, get_command_without_running
+    )
     if not get_command_without_running and result != 0:
         print("Error with generating the initial model, exiting...")
         exit(1)
@@ -310,12 +340,16 @@ def make_initial_model(get_command_without_running=False):
 
 
 def run_refinement(get_command_without_running=False):
-    """ Run the e2spt_refine.py program to do sub-tomogram refinement """
+    """Run the e2spt_refine.py program to do sub-tomogram refinement"""
     particle_set_file = "sets/%s.lst" % name
     reference_file = "sptsgd_00/output.hdf"
-    base_command = "e2spt_refine.py %s --reference=%s" % (particle_set_file, reference_file)
-    result = run_process_with_params(base_command, e2spt_refine_parameters,
-                                     get_command_without_running)
+    base_command = "e2spt_refine.py %s --reference=%s" % (
+        particle_set_file,
+        reference_file,
+    )
+    result = run_process_with_params(
+        base_command, e2spt_refine_parameters, get_command_without_running
+    )
     if not get_command_without_running and result != 0:
         print("Error with the 3D refinement, exiting...")
         exit(1)
@@ -337,7 +371,7 @@ functions_table = {
     "extract": extract_particles,
     "build_set": make_particle_set,
     "generate_initial_model": make_initial_model,
-    "3d_refinement": run_refinement
+    "3d_refinement": run_refinement,
 }
 
 
@@ -349,7 +383,7 @@ def collect_and_output_commands(output_file):
         command += "\n"
         commands.append(command)
 
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         f.writelines(commands)
 
 
@@ -368,5 +402,5 @@ def main():
             exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
