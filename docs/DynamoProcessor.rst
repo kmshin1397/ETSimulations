@@ -16,7 +16,7 @@ All these are parameters that should be placed in the **args** section of the Pr
         The particle box size to crop out Dynamo particles for
 
     * **num_workers** : int
-        The number of Matlab workers to spawn for the particle cropping and initial averaging functions (the 'mw' parameter for these)
+        The number of Matlab workers to spawn for the particle cropping and initial averaging functions (the 'mw' parameter for these). This will also be used as the **mwa** parameter in the Dynamo alignment project.
 
     * **project_name** : string
         A name for the Dynamo project
@@ -62,8 +62,6 @@ The arguments below are used for the Dynamo alignment project specifically, and 
     * **cores** : int
 
     * **mask** : string
-
-    * **mwa** : int
 
     * **ite_r1** : int
 

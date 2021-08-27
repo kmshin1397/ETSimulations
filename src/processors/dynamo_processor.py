@@ -943,6 +943,11 @@ def dynamo_main(root, name, dynamo_args):
                             value_to_write_out = "1;"
                         else:
                             value_to_write_out = "0;"
+                    elif variable_name == "mwa":
+                        if "num_workers" not in dynamo_args:
+                            print("Missing Dynamo processing parameter: num_workers!")
+                            exit(1)
+                        value_to_write_out = str(dynamo_args["num_workers"]) + ";"
                     elif variable_name in dynamo_args:
                         if type(dynamo_args[variable_name]) == str:
                             value_to_write_out = f"'{dynamo_args[variable_name]}';"
