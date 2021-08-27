@@ -96,7 +96,8 @@ def test_create_particle_lists(
     mock_particle_set.noisy_orientations = None
     mock_particle_set.orientations_to_save = mock_orientations
     mock_particle_set.orientations_to_simulate = mock_orientations
-    mock_particle_set.coordinates = mock_particle_coordinates
+    mock_particle_set.coordinates_to_save = mock_particle_coordinates
+    mock_particle_set.coordinates_to_simulate = mock_particle_coordinates
     mock_particle_set.source = "test_model_source.mrc"
     mock_particle_set.num_particles = 2
 
@@ -137,7 +138,7 @@ def test_create_particle_lists(
             row = f.readline().split()
             coordinate = [int(row[0]), int(row[1]), int(row[2])]
             orientation = [int(row[3]), int(row[4]), int(row[5])]
-            assert coordinate == mock_particle_set.coordinates[i]
+            assert coordinate == mock_particle_set.coordinates_to_simulate[i]
             assert orientation == mock_particle_set.orientations_to_simulate[i]
 
 
@@ -172,7 +173,7 @@ def test_create_fiducials(test_simulation):
 
 def test_parse_coordinates(test_simulation, mock_particle_coordinates):
     coords = test_simulation.parse_coordinates()
-    assert coords == mock_particle_coordinates
+    assert coords["true_coordinates"] == mock_particle_coordinates
 
 
 def test_get_num_particles(test_simulation, mock_particle_coordinates):
