@@ -164,7 +164,13 @@ In all, we'd end up with a set_up_tiltseries() function like this (along with th
                 particle_set.add_orientation_to_simulate(true_orientation)
                 particle_set.add_orientation_to_save(true_orientation)
 
-            particle_set.add_coordinate(coordinates[i])
+            # Update the other simulation parameters with the new particle
+            particle_set.add_coordinate_to_simulate(coordinates["true_coordinates"][i])
+            particle_set.add_coordinate_to_save(coordinates["coordinates"][i])
+            if "coord_error" in self.custom_args:
+                custom_metadata["true_coordinates"].append(
+                    coordinates["true_coordinates"][i]
+                )
             particle_set.add_source(new_particle)
             particle_set.num_particles += 1
 
