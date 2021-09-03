@@ -6,10 +6,9 @@
 
 % Kyung Min Shin, Caltech, 2020
 
-% NOTE: The below comment line is used by dynamo_processor.py to identify
+% NOTE: The below section comment line is used by dynamo_processor.py to identify
 % the section of input parameters to fill in automatically, so you should
 % not remove it.
-
 %% Input parameters
 apix = '';
 basename = '';
@@ -42,7 +41,6 @@ invert_particles = 1;
 
 % NOTE: The below comment line is used by dynamo_processor.py to identify
 % the end of the input parameters section, so you should not remove it.
-
 %% Process table
 % Crop out the particles
 dtcrop(doc_file, tbl_file, particles_dir, box_size, 'mw', num_workers);
@@ -135,6 +133,15 @@ dvput(project_name_even, 'd', 'gpus', gpus);
 dvcheck(project_name_even);
 dvunfold(project_name_even);
 
+
+%% Start the even & odd jobs
+
+even_job=[project_name_even,'.m'];
+odd_job=[project_name_odd,'.m'];
+run(even_job);
+run(odd_job);
+
+
 %% Make FSC curve
 % Make even and odd averages with all the particles
 even_avg = [project_name_even, '/results/ite_0001/averages/even_avg.em'];
@@ -164,3 +171,6 @@ dwrite(full_avg.average, [project_name_odd, '/results/ite_0001/averages/full_avg
 % Calculate fsc
 dfsc(even_avg, odd_avg, 'nshells', 32, 'apix', apix, 'show', 1, ...
     'o', [project_name_odd, '/results/ite_0001/averages/fsc_alignedeo.txt'], 'mask', mask);
+
+% Save the fsc curve
+savefig([project_name_odd, '/results/ite_0001/averages/fsc.fig']);
