@@ -25,6 +25,9 @@ Once you have a particle source file to use for your simulation, it is time to s
     * **use\_common\_model** : bool
         Enable this option to just use the same particle model source file for every instance of the particle within the generated data set
 
+    * **coord\_error** : object with keys "mu" and "sigma"
+        (Optional) Add Gaussian noise to the coordinates from the coord file. Random error values are sampled from a Gaussian distribution with mean "mu" and standard deviation "sigma" to be added to the each of x, y, z positions for the coordinates (in pixels). For example, using { "mu": 0, "sigma": 1 } as the value will result in a standard normal distribution being used for errors.
+
     * **orientations\_source** : string
         Use this option to specify how to determine the orientations for particles in the data set. There are three options accepted for this: **"none"**, **"gauss(<mu>, <sigma>)"**, or **"<filepath>"**. See the sub-section below for more details.
 

@@ -49,9 +49,6 @@ As noted above, configuration parameters for simulating data sets with the **ets
     * **coord** :  string
         The TEM-simulator particle coordinates text file to use as a reference for placing particles in each generated tiltseries. This file provides positions in units of pixels, with the origin at the center of the tiltseries. An example for this is also provided in the templates folder. Note that these positions will show up converted into nm in the **sim\_metadata.json** file, for internal use purposes. Don't worry - your inputs are definetly taken as pixels.
 
-    * **coord\_error** : object with keys "mu" and "sigma"
-        (Optional) Add Gaussian noise to the coordinates from the coord file. Random error values are sampled from a Gaussian distribution with mean "mu" and standard deviation "sigma" to be added to the each of x, y, z positions for the coordinates (in pixels). For example, using { "mu": 0, "sigma": 1 } as the value will result in a standard normal distribution being used for errors.
-
     * **num\_stacks** : integer
         The number of tilt stacks to generate
 

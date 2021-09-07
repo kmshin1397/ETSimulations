@@ -157,11 +157,6 @@ class Simulation:
             "custom_data": self.custom_data,
         }
 
-        if self.coord_error is not None:
-            mu = self.coord_error["mu"]
-            sigma = self.coord_error["sigma"]
-            metadata["coord_error"] = "gauss({:f}, {:f})".format(mu, sigma)
-
         return metadata
 
     # Replace line in file with a new line

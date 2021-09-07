@@ -153,9 +153,8 @@ def run_process(
     copyfile(configs["coord"], new_coord_file)
     copyfile(configs["config"], new_input_file)
     coord_error = None
-    if "coord_error" in configs:
-        coord_error = configs["coord_error"]
-        configs["custom_configs"]["coord_error"] = coord_error
+    if "custom_configs" in configs and "coord_error" in configs["custom_configs"]:
+        coord_error = configs["custom_configs"]["coord_error"]
         if "mu" not in coord_error or "sigma" not in coord_error:
             print("ERROR: Both 'mu' and 'sigma' must be provided for 'coord_error'")
             exit(1)

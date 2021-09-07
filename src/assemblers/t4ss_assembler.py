@@ -409,6 +409,14 @@ class T4SSAssembler:
             "true_coordinates": [],
         }
 
+        if "coord_error" in self.custom_args:
+            error_params = self.custom_args["coord_error"]
+            mu = error_params["mu"]
+            sigma = error_params["sigma"]
+            custom_metadata["coord_error_distribution"] = "gauss({:f}, {:f})".format(
+                mu, sigma
+            )
+
         particle_sets = []
         for i in range(num_particles):
             # Get particle coordinates, with random errors applied for this tiltseries, if desired
@@ -435,10 +443,6 @@ class T4SSAssembler:
                 mu = error_params["mu"]
                 sigma = error_params["sigma"]
 
-                # Record the error parameters used
-                custom_metadata[
-                    "orientations_error_distribution"
-                ] = "gauss({:f}, {:f})".format(mu, sigma)
                 noise_z1, noise_x, noise_z2 = (
                     random.gauss(mu, sigma),
                     random.gauss(mu, sigma),

@@ -159,6 +159,14 @@ class BasicAssembler:
             "your_custom_information_to_log": [],
         }
 
+        if "coord_error" in self.custom_args:
+            error_params = self.custom_args["coord_error"]
+            mu = error_params["mu"]
+            sigma = error_params["sigma"]
+            custom_metadata["coord_error_distribution"] = "gauss({:f}, {:f})".format(
+                mu, sigma
+            )
+
         # Initialize a Particle Set instance to add individual particles to a stack
         particle_set = ParticleSet("BasicParticle", key=True)
 
