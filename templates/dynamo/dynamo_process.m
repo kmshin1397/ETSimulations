@@ -16,11 +16,10 @@ doc_file = '';
 tbl_file = '';
 particles_dir = '';
 box_size = 72;
-num_workers = 12;
 project_name = '';
 mask = '';
 cores = 1;
-mwa = '';
+num_workers = '';
 ite_r1 = '';
 cr_r1 = '';
 cs_r1 = '';
@@ -35,6 +34,20 @@ nref_r1 = '';
 high_r1 = '';
 low_r1 = '';
 sym_r1 = '';
+ite_r2 = '';
+cr_r2 = '';
+cs_r2 = '';
+ir_r2 = '';
+is_r2 = '';
+rff_r2 = '';
+rf_r2 = '';
+dim_r2 = '';
+lim_r2 = '';
+limm_r2 = '';
+nref_r2 = '';
+high_r2 = '';
+low_r2 = '';
+sym_r2 = '';
 dst = '';
 gpus = '';
 invert_particles = 1;
@@ -83,7 +96,7 @@ dcp.new(project_name_odd, 'd', particles_dir, 'template', avg_odd,'masks', ...
 % Project settings
 dvput(project_name_odd, 'd', 'mask', mask);
 dvput(project_name_odd, 'd', 'cores', cores);
-dvput(project_name_odd, 'd', 'mwa', mwa);
+dvput(project_name_odd, 'd', 'num_workers', num_workers);
 dvput(project_name_odd, 'd', 'ite_r1', ite_r1);
 dvput(project_name_odd, 'd', 'cr_r1', cr_r1);
 dvput(project_name_odd, 'd', 'cs_r1', cs_r1);
@@ -112,7 +125,7 @@ dcp.new(project_name_even, 'd', particles_dir, 'template', avg_even,'masks', ...
 % Project settings
 dvput(project_name_even, 'd', 'mask', mask);
 dvput(project_name_even, 'd', 'cores', cores);
-dvput(project_name_even, 'd', 'mwa', mwa);
+dvput(project_name_even, 'd', 'num_workers', num_workers);
 dvput(project_name_even, 'd', 'ite_r1', ite_r1);
 dvput(project_name_even, 'd', 'cr_r1', cr_r1);
 dvput(project_name_even, 'd', 'cs_r1', cs_r1);
@@ -147,13 +160,13 @@ run(odd_job);
 even_avg = [project_name_even, '/results/ite_0001/averages/even_avg.em'];
 odd_avg = [project_name_odd, '/results/ite_0001/averages/odd_avg.em'];
 
-even_table = dread([project_name_even, '/results/ite_0001/averages/refined_table_ref_001_ite_0001.tbl'])
-odd_table = dread([project_name_odd, '/results/ite_0001/averages/refined_table_ref_001_ite_0001.tbl'])
+even_table = dread([project_name_even, '/results/ite_0001/averages/refined_table_ref_001_ite_0001.tbl']);
+odd_table = dread([project_name_odd, '/results/ite_0001/averages/refined_table_ref_001_ite_0001.tbl']);
 
-even = daverage(particles_dir, 't', even_table, 'fcompensate', 1, 'mw', mwa);
+even = daverage(particles_dir, 't', even_table, 'fcompensate', 1, 'mw', num_workers);
 dwrite(even.average, even_avg);
 
-odd = daverage(particles_dir, 't', odd_table, 'fcompensate', 1, 'mw', mwa);
+odd = daverage(particles_dir, 't', odd_table, 'fcompensate', 1, 'mw', num_workers);
 dwrite(odd.average, odd_avg);
 
 % Align the two averages with each other

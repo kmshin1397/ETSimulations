@@ -924,10 +924,10 @@ def dynamo_main(root, name, dynamo_args):
                     break
 
                 # If we are at an assignment line
-                elif re.match(r".+ =", line):
+                elif re.match(r".+=", line):
                     line = line.strip()
-                    tokens = line.split(" ")
-                    variable_name = tokens[0]
+                    tokens = line.split("=")
+                    variable_name = tokens[0].strip()
 
                     value_to_write_out = ""
                     if variable_name == "basename":
