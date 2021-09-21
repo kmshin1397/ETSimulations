@@ -207,10 +207,10 @@ def imod_real_to_dynamo(dynamo_args):
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
 
-    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_path = dynamo_root + "/tomograms_input.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
 
-    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_path = dynamo_root + "/input.tbl"
     table_file = open(table_path, "w")
 
     # -------------------------------------
@@ -295,7 +295,7 @@ def imod_real_to_dynamo(dynamo_args):
         table_file.close()
         tomograms_doc_file.close()
 
-    return tomograms_doc_path, table_path, "table_to_crop_notcf"
+    return tomograms_doc_path, table_path, "input"
 
 
 def imod_processor_to_dynamo(root, name):
@@ -319,10 +319,10 @@ def imod_processor_to_dynamo(root, name):
     if not os.path.exists(dynamo_root):
         os.mkdir(dynamo_root)
 
-    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_path = dynamo_root + "/tomograms_input.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
 
-    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_path = dynamo_root + "/input.tbl"
     table_file = open(table_path, "w")
 
     # Iterate through the tomograms in the order they appear in the metadata file instead of just
@@ -458,7 +458,7 @@ def imod_processor_to_dynamo(root, name):
         table_file.close()
         tomograms_doc_file.close()
 
-    return tomograms_doc_path, table_path, "table_to_crop_notcf"
+    return tomograms_doc_path, table_path, "input"
 
 
 #############################
@@ -650,10 +650,10 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
     if not os.path.exists(tomograms_path):
         os.mkdir(tomograms_path)
 
-    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_path = dynamo_root + "/tomograms_input.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
 
-    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_path = dynamo_root + "/input.tbl"
     table_file = open(table_path, "w")
 
     # Iterate through the tomograms in the order they appear in the metadata file instead of just
@@ -755,7 +755,7 @@ def eman2_processor_to_dynamo(root, name, dynamo_args):
         table_file.close()
         tomograms_doc_file.close()
 
-    return tomograms_doc_path, table_path, "table_to_crop_notcf"
+    return tomograms_doc_path, table_path, "input"
 
 
 def eman2_real_to_dynamo(dynamo_args):
@@ -788,10 +788,10 @@ def eman2_real_to_dynamo(dynamo_args):
     if not os.path.exists(tomograms_path):
         os.mkdir(tomograms_path)
 
-    tomograms_doc_path = dynamo_root + "/tomgrams_noctf_included.doc"
+    tomograms_doc_path = dynamo_root + "/tomograms_input.doc"
     tomograms_doc_file = open(tomograms_doc_path, "w")
 
-    table_path = dynamo_root + "/table_to_crop_notcf.tbl"
+    table_path = dynamo_root + "/input.tbl"
     table_file = open(table_path, "w")
 
     # Extract individual particle maps from the stacks
@@ -846,7 +846,7 @@ def eman2_real_to_dynamo(dynamo_args):
     table_file.close()
     tomograms_doc_file.close()
 
-    return tomograms_doc_path, table_path, "table_to_crop_notcf"
+    return tomograms_doc_path, table_path, "input"
 
 
 def dynamo_main(root, name, dynamo_args):
