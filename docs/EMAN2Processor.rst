@@ -78,6 +78,8 @@ Each EMAN2 program is given its own \*\_parameters section in the "args" field, 
 
 Note: It is recommended that you consider enabling the "noali" option in the e2tomogram\_parameters when processing simulated data. The overall lack of large distinct features across the tiltseries (like entire cells in real tomograms) can confuse the coarse alignment step in e2tomogram.py and cause undesired large alignment errors computed during the reconstruction step.
 
+Note 2: Also when choosing options for e2tomogram.py, note that the processor will run the e2tomogram.py command once for each tiltseries, which means you should avoid enabling the "alltiltseries" option. Doing so will end up reconstructing each tomogram over and over, once per the number of tiltserieses in the directory. This is not an issue, of course, if you plan on simply taking the generated eman2\_process\_commands.txt file and running the raw command-line EMAN2 commands manually instead of using the generated eman2\_process.py script. 
+
 ============================
 Running the generated script
 ============================
