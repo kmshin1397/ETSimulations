@@ -84,7 +84,7 @@ class Simulation:
         # Field to store Assembler-specific metadata.
         self.custom_data = None
 
-        # If the model being used is a PDB, we must provide an apix value
+        # APIX value
         self.apix = apix
 
         # The defocus value to use for the simulation

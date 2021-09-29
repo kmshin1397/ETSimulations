@@ -17,7 +17,7 @@ def test_configs():
     model: "/data/kshin/T4SS_sim/PDB/pdb_maps/barrel_chimera.mrc"\n
     root: "/data/kshin/T4SS_sim/PDB/test"\n
     config: "/data/kshin/T4SS_sim/PDB/test/template_files/sim.txt"\n
-    coord: "/data/kshin/T4SS_sim/PDB/test/template_files/T4SS_coord.txt"\n
+    coord: "/data/kshin/T4SS_sim/PDB/test/template_files/coord.txt"\n
     num_stacks: 2\n
     name: "T4SS"\n
     num_cores: 2\n

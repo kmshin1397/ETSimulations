@@ -90,7 +90,7 @@ def rotate_positions_around_z(positions):
     Args:
         positions: A list of [x, y, z] coordinates
 
-    Returns: None
+    Returns: A list of [x, y, z] coordinates
 
     """
     rot = R.from_euler("zxz", (90, 0, 0), degrees=True)
@@ -99,6 +99,22 @@ def rotate_positions_around_z(positions):
 
     return positions
 
+def invert_z_coordinates(positions):
+    """
+    Given a list of coordinates, invert the z coordinates. This is used when
+        converting particle coordinates from the raw tiltseries to the final reconstruction's
+        coordinate system for simulated data.
+
+    Args:
+        positions: A list of [x, y, z] coordinates
+
+    Returns: A list of [x, y, z] coordinates
+
+    """
+    for i, point in enumerate(positions):
+        point[2] = -1 * point[2]
+        positions[i] = point
+    return positions
 
 # ==================== Processing steps ====================
 def import_tiltseries(get_command_without_running=False):
@@ -288,6 +304,7 @@ def extract_particles(get_command_without_running=False):
                     # During reconstruction, there is a 90 degree rotation around the z-axis,
                     # so correct for that with the positions
                     positions = rotate_positions_around_z(positions)
+                    positions = invert_z_coordinates(positions)
                     info_file = os.path.join(
                         eman2_root, "info", "%s_info.json" % basename
                     )
