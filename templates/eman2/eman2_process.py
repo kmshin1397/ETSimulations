@@ -9,6 +9,7 @@ Note: Python3 is required to run this script.
 """
 import os
 import subprocess
+import re
 import shlex
 import numpy as np
 import json
@@ -43,7 +44,7 @@ e2spt_refine_parameters = {}
 
 
 def run_process_with_params(
-    base_command, params_dict, get_command_without_running=False
+    base_command, params_dict, get_command_without_running=False, get_output=False
 ):
     """Helper function to run a given command line command, used to invoke various EMAN2 programs.
 
@@ -56,6 +57,7 @@ def run_process_with_params(
         params_dict: A dictionary of input arguments to the command
         get_command_without_running: Option to return the assembled full command without actually
             running it
+        get_output: Return the first output line instead of the return code
 
     """
     for arg, value in params_dict.items():
@@ -76,12 +78,14 @@ def run_process_with_params(
             if output == "" and process.poll() is not None:
                 break
             if output:
+                if get_output:
+                    return output.strip()
                 print(output.strip())
         rc = process.poll()
         return rc
 
 
-def rotate_positions_around_z(positions):
+def rotate_positions_around_z(positions, sign):
     """
     Given a list of coordinates, rotate them all by 90 degrees around the z-axis. This is used to
         convert particle coordinates from the raw tiltseries to the final reconstruction's
@@ -89,11 +93,12 @@ def rotate_positions_around_z(positions):
 
     Args:
         positions: A list of [x, y, z] coordinates
+        sign: -1 or 1, determining whether the rotation is -90 or 90 degrees
 
     Returns: A list of [x, y, z] coordinates
 
     """
-    rot = R.from_euler("zxz", (90, 0, 0), degrees=True)
+    rot = R.from_euler("zxz", (sign * 90, 0, 0), degrees=True)
     for i, point in enumerate(positions):
         positions[i] = np.dot(rot.as_matrix(), np.array(point))
 
@@ -115,6 +120,16 @@ def invert_z_coordinates(positions):
         point[2] = -1 * point[2]
         positions[i] = point
     return positions
+
+def detect_eman_version():
+    command = "e2version.py"
+    result = run_process_with_params(command, {}, get_output=True)
+    match = re.search("EMAN [0-9].[0-9]+", result)
+    if match is None:
+        print("Unable to parse EMAN version")
+        exit(1)
+    else:
+        return float(match.group(0).split(" ")[1])
 
 # ==================== Processing steps ====================
 def import_tiltseries(get_command_without_running=False):
@@ -301,10 +316,15 @@ def extract_particles(get_command_without_running=False):
 
                     # Positions for TEM-Simulator are in nm, need to convert to pixels
                     positions = np.array(tomogram["positions"]) / tomogram["apix"]
-                    # During reconstruction, there is a 90 degree rotation around the z-axis,
+                    # During reconstruction, there are rotations imposed by e2tomogram.py based on EMAN version,
                     # so correct for that with the positions
-                    positions = rotate_positions_around_z(positions)
-                    positions = invert_z_coordinates(positions)
+                    version = detect_eman_version()
+                    if version >= 2.9:
+                        positions = rotate_positions_around_z(positions, 1)
+                        positions = invert_z_coordinates(positions)
+                    else:
+                        positions = rotate_positions_around_z(positions, -1)
+
                     info_file = os.path.join(
                         eman2_root, "info", "%s_info.json" % basename
                     )
