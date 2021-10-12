@@ -328,7 +328,7 @@ def set_up_batchtomo(root, name, imod_args):
                         stack = filename
 
             batchtomo_info = {
-                "root": stack.split(".")[0],
+                "root": stack.split(".")[0].replace("_preali", ""),
                 "tilt_folder": "%s/%s" % (imod_project_dir, base),
                 "adoc": this_adoc,
                 "stack": "%s/%s/%s" % (imod_project_dir, base, stack),
